@@ -1,4 +1,4 @@
-# vim:se tw=78 ai si sts=4 et: 
+[//]: # ( vim:se tw=78 ai si sts=4 et: )
 # osamu-utils
 
 Small utility scripts
