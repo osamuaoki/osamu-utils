@@ -51,6 +51,17 @@ fi
 rm -f $FILENAME.tmp_a
 }
 
+
+d=`pwd`
+while [ ! -d "$d/.git" -a "$d" != / ];
+    do d="`readlink -f $d/..`"; done
+if [ -d "$d/.git" ] && [ -r "$d/.git/COMMIT_EDITMSG" ]; then
+    OPT_COMMIT0="-e -F $d/.git/COMMIT_EDITMSG"
+else
+    OPT_COMMIT0=''
+fi
+unset d
+
 trap restore EXIT HUP INT QUIT BUS USR1 PIPE TERM
 # see "kill -l", signal(7)
 # +  0 EXIT: on exit
@@ -66,11 +77,11 @@ trap restore EXIT HUP INT QUIT BUS USR1 PIPE TERM
 if git diff --quiet $FILENAME ; then
     echo "No local changes. Partial commit series to HEAD from HEAD^"
     GIT_REV="HEAD^"
-    AMMEND="--amend"
+    OPT_COMMIT="--amend"
 else
     echo "Local changes found.  Partial commit series from HEAD."
     GIT_REV="HEAD"
-    AMMEND=""
+    OPT_COMMIT="$OPT_COMMIT0"
 fi
 
 if ! git rev-parse --verify --quiet $GIT_REV >/dev/null ; then
@@ -89,13 +100,13 @@ do
 imediff2 -o $FILENAME $FILENAME.tmp_a $FILENAME.tmp_b
 chmod --reference $FILENAME.tmp_b $FILENAME
 git add $FILENAME
-git commit $AMMEND $FILENAME
+git commit $OPT_COMMIT $FILENAME
 mv $FILENAME $FILENAME.tmp_a
 if diff -q -w $FILENAME.tmp_a $FILENAME.tmp_b ; then
     echo "No more changes"
     break
 fi
-AMMEND=""
+OPT_COMMIT="$OPT_COMMIT0"
 done
 echo "$FILENAME commited in series."
 # vim:se tw=78 ai sts=4 et:
