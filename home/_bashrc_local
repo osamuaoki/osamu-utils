@@ -30,7 +30,7 @@ export GIT_PAGER=
 
 # devscripts related
 DEBEMAIL=@@@EMAIL@@@
-DEBFULLNAME=@@@NAME@@@
+DEBFULLNAME="@@@NAME@@@"
 export DEBEMAIL DEBFULLNAME
 
 # make less more friendly for non-text input files, see lesspipe(1)
