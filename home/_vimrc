@@ -1,0 +1,20 @@
+" -------------------------------
+" Local configuration
+"
+set nocompatible
+set nopaste
+set pastetoggle=<f2>
+set syntax=ON
+
+" Uncomment if use secure modeline plug-in
+"set nomodeline
+
+" Basic precaution
+if $USER == "root"
+ set noswapfile
+else
+ set swapfile
+endif
+" filler to avoid the line above being recognized as a modeline
+" filler
+" filler

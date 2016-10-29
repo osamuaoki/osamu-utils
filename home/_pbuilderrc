@@ -1,0 +1,25 @@
+AUTO_DEBSIGN="${AUTO_DEBSIGN:-no}"
+PDEBUILD_PBUILDER=cowbuilder
+HOOKDIR="/var/cache/pbuilder/hooks"
+MIRRORSITE="http://deb.debian.org/debian"
+#APTCACHE=/var/cache/pbuilder/aptcache
+APTCACHE=/var/cache/apt/archives
+#BUILDRESULT=/var/cache/pbuilder/result/
+BUILDRESULT=../
+###EXTRAPACKAGES="ccache lintian libeatmydata1"
+EXTRAPACKAGES="ccache lintian"
+###if [ -z "$DIST" ]; then
+#### eatmydata
+###if [ -z "$LD_PRELOAD" ]; then
+###  LD_PRELOAD=libeatmydata.so
+###else
+###  LD_PRELOAD="$LD_PRELOAD":libeatmydata.so
+###fi
+###fi
+export LD_PRELOAD
+# ccache
+export CCACHE_DIR="/var/cache/pbuilder/ccache"
+export PATH="/usr/lib/ccache:${PATH}"
+BINDMOUNTS="${CCACHE_DIR}"
+# parallel build
+#DEBBUILDOPTS=-j8

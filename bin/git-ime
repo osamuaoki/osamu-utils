@@ -22,21 +22,6 @@
 # SOFTWARE.
 #############################################################################
 
-if [ ! -x /usr/bin/imediff2 ]; then
-    echo "Install the imediff2 package."
-    exit 1
-fi
-if [ ! -r "$1" ]; then
-    echo "Can not find <path>: $1" >&2
-    help
-    exit 1
-fi
-if [ -z "${1%%/*}" ]; then
-    FILENAME="$1"
-else
-    FILENAME="`pwd`/$1"
-fi
-shift
 help() {
     echo "partial modification commit series
 
@@ -49,8 +34,28 @@ if [ -e $FILENAME.tmp_b ]; then
     rm -f $FILENAME.tmp_b
 fi
 rm -f $FILENAME.tmp_a
+git status || true
 }
 
+if [ ! -x /usr/bin/imediff2 ]; then
+    echo "Install the imediff2 package."
+    exit 1
+fi
+if [ "$1" = "--help" ]; then
+    help
+    exit
+fi
+if [ ! -r "$1" ]; then
+    echo "Can not find <path>: $1" >&2
+    help
+    exit 1
+fi
+if [ -z "${1%%/*}" ]; then
+    FILENAME="$1"
+else
+    FILENAME="`pwd`/$1"
+fi
+shift
 
 d=`pwd`
 while [ ! -d "$d/.git" -a "$d" != / ];
@@ -74,14 +79,23 @@ trap restore EXIT HUP INT QUIT BUS USR1 PIPE TERM
 # * 15 TERM: trappable termination
 # No trap for KILL(9)
 
-if git diff --quiet $FILENAME ; then
-    echo "No local changes. Partial commit series to HEAD from HEAD^"
-    GIT_REV="HEAD^"
-    OPT_COMMIT="--amend"
-else
-    echo "Local changes found.  Partial commit series from HEAD."
+if ! git diff --cached --quiet ; then
+    echo "Staged changes.  Commit it"
+    git commit -m "Commit staged changes"
+fi
+
+if ! git diff --quiet $FILENAME ; then
+    echo "Local changes found.  Partial commit series from HEAD to local."
     GIT_REV="HEAD"
     OPT_COMMIT="$OPT_COMMIT0"
+else
+    echo "No local changes. Partial commit series from HEAD^ to HEAD"
+    GIT_REV="HEAD^"
+    OPT_COMMIT="--amend"
+    if git diff --quiet HEAD^..HEAD $FILENAME ; then
+        echo "No changes for HEAD^..HEAD, nothing to edit for $FILENAME"
+        exit 1
+    fi
 fi
 
 if ! git rev-parse --verify --quiet $GIT_REV >/dev/null ; then

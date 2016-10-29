@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+echo "I: Setting up a shell session within the build chroot ..."
+set -x
+apt-get -y --force-yes install vim bash mc
+# invoke shell if build fails
+cd /tmp/buildd/*/debian/..
+/bin/bash < /dev/tty > /dev/tty 2> /dev/tty
+

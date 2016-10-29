@@ -1,0 +1,56 @@
+# User Private Groups: http://wiki.debian.org/UserPrivateGroups
+umask 002
+
+# mc related
+export HISTCONTROL=ignoreboth
+. /usr/lib/mc/mc.sh
+
+# set CDPATH
+export CDPATH=.:/usr/share/doc:~:~/vcs-maint:~/vcs-active::~/vcs-stall
+
+# set PATH of normal users to include "sbin"
+PATH="${PATH}":/usr/sbin:/sbin
+
+# python distutils
+if [ -d ~/.local/bin ] ; then
+  PATH=~/.local/bin:"${PATH}"
+fi
+
+# user's private bin
+if [ -d ~/bin ] ; then
+  PATH=~/bin:"${PATH}"
+fi
+export PATH
+
+export EDITOR=vim
+export VISUAL=vim
+export BROWSER=firefox
+export MKISOFS="xorrisofs"
+export GIT_PAGER=
+
+# devscripts related
+DEBEMAIL=@@@EMAIL@@@
+DEBFULLNAME=@@@NAME@@@
+export DEBEMAIL DEBFULLNAME
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+if [ "$color_prompt" = yes ]; then
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    PS1='${debian_chroot:+($debian_chroot)}\$ '
+else
+    #PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    PS1='${debian_chroot:+($debian_chroot)}\$ '
+fi
+unset color_prompt force_color_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+*)
+    ;;
+esac
+

@@ -1,0 +1,20 @@
+[user]
+	name = @@@NAME@@@
+	email = @@@EMAIL@@@
+[alias]
+	c = commit
+	ci = commit -a
+	cia = commit -a --amend
+	ca = commit --amend
+	co = checkout
+	a = add
+	aa = add -A .
+	sd = svn dcommit
+	sr = svn rebase
+	# for checkout to repo like /home/<user> and /root /etc
+	# creating simple alias is problematic.
+        # ~/bin/git-zap has priority over this
+	zap = ! "echo \"\\\"git zap\\\" command disabled.\""
+#	citool = gui citool
+[push]
+	default = simple

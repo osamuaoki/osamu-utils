@@ -1,0 +1,4 @@
+DEBUILD_DPKG_BUILDPACKAGE_OPTS="-i -us -uc"
+DEBUILD_LINTIAN_OPTS="-i -I --show-overrides"
+DEBSIGN_KEYID="@@@KEYID@@@"
+

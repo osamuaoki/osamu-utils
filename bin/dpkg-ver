@@ -26,9 +26,9 @@ V1=$1
 V2=$2
 if [ "$2" = "" ]; then
     echo "Syntax: ${0##*/} ver1 ver2"
-elif dpkg --compare-versions $V1 gt $V2; then
+elif dpkg --force-bad-version --compare-versions "$V1" gt "$V2" ; then
     echo "$V1 >> $V2"
-elif dpkg --compare-versions $V1 lt $V2; then
+elif dpkg --force-bad-version --compare-versions "$V1" lt "$V2" ; then
     echo "$V1 << $V2"
 else
     echo "$V1 == $V2"
