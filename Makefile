@@ -114,5 +114,9 @@ diff-pbuilder-%: build-pbuilder-% | $(PBUILDERDIR)
 	@[ -e $(PBUILDERDIR)/$* ] || echo "*** Missing $(PBUILDERDIR)/$* ***"
 
 ################################################################
+packages:
+	sudo apt install $(PACKAGES)
+
+################################################################
 clean:
 	rm -rf $(BUILDDIR)
