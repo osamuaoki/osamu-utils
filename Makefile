@@ -115,7 +115,8 @@ diff-pbuilder-%: build-pbuilder-% | $(PBUILDERDIR)
 
 ################################################################
 packages:
-	sudo apt install $(PACKAGES)
+	sudo apt-get update
+	sudo apt-get install $(PACKAGES)
 
 ################################################################
 clean:
