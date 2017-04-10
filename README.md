@@ -1,5 +1,7 @@
-[//]: # ( vim:se tw=78 ai si sts=4 et: )
 # osamu-utils
+<!---
+vim:se tw=78 ai si sts=4 et:
+-->
 
 These are trivial scripts to make my life easy.
 
