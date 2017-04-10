@@ -1,5 +1,5 @@
 ########################################
-# ALIAS and BASH_COMPLETION for them
+# ALIAS, FUNCTION and BASH_COMPLETION for them
 ########################################
 
 # enable color support of ls and also add handy aliases
@@ -36,8 +36,9 @@ alias up-apt="set -x; sudo apt-get update && sudo apt-get dist-upgrade -y && sud
 alias up-papt="set -x; sudo git-pbuilder update && set +x; sync"
 alias upgrade="up-apt && echo "" && up-papt ; sync"
 alias bts="bts --mutt"
-alias gk="gitk --all"
+alias gk="git status && gitk --all"
 
 #alias bend="BEN_CACHE_DIR=~/ben ben download -c ~/ben/benrc"
 #alias benq="BEN_CACHE_DIR=~/ben ben query -c ~/ben/benrc"
 
+function mcd { mkdir $1 ; cd $1 ; }
