@@ -52,6 +52,11 @@ case $GITROOT in
         ;;
     *)
         echo "Skip \"git zap\" since you are in a wrong directory."
+        echo
+        echo "If you really wish to do, run the following command manually."
+        echo " \$ cd $GITROOT"
+        echo " \$ git reset --hard HEAD"
+        echo " \$ git clean -d -f -x"
         ;;
 esac
 
