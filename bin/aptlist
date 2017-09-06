@@ -31,6 +31,9 @@ case $1 in
         echo "    -v    list manually installed packages with a short description"
         echo "    -l    list manually installed library packages"
         echo "    -v    list manually installed library packages with a short description"
+        echo "HINTS"
+        echo "    Manage manually installed packages with aptitude dialog (type \"l\"):"
+        echo "        \"!~v~i!~M!~prequired!~pimportant!~pstandard\""
             ;;
     -lv|-vl)
         aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
