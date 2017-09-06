@@ -22,6 +22,24 @@
 # SOFTWARE.
 #############################################################################
 case $1 in
+    -h)
+        echo "NAME"
+        echo "    ${0##*/} - List manually installed packages"
+        echo "SYNOPSIS"
+        echo "    ${0##*/} [-options]"
+        echo "OPTIONS"
+        echo "    -v    list manually installed packages with a short description"
+        echo "    -l    list manually installed library packages"
+        echo "    -v    list manually installed library packages with a short description"
+            ;;
+    -lv|-vl)
+        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
+            sed -e 's/^...//' | grep ^lib
+            ;;
+    -l)
+        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
+            sed -e 's/^...//' -e 's/  *-.*$//' | grep ^lib
+            ;;
     -v)
         aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
             sed -e 's/^...//'
