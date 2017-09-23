@@ -1,0 +1,53 @@
+#!/bin/sh
+# add usertag to a package BTS
+#############################################################################
+# Copyright (c) 2017 Osamu Aoki
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#############################################################################
+case $1 in
+    -h)
+        echo "NAME"
+        echo "    ${0##*/} - add usertag to a package's BTS"
+        echo "SYNOPSIS"
+        echo "    ${0##*/} [[package] usertag] bug_num1 bug_num2 bug_num3 ..."
+        echo "DEFALTS"
+        echo "     package = devscripts"
+        echo "     usertag = uscan"
+        exit
+            ;;
+esac
+
+PACKAGE="devscripts"
+USERTAG="uscan"
+if ! { echo "${1}" | grep -q -e '^i[0-9][0-9]*$'; }; then
+    USERTAG="${1}"; shift
+fi
+if ! { echo "${1}" | grep -q -e '^[0-9][0-9]*$'; }; then
+    PACKAGE=${USERTAG}
+    USERTAG="${1}"; shift
+fi
+CMDLINE="bts user ${PACKAGE}@packages.debian.org"
+while [ -n "$1" ] ; do
+    CMDLINE="$CMDLINE , usertag $1 $USERTAG"
+    shift
+done
+echo "$CMDLINE"
+eval "$CMDLINE"
+# vim:se tw=78 ai sts=4 et:
