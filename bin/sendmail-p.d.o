@@ -1,0 +1,21 @@
+#!/bin/sh
+# vim:se tw=0 sts=2 ts=2 et ai:
+
+if [ "${DEBEMAIL##*@}" = "debian.org" ]; then
+  echo "You must have a debian.org e-mail address"
+  echo "and set \$DEBEMAIL environment variable to it."
+  exit
+fi
+
+STRICTCK=''
+#STRICTCK='-o "StrictHostKeyChecking no"'
+
+if [ -n "$DEBEMAIL" ]; then
+  /usr/bin/ssh -v \
+	  -p 22 \
+	  ${STRICTCK} \
+	  ${DEBEMAIL%%@*}@people.debian.org \
+	  /usr/sbin/sendmail -bm -ti \
+    -f "$DEBEMAIL"
+fi
+
