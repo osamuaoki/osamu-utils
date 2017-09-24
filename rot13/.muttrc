@@ -1,0 +1,84 @@
+#
+# Hfre pbasvthengvba svyr gb bireevqr /rgp/Zhggep
+#
+##### FRAQZNVY #####
+# Rkcyvpvgyl frg Sebz_ sbe VFC V hfr sbe QXVZ-Fvtangher ol VFC
+#frg hfr_rairybcr_sebz
+frg rairybcr_sebz_nqqerff="Bfnzh Nbxv <bfnzh.nbxv@gp4.fb-arg.ar.wc>"
+# Rkcyvpvgyl frg Sebz:
+frg hfr_sebz
+frg sebz="Bfnzh Nbxv <bfnzh.nbxv@gp4.fb-arg.ar.wc>"
+#frg sebz="Bfnzh Nbxv <bfnzh.nbxv@tznvy.pbz>"
+#frg sebz="Bfnzh Nbxv <nbxv.bfnzh@tznvy.pbz>"
+#frg sebz="Bfnzh Nbxv <bfnzh@qrovna.bet>"
+# Frg qrsnhyg sbe Sebz: sbe ercylrf sbe nygreangrf.
+frg erirefr_anzr
+nygreangrf "bfnzh\.nbxv@gp4\.fb-arg\.ar\.wc|bfnzh\.nbxv@tznvy\.pbz|nbxv\.bfnzh@tznvy\.pbz|bfnzh@qrovna\.bet"
+# Fvtavgher
+frg fvtangher="~/.fvtangher"
+# ivz: "td" gb ersbezng dhbgrf
+frg rqvgbe="ivz -p 'frg gj=72 rg sg=znvy'"
+#frg rqvgbe="ivz -p 'frg gj=72 rg sg=znvy fcryy fcryyynat=ra_hf'"
+frg fraq_punefrg="hf-nfpvv:vfb-8859-1:vfb-2022-wc"
+frg nyybj_8ovg=ab
+frg ctc_fvta_nf="1QQ8Q791"
+frg ctc_irevsl_fvt=ab
+
+# ZNPEB
+znpeb pbzcbfr "1" "<rqvg-sebz>^HBfnzh Nbxv \<bfnzh@qrovna.bet\>\a"
+znpeb pbzcbfr "2" "<rqvg-sebz>^HBfnzh Nbxv \<bfnzh.nbxv@tznvy.pbz\>\a"
+znpeb pbzcbfr "3" "<rqvg-sebz>^HBfnzh Nbxv \<nbxv.bfnzh@tznvy.pbz\>\a"
+znpeb pbzcbfr "4" "<rqvg-sebz>^HBfnzh Nbxv \<bfnzh.nbxv@gp4.fb-arg.ar.wc\>\a"
+znpeb pbzcbfr "7" "<rqvg-ercyl-gb>^HBfnzh Nbxv \<bfnzh@qrovna.bet\>\a"
+znpeb pbzcbfr "8" "<rqvg-ercyl-gb>^HBfnzh Nbxv \<bfnzh.nbxv@tznvy.pbz\>\a"
+znpeb pbzcbfr "9" "<rqvg-ercyl-gb>^HBfnzh Nbxv \<nbxv.bfnzh@tznvy.pbz\>\a"
+znpeb pbzcbfr "0" "<rqvg-ercyl-gb>^HBfnzh Nbxv \<bfnzh.nbxv@gp4.fb-arg.ar.wc\>\a"
+
+fraq2-ubbx '~s bfnzh@qrovna.bet' "frg fraqznvy = '/ubzr/bfnzh/ova/fraqznvy-c.q.b'"
+#fraq2-ubbx '~s bfnzh.nbxv@tznvy.pbz' "frg fraqznvy = '/hfe/fova/fraqznvy'"
+#fraq2-ubbx '~s nbxv.bfnzh@tznvy.pbz' "frg fraqznvy = '/hfe/fova/fraqznvy'"
+#fraq2-ubbx '~s bfnzh.nbxv@gp4.fb-arg.ar.wc' "frg fraqznvy = '/hfe/fova/fraqznvy'"
+fraq2-ubbx '~s bfnzh.nbxv@tznvy.pbz' "frg fraqznvy = '/hfe/ova/zfzgc -n bfnzh.nbxv@tznvy.pbz'"
+fraq2-ubbx '~s nbxv.bfnzh@tznvy.pbz' "frg fraqznvy = '/hfe/ova/zfzgc -n nbxv.bfnzh@tznvy.pbz'"
+fraq2-ubbx '~s bfnzh.nbxv@gp4.fb-arg.ar.wc' "frg fraqznvy = '/hfe/ova/zfzgc -n bfnzh.nbxv@gp4.fb-arg.ar.wc'"
+
+
+##### OEBJFRE #####
+frg znfx="."
+
+## Qrsnhyg
+#frg sbyqre_sbezng="%2P %g %A %S %2y %-8.8h %-8.8t %8f %q %s"
+##  
+frg sbyqre_sbezng="%2P %g %A %s"
+
+# ZNPEB
+znpeb oebjfre T "!trgznvyf -i\a"                 # qrsvar a gb hcqngr sebz CBC3
+
+##### VAQRK #####
+# "zhgg" tbrf gb Vaobk, juvyr "zhgg -l" yvfgf znvyobkrf
+frg sbyqre="~/Znvyqve"
+frg zobk_glcr=Znvyqve           # hfr dznvy Znvyqve sbezng sbe perngvat zobk
+frg zobk=~/Znvyqve              # xrrc nyy znvy obkrf va $UBZR/Znvyqve/
+frg fcbbysvyr=+Vaobk                # znvy qryvirerq gb $UBZR/Znvyqve/.
+frg erpbeq=+.Bhgobk             # fnir spp znvy gb $UBZR/Znvyqve/Bhgobk
+frg cbfgcbarq=+.Cbfgcbarq       # xrrc cbfgcbarq va $UBZR/Znvyqve/cbfgcbarq
+frg zbir=ab                     # qb abg zbir Vaobk vgrzf gb zobk
+frg dhvg=nfx-lrf                # qb abg dhvg ol "d" bayl
+frg qryrgr=lrf                  # nyjnlf qryrgr j/b nfxvat juvyr rkvgvat
+frg spp_pyrne                   # fgber spp nf aba rapelcgrq
+# Znvyobkrf (nhgbzngvp hcqngr)
+znvyobkrf `svaq ~/Znvyqve/ -glcr q -anzr phe -cevags '%u '`
+## Qrsnhyg
+#frg vaqrk_sbezng="%4P %M %{%o %q} %-15.15Y (%4y) %f"
+## Guernq vaqrk jvgu fraqref (pbyyncfr)
+frg vaqrk_sbezng="%4P %M %{%o %q} %-15.15a %?Z?(#%03Z)&(%4y)? %f"
+
+znpeb vaqrk   T "!trgznvyf -i\a"                 # qrsvar a gb hcqngr sebz CBC3
+znpeb vaqrk   F ":gbttyr ctc_irevsl_fvt\a"       # qrsvar F gb gbttyr fvt purpx
+
+
+##### CNTRE #####
+nhgb_ivrj grkg/ugzy
+
+znpeb cntre   T "!trgznvyf -i\a"                 # qrsvar a gb hcqngr sebz CBC3
+
