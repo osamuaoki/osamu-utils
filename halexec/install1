@@ -29,7 +29,8 @@ PKGS="$PKGS task-desktop"
 # Japanese input method support for me
 PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
 # Desktop extras
-PKGS="$PKGS chromium gnote nixnote2 rxvt tomboy- zim" 
+PKGS="$PKGS gnote nixnote2 rxvt tomboy- zim" 
+PKGS="$PKGS chromium pepperflashplugin-nonfree" 
 # temperature sensor
 PKGS="$PKGS psensor" 
 
