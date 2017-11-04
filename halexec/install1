@@ -56,6 +56,6 @@ PKGS="$PKGS texinfo-doc-nonfree"
 #############################################################################
 # Install packages
 #############################################################################
-apt update
-apt full-upgrade
-apt install $PKGS
+sudo apt update
+sudo apt full-upgrade
+sudo apt install $PKGS
