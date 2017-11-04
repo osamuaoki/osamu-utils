@@ -21,11 +21,8 @@ for f in /etc/skel/.* ; do
   fi
 done
 if [ "$COMMAND" = "cp" ] ; then
-echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
-echo '# Extra entries added' >>~/.bashrc
-echo 'if [ -f ~/.bashrc_local ]; then' >>~/.bashrc
-echo '    . ~/.bashrc_local' >>~/.bashrc
-echo 'fi' >>~/.bashrc
+  echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
+  echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
 fi
 # install latest dotfiles
 for f in ~/bin/dotfiles/.* ; do
