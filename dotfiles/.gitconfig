@@ -1,11 +1,11 @@
 [user]
-	name = @@@NAME@@@
-	email = @@@EMAIL@@@
+	name = Osamu Aoki
+	email = osamu@debian.org
 [alias]
-	c = commit
-	ci = commit -a
-	cia = commit -a --amend
-	ca = commit --amend
+	c = commit -s
+	ci = commit -as
+	cia = commit -as --amend
+	ca = commit -s --amend
 	co = checkout
 	a = add
 	aa = add -A .

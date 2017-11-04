@@ -1,0 +1,9 @@
+#!/bin/sh
+# ext4fs label
+LABEL="backup"
+USERNAME=$(id -un)
+# Backup should be in different hardware
+export RESTIC_REPOSITORY=/media/$USERNAME/$LABEL/restic.repo
+# No (real) password used since local
+export RESTIC_PASSWORD=secret_password
+restic "$@"

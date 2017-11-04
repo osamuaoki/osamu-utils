@@ -1,0 +1,508 @@
+#!/usr/bin/env python3
+# vim: set sts=4 expandtab ai:
+"""
+Char-usplit
+Copyright (C) 2017 Osamu Aoki <osamu@debian.org>
+
+This is free software with ABSOLUTELY NO WARRANTY.
+
+You can redistribute it and/or modify it under the terms of
+the GNU General Public License version 2 or later.
+"""
+
+import sys
+import os
+import os.path
+import re
+import itertools
+import argparse
+import math
+import tempfile
+import subprocess
+
+VERSION = '1.0.1'
+
+# precision
+pr = 3.0 # max
+prx = 1.5 # ngram limit
+factor = 0.5
+
+
+def vprint(text):
+    if args.verbose:
+        print(text)
+    return
+
+def sprint(statch, ch, ch0, i):
+    x = statch[(ch, ch0)]
+    if x >= -1:
+        if x < 0:
+            x = -0.1
+        if args.index:
+            print("{:03}\t{:4.2f}\t'{}'\t{}".format(i, x, ch, ch0))
+        else:
+            print("{:4.2f}\t'{}'\t{}".format(x, ch, ch0))
+        return
+
+def readanyfile(file, encoding='utf-8'):
+    try:
+        with open(file, 'r', encoding=encoding) as fd:
+            text = ''
+            state = False # If previous line is ""
+            for line in fd.readlines():
+                line0 = line.strip()
+                if line0:
+                    if state:
+                        text += ' '
+                        text += line0
+                    else:
+                        text += line0
+                    state = True
+                else:
+                    if state:
+                        text += '\n'
+                    state = False
+    except UnicodeDecodeError as e:
+        with open(file, 'r', encoding='latin-1') as fd:
+            text = ''
+            state = False # If previous line is ""
+            for line in fd.readlines():
+                line0 = line.strip()
+                if line0:
+                    if state:
+                        text += ' '
+                        text += line0
+                    else:
+                        text += line0
+                    state = True
+                else:
+                    if state:
+                        text += '\n'
+                    state = False
+    return text
+
+if __name__ == '__main__':
+    p = argparse.ArgumentParser(description='Process text files to obtain the statistics of required key strokes.', epilog='Note: The reported value is log10(1000*freq(char)/freq(char_max)) and sorted.  The reported value for the unused ASCII character is -0.10.')
+    p.add_argument("-v", "--verbose", action="store_true", help="report progress", default=False)
+    p.add_argument("-e", "--encoding", action="store", metavar="[utf-8|latin1|eucJP|...]", help="set input encoding. default: utf-8", default="utf-8")
+    p.add_argument("-j", "--japanese", action="store_true", help="enable pre-process of Japanese text to alphabet.", default=False)
+    p.add_argument("-b", "--hepburn", action="store_true", help="use Hepburn system for Japanese alphabetization instead of Kunrei.", default=False)
+    p.add_argument("-n", "--ngram", action="store", metavar="[0|1|2|3]", help="report up to n-gram. default: 3", type=int, default=3)
+    p.add_argument("-c", "--cost", action="store", metavar="[0|1|2]", help="cost model. default: 2", type=int, default=2)
+    p.add_argument("-s", "--skip-space", action="store_true", help="skip repeated spaces and tabs completely.", default=False)
+    p.add_argument("-p", "--prefix", action="store", metavar="[4|4p|3q|3qp|3d|3dp|3c|3cp|3w|3wp]", help="set prefix shift/Fn code rule.", default="querty")
+    p.add_argument("-r", "--readable", action="store_true", help="report control characters as readable text", default=False)
+    p.add_argument("-u", "--unicode", action="store_true", help="report Unicode characters as readable text", default=False)
+    p.add_argument("-i", "--index", action="store_true", help="add sequential index number", default=False)
+    p.add_argument('otherthings', nargs='+', metavar="filename")
+    args = p.parse_args()
+    # keep ngram sane
+    if args.ngram < 0:
+        args.ngram = 0
+    if args.ngram > 3:
+        args.ngram = 3
+    vprint("# Encoding (input): {}".format(args.encoding))
+    vprint("# Report up to:              {}-gram".format(args.ngram))
+    vprint("# Report score:              {} - log10(freq/freq_max)".format(pr))
+    vprint("# Report score min (1-gram): {}".format(0.0))
+    vprint("# Report score min (others): {}".format(prx))
+    vprint("# Report prefix rule: {}".format(args.prefix))
+    if args.prefix == "":
+        print("# Any 4 row keyboard. (no-shift statistics)")
+    elif args.prefix == "4":
+        print("# Any 4 row keyboard. (shift statistics)")
+    elif args.prefix == "4p":
+        print("# Any 4 row programmer keyboard. (shift statistics)")
+    elif args.prefix == "3q":
+        print("# QWERTY 3 row keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3qp":
+        print("# QWERTY 3 row programmer keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3d":
+        print("# Dovrak 3 row keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3dp":
+        print("# Dovrak 3 row programmer keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3c":
+        print("# Colemak 3 row keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3cp":
+        print("# Colemak 3 row programmer keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3w":
+        print("# Workman 3 row keyboard. (shift+Fn statistics)")
+    elif args.prefix == "3wp":
+        print("# Workman 3 row programmer keyboard. (shift+Fn statistics)")
+    #########################################################################
+    # read files (optionally after converting Japanese text to Alphabet)
+    #########################################################################
+    text = ''
+    for file in args.otherthings:
+        if not os.path.isfile(file):
+            continue
+        vprint ("# FILE NAME (input): {}".format(file))
+        if args.japanese:
+            with open(file, 'r', encoding=args.encoding) as fd0:
+                with tempfile.NamedTemporaryFile(dir='/tmp', delete=False) as fd1:
+                    subprocess.call(['kakasi', '-i'+args.encoding,  '-outf8', '-w'], stdin=fd0, stdout=fd1)
+                    file = fd1.name
+            vprint ("# FILE NAME (temp1): {}".format(file))
+            with open(file, 'r', encoding='utf8') as fd1:
+                with tempfile.NamedTemporaryFile(dir='/tmp', delete=False) as fd2:
+                    file = fd2.name
+                    if args.hepburn:
+                        romsys = '-rhepburn'
+                    else:
+                        romsys = '-rkunrei'
+                    subprocess.call(['kakasi', '-iutf8',  '-outf8', romsys, '-Ha', '-Ka', '-Ja', '-Ea', '-ka'], stdin=fd1, stdout=fd2)
+            args.encode = "utf-8"
+            vprint ("# FILE NAME (temp2): {}".format(file))
+        text += readanyfile(file, encoding=args.encoding)
+    #########################################################################
+    # convert to typing key symbol entries
+    #########################################################################
+    # skip space and tab completely or only repeated ones
+    if args.skip_space:
+        vprint("*** skip all spaces and tabs ***")
+        rept = re.compile(r'[ \t]*')
+        text = rept.sub('', text)
+    else:
+        vprint("*** skip repeated spaces and tabs ***")
+        # Shrink repeated ' ' or TAB
+        rept = re.compile(r'([ \t])[ \t]*')
+        text = rept.sub('\g<1>', text)
+    vprint("*** skip repeated signs more than 3 times ***")
+    rept = re.compile(r'####*')
+    text = rept.sub('###', text)
+    rept = re.compile(r'\*\*\*\**')
+    text = rept.sub('***', text)
+    rept = re.compile(r'====*')
+    text = rept.sub('===', text)
+    rept = re.compile(r'[-=+|][-=+| ][-=+|][-=+|]*')
+    text = rept.sub('', text)
+    # substitute '“'	+U201c '”'	+U201d 
+    rept = re.compile(r'[“”]')
+    text = rept.sub('"', text)
+    # substitute '—'	+U2014 
+    rept = re.compile(r'—')
+    text = rept.sub('--', text)
+    # shift stat generation
+    if args.prefix == "4":
+        vprint("*** Any 4 row keyboard ***")
+        # Add extra 0x01 (Shift) code (Normal keyboard)
+        rept = re.compile(r'([~!@#\$%\^&*\(\)_\+\{\}\|:"<>\?A-Z])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+','1234567890-='))
+        text = text.translate(str.maketrans('_+{}|:"<>?~',"-=[]\\;',./`"))
+        text = text.lower()
+    elif args.prefix == "4p":
+        vprint("*** Any 4 row programmer keyboard ***")
+        # Add extra 0x01 (Shift) code (Normal keyboard)
+        rept = re.compile(r'([~_\+\{\}\|:"<>\?0-9A-Z])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=','!@#$%^&*()_+'))
+        text = text.translate(str.maketrans('_+{}|:"<>?~',"-=[]\\;',./`"))
+        text = text.lower()
+    elif args.prefix == "3q":
+        vprint("*** QWERTY 3 row keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=',"asdfghjkl;'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+','qwertyuiop[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','bn')) # Use others for cursor
+    elif args.prefix == "3qp":
+        vprint("*** QWERTY 3 row programmer keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+',"asdfghjkl;'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=','qwertyuiop[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','bn')) # Use others for cursor
+    elif args.prefix == "3d":
+        vprint("*** Dovrak 3 row keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z"<>?_+|:])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('"<>?_+|:',"',./-=\\;"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890[]',"aoeuidhtns-="))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*(){}',"',.pyfgcrl/\\"))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','xb')) # Use others for cursor
+    elif args.prefix == "3dp":
+        vprint("*** Dvorak 3 row programmer keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z"<>?_+|:])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('"<>?_+|:',"',./-=\\;"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*(){}',"aoeuidhtns-="))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890[]',"',.pyfgcrl/\\"))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','xb')) # Use others for cursor
+    elif args.prefix == "3c":
+        vprint("*** Colemak 3 row keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=',"arstdhneio'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+','qwfpgjluy;[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','bk')) # Use others for cursor
+    elif args.prefix == "3cp":
+        vprint("*** Colemak 3 row programmer keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+',"arstdhneio'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=','qwfpgjluy;[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','bk')) # Use others for cursor
+    elif args.prefix == "3w":
+        vprint("*** Workman 3 row keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=',"ashtgyneoi'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+','qdrwbjfup;[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','vk')) # Use others for cursor
+    elif args.prefix == "3wp":
+        vprint("*** Workman 3 row programmer keyboard ***")
+        # Add extra 0x01 0x02 (Shift and Fn1) code (Number-less keyboard)
+        rept = re.compile(r'([A-Z{}|:"<>?])')
+        text = rept.sub('\1\g<1>', text)
+        text = text.translate(str.maketrans('{}|:"<>?',"[]\\;',./"))
+        text = text.lower()
+        rept = re.compile(r'([0-9\-=])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('!@#$%^&*()_+',"ashtgyneoi'\\"))
+        rept = re.compile(r'([!@#$%^&*()_+])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('1234567890-=','qdrwbjfup;[]'))
+        rept = re.compile(r'([`~])')
+        text = rept.sub('\2\g<1>', text)
+        text = text.translate(str.maketrans('`~','vk')) # Use others for cursor
+    #vprint(">>>------ normalized input ---->>>")
+    #vprint(text)
+    #vprint("<<<------ normalized input ----<<<")
+    #########################################################################
+    # make statistics
+    #########################################################################
+    statchar = {}
+    listchar = []
+    statchar1 = {}
+    listchar1 = []
+    statchar2 = {}
+    listchar2 = []
+    statchar3 = {}
+    listchar3 = []
+    c01 = None
+    c01 = None
+    c1 = None
+    c2 = None
+    for c in text:
+        c00 = "+U{:04x}".format(ord(c))+ ' '
+        if args.readable and ord(c) == 0x01:
+            c0 = '*Shift*' # Place holder for shift
+        elif args.readable and ord(c) == 0x02:
+            c0 = '*Fn1*' # Place holder for Fn1
+        elif args.readable and ord(c) == 0x03:
+            c0 = '*Fn2*' # Place holder for Fn2
+        elif args.readable and ord(c) == 0x09:
+            c0 = '*TAB*'
+        elif args.readable and ord(c) == 0x0a:
+            c0 = '*LF*'
+        elif args.readable and ord(c) == 0x0c:
+            c0 = '*FF*'
+        elif args.readable and ord(c) == 0x0d:
+            c0 = '*CR*'
+        elif args.readable and ord(c) == 0x1b:
+            c0 = '*ESC*'
+        elif args.readable and ord(c) == 0x7f:
+            c0 = '*DEL*'
+        elif ord(c) < ord(' ') or ord(c) == 0x7f:
+            c0 = '*UNK*'
+        else:
+            c0 = c
+        listchar.append((c0, c00))
+        listchar1.append((c0, c00))
+        if not (c1 is None) and args.ngram > 1:
+            listchar.append((c1+c0, c01+c00))
+            listchar2.append((c1+c0, c01+c00))
+            if not (c2 is None) and args.ngram == 3:
+                listchar.append((c2+c1+c0, c02+c01+c00))
+                listchar3.append((c2+c1+c0, c02+c01+c00))
+        c2 = c1
+        c02 = c01
+        c1 = c0
+        c01 = c00
+    max1 = 0
+    for key, group in itertools.groupby(sorted(listchar1)):
+        statchar1[key] = len(list(group))
+        if statchar1[key] > max1:
+            max1 = statchar1[key]
+    for key in statchar1:
+            value = statchar1[key] / max1
+            if value > 10**(-pr):
+                statchar1[key] = pr + math.log10(value)
+            else:
+                statchar1[key] = 0
+    # Fill in 0 for unused ascii chars
+    statchar1_keys = statchar1.keys()
+    if args.prefix == 0:
+        asciirange = range(ord(' '), ord('~'))
+    else:
+        asciirange = itertools.chain(range(ord(' '), ord('@')), range(ord('['), ord('~')))
+    for ordch in asciirange:
+        char = chr(ordch)
+        char00 = "+U{:04x}".format(ord(char))+ ' '
+        if (char, char00)  not in statchar1_keys:
+            statchar1[(char, char00)] = 0 - 0.001*ordch 
+    for key, group in itertools.groupby(sorted(listchar2)):
+        statchar2[key] = len(list(group))
+    for key in statchar2:
+            value = statchar2[key] / max1
+            if value > 10**(-prx):
+                statchar2[key] = pr + math.log10(value)
+            else:
+                statchar2[key] = -2
+    for key, group in itertools.groupby(sorted(listchar3)):
+        statchar3[key] = len(list(group))
+    for key in statchar3:
+            value = statchar3[key] / max1
+            if value > 10**(-prx):
+                statchar3[key] = pr + math.log10(value)
+            else:
+                statchar3[key] = -2
+    for key, group in itertools.groupby(sorted(listchar)):
+        statchar[key] = len(list(group))
+    for key in statchar:
+        value = statchar[key] / max1
+        if value > 10**(-prx):
+            statchar[key] = pr + math.log10(value)
+        else:
+            statchar[key] = -2
+    #########################################################################
+    # report statistics
+    #########################################################################
+    if args.ngram > 0:
+        print("# == 1-gram ===")
+    all = 0
+    qwerty = 0
+    dvorak = 0
+    colemak = 0
+    colemakj = 0
+    workman = 0
+    for i, (char, char0) in enumerate(sorted(statchar1, key=statchar1.get, reverse=True)):
+        if args.ngram > 0:
+            sprint(statchar1, char, char0, i)
+        if len(char) > 1:
+            pass # Don't worry LF/TAB/Fn
+        elif char ==' ':
+            pass # Don't worry SPACE
+        else:
+            if statchar1[(char, char0)] >=0 :
+                freq = 10**(statchar1[(char, char0)] -3)
+            else:
+                freq = 10**(-4)
+            all += freq
+            if args.cost >= 0:
+                if char in list("asdfjkl;"):
+                    qwerty += freq
+                if char in list("aoeuhtns"):
+                    dvorak += freq
+                if char in list("arstneio"):
+                    colemak += freq
+                if char in list("arstneio"): # swap u&d for better japanese
+                    colemakj += freq
+                if char in list("ashtneoi"):
+                    workman += freq
+            if args.cost >= 1:
+                if char in list("gh"):
+                    qwerty += freq * factor
+                if char in list("id"):
+                    dvorak += freq * factor
+                if char in list("dh"):
+                    colemak += freq * factor
+                if char in list("uh"): # swap u&d for better japanese
+                    colemakj += freq * factor
+                if char in list("gy"):
+                    workman += freq * factor
+            if args.cost >= 2:
+                if char in list("eo"):
+                    qwerty += freq * factor
+                if char in list(".c"):
+                    dvorak += freq * factor
+                if char in list("fu"):
+                    colemak += freq * factor
+                if char in list("fd"): # swap u&d for better japanese
+                    colemakj += freq * factor
+                if char in list("ru"):
+                    workman += freq * factor
+    if args.prefix in ["", "4", "4p", "3q", "3qp"]:
+        print("# Home row (qwerty)\t= {:6.2f} %".format(100*qwerty/all))
+    if args.prefix in ["", "4", "4p", "3d", "3dp"]:
+        print("# Home row (dvorak)\t= {:6.2f} %".format(100*dvorak/all))
+    if args.prefix in ["", "4", "4p", "3c", "3cp"]:
+        print("# Home row (colemak)\t= {:6.2f} %".format(100*colemak/all))
+    if args.prefix in ["", "4", "4p", "3cj", "3cjp"]:
+        print("# Home row (colemakj)\t= {:6.2f} %".format(100*colemakj/all))
+    if args.prefix in ["", "4", "4p", "3w", "3wp"]:
+        print("# Home row (workman)\t= {:6.2f} %".format(100*workman/all))
+    if args.ngram > 1:
+        print("# == 2-gram ===")
+        for i, (char, char0) in enumerate(sorted(statchar2, key=statchar2.get, reverse=True)):
+            sprint(statchar2, char, char0, i)
+        if args.ngram > 2:
+            print("== 3-gram ===")
+            for i, (char, char0) in enumerate(sorted(statchar3, key=statchar3.get, reverse=True)):
+                sprint(statchar3, char, char0, i)
+        print("# == mix-gram ===")
+        for i, (char, char0) in enumerate(sorted(statchar, key=statchar.get, reverse=True)):
+            sprint(statchar, char, char0, i)
+

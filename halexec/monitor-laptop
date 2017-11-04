@@ -1,0 +1,19 @@
+#!/bin/sh
+# vim:se tw=78 sts=2 ts=2 et ai:
+# The value of the laptop_mode knob determines the time between the
+# occurrence of disk I/O and when the flush is triggered. A sensible value
+# for the knob is 5 seconds. Setting the knob to 0 disables laptop mode.
+
+MODELIST="\
+laptop_mode \
+dirty_ratio \
+dirty_background_ratio \
+dirty_expire_centisecs \
+dirty_writeback_centisecs \
+dirty_bytes \
+dirty_background_bytes"
+
+for para in $MODELIST ; do
+echo -n "$para="
+cat /proc/sys/vm/$para
+done

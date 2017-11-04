@@ -1,0 +1,60 @@
+#!/bin/sh -e
+# Setup packages
+# Copyright 2017 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+PKGS=""
+#############################################################################
+# Console tools
+#############################################################################
+PKGS="$PKGS task-english"
+# security related
+PKGS="$PKGS pinentry-curses gnupg scdaemon"
+# Easy GMAIL access for me
+PKGS="$PKGS msmtp msmtp-gnome getmail4 maildrop mutt" 
+# Filesystem tools
+PKGS="$PKGS testdisk xfsprogs xorriso btrfs-tools"
+# memory test
+PKGS="$PKGS memtest86+"
+
+# probably installed by installer
+#PKGS="$PKGS discover grub-pc busybox console-setup initramfs-tools"
+#PKGS="$PKGS eject usbutils keyboard-configuration laptop-detect"
+
+#############################################################################
+# Desktop tools
+#############################################################################
+# Spell checker
+PKGS="$PKGS task-desktop"
+# Japanese input method support for me
+PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
+# Desktop extras
+PKGS="$PKGS chromium gnote nixnote2 rxvt tomboy- zim" 
+# temperature sensor
+PKGS="$PKGS psensor" 
+
+#############################################################################
+# Development environment for me (basics)
+#############################################################################
+PKGS="$PKGS devscripts debmake git-buildpackage ben"
+PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
+PKGS="$PKGS git gitk quilt subversion grip git-annex dgit"
+PKGS="$PKGS ccache eatmydata vim-addon-manager"
+# Development environment for me (debug)
+PKGS="$PKGS rlwrap lsof xtrace ltrace strace gdb moreutils"
+# Perl REPL and readline 
+PKGS="$PKGS libreply-perl libterm-readline-gnu-perl"
+# 
+PKGS="$PKGS imediff2"
+# Info
+PKGS="$PKGS texinfo pinfo"
+PKGS="$PKGS texinfo-doc-nonfree"
+
+#PKGS="$PKGS net-tools"
+
+#############################################################################
+# Install packages
+#############################################################################
+apt update
+apt full-upgrade
+apt install $PKGS

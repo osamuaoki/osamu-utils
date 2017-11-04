@@ -1,7 +1,7 @@
 #!/bin/sh
-# list manually installed packages
+# add usertag to a package BTS
 #############################################################################
-# Copyright (c) 2015 Osamu Aoki
+# Copyright (c) 2017 Osamu Aoki
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,32 +24,26 @@
 case $1 in
     -h)
         echo "NAME"
-        echo "    ${0##*/} - List manually installed packages"
+        echo "    ${0##*/} - add usertag to a package's BTS"
         echo "SYNOPSIS"
-        echo "    ${0##*/} [-options]"
-        echo "OPTIONS"
-        echo "    -v    list manually installed packages with a short description"
-        echo "    -l    list manually installed library packages"
-        echo "    -v    list manually installed library packages with a short description"
-        echo "HINTS"
-        echo "    Manage manually installed packages with aptitude dialog (type \"l\"):"
-        echo "        \"!~v~i!~M!~prequired!~pimportant!~pstandard\""
-            ;;
-    -lv|-vl)
-        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
-            sed -e 's/^...//' | grep ^lib
-            ;;
-    -l)
-        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
-            sed -e 's/^...//' -e 's/  *-.*$//' | grep ^lib
-            ;;
-    -v)
-        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
-            sed -e 's/^...//'
-            ;;
-    *)
-        aptitude search '!~v~i!~M!~prequired!~pimportant!~pstandard'|\
-            sed -e 's/^...//' -e 's/  *-.*$//'
+        echo "    ${0##*/} [package [usertag]] bug_num1 bug_num2 bug_num3 ..."
+        exit
             ;;
 esac
+
+PACKAGE="devscripts"
+USERTAG="uscan"
+if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
+    PACKAGE=${1}; shift
+fi
+if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
+    USERTAG=${1}; shift
+fi
+CMDLINE="bts user ${PACKAGE}@packages.debian.org"
+while [ -n "$1" ] ; do
+    CMDLINE="$CMDLINE , usertag $1 $USERTAG"
+    shift
+done
+echo "$CMDLINE"
+eval "$CMDLINE"
 # vim:se tw=78 ai sts=4 et:

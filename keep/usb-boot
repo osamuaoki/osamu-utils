@@ -1,0 +1,40 @@
+#!/bin/sh
+# vim:se tw=0 sts=2 ts=2 et ai:
+# boot from CD $1 = new
+# HDD image to install system in HOST
+HDD=/dev/sdd
+# HDD image is always VM = /dev/hda
+# MEMORY SIZE
+MEM=4G
+# SMP CPUS
+CPUS=2
+if [ -n "$1" ]; then
+  # ISO boot CD image
+  ISO=$1
+  echo "Boot CD image to install on HDD image: $ISO -> $HDD"
+  sudo qemu-system-x86_64 \
+    -enable-kvm  \
+    -smp cpus=$CPUS \
+    -boot once=d \
+    -m $MEM \
+    -cdrom $ISO \
+    -hda $HDD
+else
+  echo "Boot HDD image"
+  sudo qemu-system-x86_64 \
+    -enable-kvm  \
+    -smp cpus=$CPUS \
+    -boot order=c \
+    -m $MEM \
+    -hda $HDD
+fi
+
+
+# Do not install desktop if installing testing
+# install grub bootloader
+# # apt-get update
+# # apt-get dist-upgrade
+# # apt-get install vim mc aptitude nano-
+### If faster but risky mount is desired for SSD
+# tune2fs -o journal_data_writeback /dev/sd**
+# /etc/fstab: UUID={...} / ext4 noatime,data=writeback,barrier=0,commit=60,errors=remount-ro 1 1

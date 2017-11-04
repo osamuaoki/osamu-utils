@@ -1,0 +1,6 @@
+#!/bin/sh
+# vim:se tw=78 ai ts=2 sts=2 expandtab:
+# Encrypt with cammelia256 symmetric cipher
+#
+gpg --cipher-algo CAMELLIA256 --symmetric "$@"
+

@@ -1,0 +1,19 @@
+#!/bin/sh -e
+# vim:se tab=2 sts=2 et ai tw=78:
+# Local shell command family
+THISPATH=$(realpath $0)
+THISDIR=$(dirname ${THISPATH})
+SUBCOMMAND="${1}"
+# execute private subcommand in ./hal
+if [ -n "$SUBCOMMAND" -a -x "${THISDIR}/halexec/$SUBCOMMAND" ]; then
+  shift
+  ${THISDIR}/halexec/$SUBCOMMAND "$@"
+else
+  echo "
+  It can only be attributable to human error.
+
+  Sub-command '$SUBCOMMAND' not found.
+"
+  echo -n "  Sub-command choices: "
+  cd ${THISDIR}/halexec/ >/dev/null ; ls ; cd - >/dev/null
+fi

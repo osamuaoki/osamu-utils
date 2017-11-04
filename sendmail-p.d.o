@@ -1,0 +1,36 @@
+#!/bin/sh
+# vim:se tw=0 sts=2 ts=2 et ai:
+# Send mail from people.debian.org via ssh-login
+
+if [ "${DEBEMAIL}" = "" and "$(id -un)" = "osamu" ]; then
+  # probably started from non-shell prompt (e.g. browser)
+  # hidden option.  Must be adjusted for each DD.
+  DEBEMAIL="osamu@debian.org"
+  export DEBEMAIL
+elif [ "${DEBEMAIL##*@}" != "debian.org" ]; then
+  echo "You must have a debian.org e-mail address and export it by setting the" >&2
+  echo "\$DEBEMAIL environment variable." >&2
+  echo "NOTE: If a browser starts mutt, the shell start-up code doesn't set this." >&2
+  exit 1
+fi
+
+# Normal
+VERBOSE=""
+# For debug
+#VERBOSE="-vvv"
+# If strict host check, use this.
+#STRICTCK=''
+# No strict check, use this. (Double quotes are important)
+STRICTCK='-o "StrictHostKeyChecking no"'
+
+# eval is the trick to keep the above double quotes in place
+if [ -n "$DEBEMAIL" ]; then
+  eval /usr/bin/ssh \
+    "${VERBOSE}" \
+	  -p 22 \
+	  "${STRICTCK}" \
+	  "${DEBEMAIL%%@*}@people.debian.org" \
+	  /usr/sbin/sendmail -bm -ti \
+    -f "$DEBEMAIL"
+fi
+

@@ -1,3 +1,4 @@
+
 " Local configuration
 "
 " behave as Vim (not as Vi)

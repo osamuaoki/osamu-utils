@@ -1,0 +1,43 @@
+#!/bin/sh
+# vim:se tw=78 ai ts=2 sts=2 et:
+# install latest skeltons
+if [ "$1" = "install" ]; then
+  COMMAND=cp
+elif [ "$1" = "diff" ]; then
+  COMMAND="diff -u"
+else
+  echo "Syntax:"
+  echo " $ hal dotfiles install"
+  echo " $ hal dotfiles diff"
+  exit
+fi
+if [ "$COMMAND" = "diff -u" ] ; then
+  echo "Addition of ~/.bashrc_local to ~/.bashrc is OK."
+  echo
+fi
+for f in /etc/skel/.* ; do
+  if [ -f $f ]; then
+    $COMMAND $f ~/$(basename $f)
+  fi
+done
+if [ "$COMMAND" = "cp" ] ; then
+echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
+echo '# Extra entries added' >>~/.bashrc
+echo 'if [ -f ~/.bashrc_local ]; then' >>~/.bashrc
+echo '    . ~/.bashrc_local' >>~/.bashrc
+echo 'fi' >>~/.bashrc
+fi
+# install latest dotfiles
+for f in ~/bin/dotfiles/.* ; do
+  if [ -f $f ]; then
+    $COMMAND $f ~/$(basename $f)
+  fi
+done
+# install latest pbuilder files
+sudo mkdir -p /var/cache/pbuilder/hooks
+for f in ~/bin/pbuilder/* ; do
+  if [ -f $f ]; then
+    sudo $COMMAND $f /var/cache/pbuilder/hooks/$(basename $f)
+  fi
+done
+

@@ -29,8 +29,8 @@ export MKISOFS="xorrisofs"
 export GIT_PAGER=
 
 # devscripts related
-DEBEMAIL=@@@EMAIL@@@
-DEBFULLNAME="@@@NAME@@@"
+DEBEMAIL=osamu@debian.org
+DEBFULLNAME="Osamu Aoki"
 export DEBEMAIL DEBFULLNAME
 
 # make less more friendly for non-text input files, see lesspipe(1)

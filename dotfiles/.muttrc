@@ -1,0 +1,77 @@
+#
+# User configuration file to override /etc/Muttrc
+#
+##### SENDMAIL #####
+# Explicitly set From:
+set use_from
+set from="Osamu Aoki <osamu.aoki@tc4.so-net.ne.jp>"
+#set from="Osamu Aoki <osamu.aoki@gmail.com>"
+#set from="Osamu Aoki <aoki.osamu@gmail.com>"
+#set from="Osamu Aoki <osamu@debian.org>"
+# Set default for From: for replies for alternates.
+set reverse_name
+alternates osamu\.aoki@tc4\.so-net\.ne\.jp|osamu\.aoki@gmail\.com|aoki\.osamu@gmail\.com|osamu@debian\.org
+# Signiture
+set signature="~/.signature"
+# vim: "gq" to reformat quotes
+set editor="vim -c 'set tw=72 et ft=mail'"
+#set editor="vim -c 'set tw=72 et ft=mail spell spelllang=en_us'"
+set send_charset="us-ascii:iso-8859-1:iso-2022-jp"
+set allow_8bit=no
+set pgp_sign_as="1DD8D791"
+set pgp_verify_sig=no
+
+# MACRO
+macro compose "1" "<edit-from>^UOsamu Aoki \<osamu@debian.org\>\n"
+macro compose "2" "<edit-from>^UOsamu Aoki \<osamu.aoki@gmail.com\>\n"
+macro compose "3" "<edit-from>^UOsamu Aoki \<aoki.osamu@gmail.com\>\n"
+macro compose "4" "<edit-from>^UOsamu Aoki \<osamu.aoki@tc4.so-net.ne.jp\>\n"
+macro compose "7" "<edit-reply-to>^UOsamu Aoki \<osamu@debian.org\>\n"
+macro compose "8" "<edit-reply-to>^UOsamu Aoki \<osamu.aoki@gmail.com\>\n"
+macro compose "9" "<edit-reply-to>^UOsamu Aoki \<aoki.osamu@gmail.com\>\n"
+macro compose "0" "<edit-reply-to>^UOsamu Aoki \<osamu.aoki@tc4.so-net.ne.jp\>\n"
+
+send2-hook '~f osamu@debian.org' "set sendmail = '/home/osamu/bin/sendmail-p.d.o'"
+send2-hook '~f osamu.aoki@gmail.com' "set sendmail = '/usr/bin/msmtp --read-envelope-from'"
+send2-hook '~f aoki.osamu@gmail.com' "set sendmail = '/usr/bin/msmtp --read-envelope-from'"
+send2-hook '~f osamu.aoki@tc4.so-net.ne.jp' "set sendmail = '/usr/bin/msmtp --read-envelope-from'"
+
+##### BROWSER #####
+set mask="."
+
+## Default
+#set folder_format="%2C %t %N %F %2l %-8.8u %-8.8g %8s %d %f"
+##  
+set folder_format="%2C %t %N %f"
+
+# MACRO
+macro browser G "!getmails -v\n"                 # define n to update from POP3
+
+##### INDEX #####
+# "mutt" goes to Inbox, while "mutt -y" lists mailboxes
+set folder="~/Maildir"
+set mbox_type=Maildir           # use qmail Maildir format for creating mbox
+set mbox=~/Maildir              # keep all mail boxes in $HOME/Maildir/
+set spoolfile=+Inbox                # mail delivered to $HOME/Maildir/.
+set record=+.Outbox             # save fcc mail to $HOME/Maildir/Outbox
+set postponed=+.Postponed       # keep postponed in $HOME/Maildir/postponed
+set move=no                     # do not move Inbox items to mbox
+set quit=ask-yes                # do not quit by "q" only
+set delete=yes                  # always delete w/o asking while exiting
+set fcc_clear                   # store fcc as non encrypted
+# Mailboxes (automatic update)
+mailboxes `find ~/Maildir/ -type d -name cur -printf '%h '`
+## Default
+#set index_format="%4C %Z %{%b %d} %-15.15L (%4l) %s"
+## Thread index with senders (collapse)
+set index_format="%4C %Z %{%b %d} %-15.15n %?M?(#%03M)&(%4l)? %s"
+
+macro index   G "!getmails -v\n"                 # define n to update from POP3
+macro index   S ":toggle pgp_verify_sig\n"       # define S to toggle sig check
+
+
+##### PAGER #####
+auto_view text/html
+
+macro pager   G "!getmails -v\n"                 # define n to update from POP3
+

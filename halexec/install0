@@ -1,0 +1,50 @@
+#!/bin/sh -e
+# Setup initial install
+# Copyright 2017 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+# Set to run as ROOT
+if [ $(id -un) != root ]; then
+  USERNAME=$(id -un)
+  export USERNAME
+  if [ -r /etc/sudoers.d/custom ]; then
+    sudo "$0"
+  else
+    echo "Please type the root password"
+    su -c "$0"
+  fi
+  exit
+fi
+#############################################################################
+# Basic set up after the install: Enable contrib + non-free
+if grep -q non-free /etc/apt/sources.list || \
+   grep -q contrib /etc/apt/sources.list ; then
+  echo "Already contrib + non-free enabled"
+else
+  echo "Enable contrib + non-free"
+  sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
+fi
+#############################################################################
+# The following commands are run under ROOT
+apt update
+# basic tasks in case you skipped
+apt install sudo aptitude locales-all firmware-linux\
+    vim emacs vim-tiny- nano- \
+    mc cryptsetup lvm2 ssh
+# upgrade all the way
+apt full-upgrade
+#############################################################################
+# Set up normal group membership
+adduser $USERNAME sudo
+adduser $USERNAME adm
+adduser $USERNAME src
+adduser $USERNAME staff
+adduser $USERNAME games
+#############################################################################
+# Set passwordless sudo for the primary user (Don't ever use this on server)
+cat >/etc/sudoers.d/custom <<END
+# No password for 8 hours
+Defaults timestamp_timeout = 420
+# NO password for primary user (disabled)
+#$USERNAME ALL=NOPASSWD: ALL
+END
