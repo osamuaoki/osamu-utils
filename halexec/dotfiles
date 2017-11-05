@@ -1,25 +1,31 @@
 #!/bin/sh
 # vim:se tw=78 ai ts=2 sts=2 et:
 # install latest skeltons
-if [ "$1" = "install" ]; then
+
+if [ -n "$1" ] && [ -z "${1%%i*}" ] ; then
+  # start with "i"
   COMMAND=cp
-elif [ "$1" = "diff" ]; then
+elif [ -n "$1" ] && [ -z "${1%%d*}" ] ; then
+  # start with "d"
   COMMAND="diff -u"
 else
   echo "Syntax:"
-  echo " $ hal dotfiles install"
-  echo " $ hal dotfiles diff"
+  echo " $ hal dotfiles i[nstall]"
+  echo " $ hal dotfiles d[iff]"
   exit
 fi
+
 if [ "$COMMAND" = "diff -u" ] ; then
   echo "Addition of ~/.bashrc_local to ~/.bashrc is OK."
   echo
 fi
+
 for f in /etc/skel/.* ; do
   if [ -f $f ]; then
     $COMMAND $f ~/$(basename $f)
   fi
 done
+
 if [ "$COMMAND" = "cp" ] ; then
   echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
   echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
@@ -30,6 +36,7 @@ for f in ~/bin/dotfiles/.* ; do
     $COMMAND $f ~/$(basename $f)
   fi
 done
+
 # install latest pbuilder files
 sudo mkdir -p /var/cache/pbuilder/hooks
 for f in ~/bin/pbuilder/* ; do
