@@ -39,7 +39,7 @@ fi
 if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
     USERTAG=${1}; shift
 fi
-CMDLINE="bts user ${PACKAGE}@packages.debian.org"
+CMDLINE="bts --mutt user ${PACKAGE}@packages.debian.org"
 while [ -n "$1" ] ; do
     CMDLINE="$CMDLINE , usertag $1 $USERTAG"
     shift
