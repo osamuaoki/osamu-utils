@@ -25,7 +25,7 @@ exit $EXITCODE
 if [ -n "$1" -a -z "${1%%b*}" ]; then
   # start with "b"
   restic backup -x -e ~/Downloads -e ~/Pictures -e ~/Music ~/
-elif [ -n "$1" -a -z "${1%%b*}" ]; then
+elif [ -n "$1" -a -z "${1%%m*}" ]; then
   # start with "m"
   mkdir -p ~/mnt
   trap restic_unmount 3 9
