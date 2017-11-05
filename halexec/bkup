@@ -14,21 +14,13 @@ if [ ! -d /media/$USERNAME/$LABEL ]; then
   exit
 fi
 
-# unmount on exit
-restic_unmount() {
-EXITCODE=$?
-echo "SIGEXIT, EXIT=$EXITCODE"
-sudo umount ~/mnt
-exit $EXITCODE
-}
-
 if [ -n "$1" -a -z "${1%%b*}" ]; then
   # start with "b"
   restic backup -x -e ~/Downloads -e ~/Pictures -e ~/Music ~/
 elif [ -n "$1" -a -z "${1%%m*}" ]; then
   # start with "m"
+  echo "To unmount, type ^C to quit"
   mkdir -p ~/mnt
-  trap restic_unmount 3 9
   restic mount ~/mnt
 else
   echo "Syntax:"
