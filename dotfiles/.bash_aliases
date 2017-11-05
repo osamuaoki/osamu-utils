@@ -28,6 +28,8 @@ alias dq="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
 alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
 complete -F _quilt_completion $_quilt_complete_opt dq
 complete -F _quilt_completion $_quilt_complete_opt dquilt
+alias ben="BEN_CACHE_DIR=~/tmp ben --config=${HOME}/.benrc"
+
 
 alias ml="getmails -v && mutt"
 alias svi="sudo vim"
@@ -37,8 +39,5 @@ alias up-papt="set -x; sudo git-pbuilder update && set +x; sync"
 alias upgrade="up-apt && echo "" && up-papt ; sync"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
-
-#alias bend="BEN_CACHE_DIR=~/ben ben download -c ~/ben/benrc"
-#alias benq="BEN_CACHE_DIR=~/ben ben query -c ~/ben/benrc"
 
 function mcd { mkdir $1 ; cd $1 ; }

@@ -1,0 +1,11 @@
+# Sample configuration file for download frontend
+
+mirror = "https://deb.debian.org/debian/";
+suite = "unstable";
+areas = [ "main"; "contrib"; "non-free" ];
+
+architectures = [
+     "amd64";
+#    "amd64"; "i386"; "armel"; "mips"
+#    "amd64"; "i386"; "armel"
+];
