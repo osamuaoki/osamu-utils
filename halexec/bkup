@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim:se tw=78 ai ts=2 sts=2 et:
 # ext4fs label
 LABEL="backup"
 USERNAME=$(id -un)
@@ -6,4 +7,26 @@ USERNAME=$(id -un)
 export RESTIC_REPOSITORY=/media/$USERNAME/$LABEL/restic.repo
 # No (real) password used since local
 export RESTIC_PASSWORD=secret_password
-restic "$@"
+
+# unmount on exit
+restic_unmount() {
+EXITCODE=$?
+echo "SIGEXIT, EXIT=$EXITCODE"
+sudo umount ~/mnt
+exit $EXITCODE
+}
+
+if [ -n "$1" -a -z "${1%%b*}" ]; then
+  # start with "b"
+  restic backup -x -e ~/Downloads -e ~/Pictures -e ~/Music ~/
+elif [ -n "$1" -a -z "${1%%b*}" ]; then
+  # start with "m"
+  mkdir -p ~/mnt
+  trap restic_unmount 3 9
+  restic mount -e ~/mnt
+else
+  echo "Syntax:"
+  echo "  hal bkup b[ackup]"
+  echo "  hal bkup m[ount]"
+fi
+

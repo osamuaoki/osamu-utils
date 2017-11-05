@@ -2,10 +2,10 @@
 # vim:se tw=78 ai ts=2 sts=2 et:
 # install latest skeltons
 
-if [ -n "$1" ] && [ -z "${1%%i*}" ] ; then
+if [ -n "$1" -a -z "${1%%i*}" ] ; then
   # start with "i"
   COMMAND=cp
-elif [ -n "$1" ] && [ -z "${1%%d*}" ] ; then
+elif [ -n "$1" -a -z "${1%%d*}" ] ; then
   # start with "d"
   COMMAND="diff -u"
 else
