@@ -16,7 +16,14 @@ fi
 
 if [ -n "$1" -a -z "${1%%b*}" ]; then
   # start with "b"
-  restic backup -x -e ~/Downloads -e ~/Pictures -e ~/Music ~/
+  # Backup with reasonable exclude
+  restic backup -x \
+    -e ~/.cache \
+    -e ~/Downloads \
+    -e ~/Music \
+    -e ~/Pictures \
+    -e ~/Videos \
+    ~/
 elif [ -n "$1" -a -z "${1%%m*}" ]; then
   # start with "m"
   echo "To unmount, type ^C to quit"

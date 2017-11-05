@@ -1,12 +1,14 @@
 # User Private Groups: http://wiki.debian.org/UserPrivateGroups
 umask 002
 
-# mc related
+# bash history: shorthand for ignorespace and ignoredups
 export HISTCONTROL=ignoreboth
+
+# mc related
 . /usr/lib/mc/mc.sh
 
 # set CDPATH
-export CDPATH=.:/usr/share/doc:~:~/vcs-maint:~/vcs-active::~/vcs-stall
+export CDPATH=.:/usr/share/doc:~:~/src/debian:~/src/github:~src/local
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
