@@ -29,7 +29,7 @@ elif [ -n "$1" -a -z "${1%%m*}" ]; then
   # start with "m"
   mkdir -p ~/mnt
   trap restic_unmount 3 9
-  restic mount -e ~/mnt
+  restic mount ~/mnt
 else
   echo "Syntax:"
   echo "  hal bkup b[ackup]"
