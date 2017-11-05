@@ -8,6 +8,12 @@ export RESTIC_REPOSITORY=/media/$USERNAME/$LABEL/restic.repo
 # No (real) password used since local
 export RESTIC_PASSWORD=secret_password
 
+# Sanity check
+if [ ! -d /media/$USERNAME/$LABEL ]; then
+  echo "Please mount /media/$USERNAME/$LABEL"
+  exit
+fi
+
 # unmount on exit
 restic_unmount() {
 EXITCODE=$?
