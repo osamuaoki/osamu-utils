@@ -1,0 +1,40 @@
+# reportbug preferences file
+# character encoding: UTF-8
+# Version of reportbug this preferences file was written by
+reportbug_version "6.6.0"
+# default operating mode: one of: novice, standard, advanced, expert
+mode expert
+# default user interface
+ui text
+#ui gtk2
+# offline setting - comment out to be online
+#offline
+# name and email setting (if non-default)
+# realname "Osamu Aoki"
+# email "osamu@debian.org"
+# If nothing else works, remove the # at the beginning
+# of the following three lines:
+#no-cc
+header "X-Debbugs-CC: osamu@debian.org"
+#smtphost reportbug.debian.org
+# You can add other settings after this line.  See
+# /etc/reportbug.conf for a full listing of options.
+#####################################################################
+# Mailer to use (default is empty, to use internal mailer). One of:
+# mutt
+# mh
+# nmh
+mutt
+
+# You can also use 'mua'; it takes an argument like that to --mua
+# mua 'mutt -H'
+
+# Additional headers to add:
+# header "X-Debbugs-CC: debian-qa@lists.debian.org"
+# header "X-Silly-Header: I haven't edited my /etc/reportbug.conf"
+# header "X-Debbugs-No-Ack: please" # to suppress acknowledgments
+
+# The following boolean options can be disabled by adding 'no-'
+# Should I query the BTS?
+query-bts
+

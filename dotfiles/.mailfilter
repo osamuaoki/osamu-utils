@@ -1,0 +1,154 @@
+# vim:sts=4 ai:
+# Local configuration 
+MAILROOT="$HOME/Maildir"
+MAILHOST="localhost"
+VARMAILUSER="osamu"
+VERBOSE=1
+logfile $HOME/.maildroplog
+
+# rules are made to override the earlier value by the later one.
+
+# mailing list mails ?
+if (     /^Precedence:.*list/:h || /^Precedence:.*bulk/:h || /^Precedence:.*junk/:h )
+{
+    # rules for mailing list mails
+    # default mailbox for mails from mailing list
+    MAILBOX="Inbox-list"
+    if ( /^List-Id:.*<[^<>]*\.qa\.debian\.org>/:h  ||\
+	/^List-Id:.*<[^<>]*\.tracker\.debian\.org>/:h )
+    {
+    # mailbox for mailing list for QA.debian.org (PTS, upload, ...)
+    # mailbox for mailing list for tracker.debian.org
+        MAILBOX="Inbox-debian"
+    }
+    elsif ( /From: .*courier-.*@lists.sourceforge.net/:h )
+    {
+    # mailbox for mailing list for google
+        MAILBOX="Inbox-courier"
+    }
+    elsif ( /From: .*eBay@reply1.ebay.com/:h || \
+         /From: .*<news-googleplay@google.com/:h ||\
+         /From: .*<noreply-.*@google.com>/:h ||\
+         /From: .*<newsletter@seeed.cc/:h ||\
+         /From: .*<newsmaster@topcard.co.jp/:h ||\
+         /From: .*<info@twitter.com/:h ||\
+         /From: .*digital-.*@asahi.com/:h )
+    {
+    # mailbox for mailing list for google
+        MAILBOX="Inbox-junk-list"
+    }
+    elsif ( /^List-Id:.*<([^<>]*)>/:h )
+    {
+    # mailbox for mailing list with "List-Id: ...<foo.bar>"
+        MAILBOX="$MATCH1"
+    }
+    elsif ( /^List-Post:.*<mailto: *([^<> ]*)>/:h )
+    {
+	# ezmlm style: List-Post: <mailto:getmail@lists.pyropus.ca>
+        MAILBOX="$MATCH1"
+    }
+    elsif ( /^(Sender|Resent-From|Resent-Sender|From|Return-Path): .*rt.spi-inc.org/:h )
+    {
+	# default mailbox for mails from rt.spi-inc.org
+        MAILBOX="Inbox-rt-spi-inc"
+    }
+    elsif ( /^(Sender|Resent-From|Resent-Sender|From|Return-Path): .*debian.org/:h )
+    {
+	# default mailbox for mails from debian.org
+        MAILBOX="Inbox-debian"
+    }
+}
+else
+{
+    # rules for non-mailing list mails
+    # incoming box (non-mailing list)
+    MAILBOX="Inbox"
+    if ( /From: .*@ekupi.hr/:h ||\
+         /From: .*@n4sonline.com/:h ||\
+         /From: .*@quora.com/:h ||\
+         /From: .*Groupon Indonesia/:h ||\
+         /From: .*distribuidoraguarapuava.com.br/:h ||\
+         /From: .*marketingbooster@yahoo.co.uk/:h ||\
+         /From: .*omssrilak.*@gmail.com/:h ||\
+         /From: .*vivaaerobus.com/:h )
+    {
+    # spam mails
+        MAILBOX="Inbox-spam"
+    }
+    elsif ( /From: .*@connpass.com/:h )
+    {
+        MAILBOX="Inbox"
+    }
+    elsif ( /^Subject: Validation failed/:h )
+    {
+    # web page validation
+        MAILBOX="Inbox-debian-validation"
+    }
+    elsif( /^(Sender|Resent-From|Resent-Sender): .*debian.org/:h ||\
+	/^Subject: .*Bug#.*/:h ||\
+        /^(From|To|Cc): .*@bugs.debian.org/:h )
+    {
+    # mails from debian.org (non-mailing list)
+    # mails for Debian BTS (non-mailing list)
+        MAILBOX="Inbox-debian"
+    }
+    elsif ( /Envelope-to: .*@$MAILHOST/:h ||\
+	/Envelope-to: .*@goofy/:h )
+    {
+    # local mails (non-mailing list)
+        MAILBOX="Inbox-local"
+    }
+    elsif ( /From: .*<announce[-_]noreply[-_@]/:h ||\
+	 /From: .*imagegateway@canon-mj.co.jp/:h || \
+	 /From: .*jobs-listings@linkedin.com/:h || \
+	 /From: .*nomura-shomen@jp.nomura.com/:h || \
+	 /From: .*paypal@.*.paypal.com/:h || \
+	 /From: .*toshiba_magazine@room1048.jp/:h || \
+         /From: .*<jobs-listings@linkedin.com/:h ||\
+         /From: .*<linkedin@e.linkedin.com>/:h ||\
+         /From: .*<mailmaster@carview.co.jp/:h ||\
+         /From: .*<bounce@mail.mecsumai.com/:h ||\
+         /From: .*<teikibin@minkara.carview.co.jp/:h ||\
+         /From: .*-master@mail.yahoo.co.jp/:h ||\
+         /From: .*<ymall@tpgaw.jp/:h ||\
+         /From: .*yoyaku@expy.jp/:h ||\
+         /From: .*trafficpoint@tokyu.jp/:h ||\
+         /From: .*<order@seeed.cc/:h ||\
+         /From: .*vector@vector.co.jp/:h ||\
+         /From: .*theboxteam@box.com/:h ||\
+         /From: .*<delivers-master[-_@]/:h ||\
+         /From: .*<donotreply[-_@]/:h ||\
+         /From: .*<info[-_@]/:h ||\
+         /From: .*<messages[-_]noreply[-_@]/:h ||\
+         /From: .*<news[-_@]/:h ||\
+         /From: .*<newsletter[-_@]/:h ||\
+         /From: .*<newsmaster[-_@]/:h ||\
+         /From: .*<no[-_]reply[-_@]/:h ||\
+         /From: .*<noreply[-_@]/:h ||\
+         /From: .*<notifications-noreply@/:h ||\
+         /From: .*<service[-_@]/:h )
+    {
+    # junk mails
+        MAILBOX="Inbox-junk-nonlist"
+    }
+}
+
+# if not Inbox, put them into subfolders
+if ( ! ( "$MAILBOX" =~ /^Inbox$/ ) )
+{
+	MAILBOX=`echo $MAILBOX |sed -e "s/[.@_ ]/-/g" -e "s/^/\./"`
+}
+# check existance of $MAILBOX
+`test -d $MAILROOT/$MAILBOX`
+if ( $RETURNCODE == 1 )
+{
+    # create maildir mailbox for $MAILBOX
+    `maildirmake $MAILROOT/$MAILBOX`
+}
+# deliver to maildir $MAILBOX (loop check)
+#cc "/var/mail/$VARMAILUSER"
+
+# deliver to home directory
+to "$MAILROOT/$MAILBOX/"
+exit
+
