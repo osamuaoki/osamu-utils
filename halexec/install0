@@ -44,7 +44,7 @@ adduser $USERNAME games
 # Set passwordless sudo for the primary user (Don't ever use this on server)
 cat >/etc/sudoers.d/custom <<END
 # No password for 8 hours
-Defaults timestamp_timeout = 420
+Defaults timestamp_timeout = 480
 Defaults timestamp_type = global
 # NO password for primary user (disabled)
 #$USERNAME ALL=NOPASSWD: ALL
