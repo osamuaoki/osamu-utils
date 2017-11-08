@@ -10,11 +10,10 @@ fi
 # Keep time and recursive
 # Ownership/group and its permission need to be new ones
 # Device should not exist but ..., symlink as symlink
-rsync -rltD \
+rsync -rvltD \
   --exclude=medium/ \
   --exclude=slides/ \
   --exclude=thumbnail/ \
   --exclude=*.html \
   --exclude=*.css \
   $1 $2
-chmod -R 744 $2

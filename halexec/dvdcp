@@ -10,4 +10,4 @@ fi
 # Keep time and recursive
 # Ownership/group and its permission need to be new ones
 # Device should not exist but ..., symlink as symlink
-rsync -rltD  $1 $2
+rsync -rvltD  $1 $2
