@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 # vim:se tw=78 sts=2 ts=2 et ai:
 # The value of the laptop_mode knob determines the time between the
 # occurrence of disk I/O and when the flush is triggered. A sensible value

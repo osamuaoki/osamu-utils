@@ -1,15 +1,24 @@
-#!/bin/sh
+#!/bin/sh -e
 # vim:se tw=78 ai ts=2 sts=2 et:
 # copy CD while excluding useless contents
 if [ "$1" = "-h" ]; then
   echo "hal cmpdir sourcedir/ targetdir/    (timestamp/size)"
   echo "hal -c cmpdir sourcedir/ targetdir/ (checksum)"
   exit
+elif [ "$1" = "-d" ]; then
+  # Check inside file with diff
+  CMD=diff
+  OPTS="-"
+  shift
 elif [ "$1" = "-c" ]; then
-  OPTS="-nrac"
+  # Check inside file with checksum
+  CMD=rsync
+  OPTS="-nracv"
   shift
 else
-  OPTS="-nra"
+  # Don't check inside file
+  CMD=rsync
+  OPTS="-nrauv"
 fi
 
 if [ ! -d "$1" -o ! "$2" -o -z "$2" ]; then
@@ -17,6 +26,12 @@ if [ ! -d "$1" -o ! "$2" -o -z "$2" ]; then
   echo "hal -c cmpdir sourcedir/ targetdir/ (checksum)"
   exit
 fi
-
-rsync $OPTS --delete $1 $2
+echo "===================================================================="
+echo "Compare directories: $1 $2"
+echo "===================================================================="
+if [ $CMD = rsync ]; then
+  rsync $OPTS --delete "$1" "$2"
+else
+  diff -qNr "$1" "$2"
+fi
 
