@@ -1,0 +1,20 @@
+#!/bin/sh
+# vim:se tw=78 ai ts=2 sts=2 et:
+# copy CD while excluding useless contents
+if [ ! -d "$1" -o -z "$2" ]; then
+  echo "hal dvdcp sourcedir/ targetdir/"
+  exit
+fi
+
+# CD/DVD may be owned by root:root, so -a is not good idea
+# Keep time and recursive
+# Ownership/group and its permission need to be new ones
+# Device should not exist but ..., symlink as symlink
+rsync -rltD \
+  --exclude=medium/ \
+  --exclude=slides/ \
+  --exclude=thumbnail/ \
+  --exclude=*.html \
+  --exclude=*.css \
+  $1 $2
+chmod -R 744 $2
