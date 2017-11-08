@@ -17,3 +17,5 @@ rsync -rvltD \
   --exclude=*.html \
   --exclude=*.css \
   $1 $2
+sync;sync
+

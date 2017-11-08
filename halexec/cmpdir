@@ -1,0 +1,22 @@
+#!/bin/sh
+# vim:se tw=78 ai ts=2 sts=2 et:
+# copy CD while excluding useless contents
+if [ "$1" = "-h" ]; then
+  echo "hal cmpdir sourcedir/ targetdir/    (timestamp/size)"
+  echo "hal -c cmpdir sourcedir/ targetdir/ (checksum)"
+  exit
+elif [ "$1" = "-c" ]; then
+  OPTS="-nrac"
+  shift
+else
+  OPTS="-nra"
+fi
+
+if [ ! -d "$1" -o ! "$2" -o -z "$2" ]; then
+  echo "hal cmpdir sourcedir/ targetdir/    (timestamp/size)"
+  echo "hal -c cmpdir sourcedir/ targetdir/ (checksum)"
+  exit
+fi
+
+rsync $OPTS --delete $1 $2
+

@@ -11,3 +11,5 @@ fi
 # Ownership/group and its permission need to be new ones
 # Device should not exist but ..., symlink as symlink
 rsync -rvltD  $1 $2
+sync;sync
+
