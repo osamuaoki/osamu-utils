@@ -1,0 +1,51 @@
+#!/bin/sh -e
+#
+# Execute jhead command for all files and organize them
+# into dayly folder and within day serial number (001-999)
+#
+# I wrote this to accomodate easy ISO image conversion
+#
+mkdir -p BAG
+
+# Rename and put all to BAG
+find . -type f -iname '*.jpg' -exec jhead "$@" -autorot -nf  -ft "{}" \;
+find . -path ./BAG -prune -o -type f -iname '*.jpg' -exec mv '{}' ./BAG/ \;
+
+# remove non BAG directory
+for i in * ; do 
+        if [ -d $i ] && [ "$i" != "BAG" ]; then
+                rmdir $i || true
+        fi
+done
+
+# For all *.jpg move to daily directory
+for i in ./BAG/*-*.jpg; do 
+        if [ -f $i ]; then
+        j=${i#./BAG/}
+        k=${j%-*}
+        mkdir -p ${k} ; 
+        mv $i ${k}/${j} ; 
+        fi
+done
+
+# Index within day as MMDD-???.jpg
+for i in *  ; do
+        if [ -d $i ] && [ "$i" != "BAG" ]; then
+                cd $i
+                k=1
+                for j in $(ls *.jpg) ; do
+                        if [ $k -lt 10 ]; then
+                                kk="00$k"
+                        elif [ $k -lt 100 ]; then
+                                kk="0$k"
+                        else
+                                kk="$k"
+                        fi
+                        mv $j ${i%-}-$kk.jpg
+                k=$(($k+1))
+                done
+                cd ..
+        fi
+done
+
+rmdir BAG || true

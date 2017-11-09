@@ -1,0 +1,6 @@
+#!/bin/bash
+# vim: set ts=2 sts=2 ai et:
+date=$(date --utc +"%Y%m%d")
+if [ -d "$1" ]; then
+mkisofs -v -r -T -J -V "BU$date" -o dvd.img $1
+fi
