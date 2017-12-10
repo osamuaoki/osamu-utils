@@ -1,3 +1,6 @@
 [submodule "submodule/git-cvs"]
 	path = submodule/git-cvs
 	url = git@github.com:osamuaoki/git-cvs.git
+[submodule "submodule/odedup"]
+	path = submodule/odedup
+	url = git@github.com:osamuaoki/odedup.git

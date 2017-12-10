@@ -16,6 +16,12 @@ The keep updating with:
  $ git pull
  $ git submodule update --recursive
 ```
+
+To add a new ```<project>```:
+```
+ $ git submodule add git@github.com:osamuaoki/<project>.git submodule/<project>
+```
+
 These commands are meant to be edited to customize their behavior.  So I
 intentionally avoid providing functionality via command option for the
 simplicity ;-)
@@ -37,6 +43,8 @@ any GNU/Linux system such as Ubuntu and Fedora.
     * hal bkup backup ~/    -- backup entire home directory
     * hal dotfiles install  -- setup dotfiles and pbuilder-files
     * hal dotfiles diff     -- check dotfiles and pbuilder-files
+*   git-cvs     -- git cvs sync tool (submodule)
+*   odedup      -- dedup tool (submodule)
 * ...
 
 These are commands meant to be installed into the BIN directory listed in
