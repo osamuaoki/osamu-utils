@@ -14,7 +14,7 @@ These are trivial scripts to make my life easy.  Install it via:
 The keep updating with:
 ```
  $ git pull
- $ git submodule update --recursive
+ $ git submodule update --init --recursive
 ```
 
 To add a new ```<project>```:

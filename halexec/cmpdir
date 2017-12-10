@@ -9,7 +9,7 @@
 # Most basic check ($2/ missing identified)
 #diff -qr --unidirectional-new-file "$1/" "$2/"
 
-# With rsync (checksum)
+# With rsync (checksum) $1 partial $2 full -> deleting
 rsync -nrvc --delete "$1/" "$2/"
 
 # With rsync (timestamp)
