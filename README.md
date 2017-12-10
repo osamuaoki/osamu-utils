@@ -8,7 +8,13 @@ These are trivial scripts to make my life easy.  Install it via:
 ```
  $ mkdir ~/bin
  $ git clone git@github.com:osamuaoki/osamu-utils.git ~/bin
- $ git submodules update --init --recursive
+ $ git submodule update --init --recursive
+```
+
+The keep updating with:
+```
+ $ git pull
+ $ git submodule update --recursive
 ```
 These commands are meant to be edited to customize their behavior.  So I
 intentionally avoid providing functionality via command option for the
