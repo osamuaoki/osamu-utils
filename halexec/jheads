@@ -1,2 +1,0 @@
-#!/bin/sh -e
-find . -type f -iname '*.jpg' -exec jhead "$@" "{}" \;
