@@ -26,7 +26,7 @@ case $1 in
         echo "NAME"
         echo "    ${0##*/} - add usertag to a package's BTS"
         echo "SYNOPSIS"
-        echo "    ${0##*/} [package [usertag]] bug_num1 bug_num2 bug_num3 ..."
+        echo "    ${0##*/} [[package] usertag] bug_num1 bug_num2 bug_num3 ..."
         exit
             ;;
 esac
@@ -34,9 +34,10 @@ esac
 PACKAGE="devscripts"
 USERTAG="uscan"
 if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
-    PACKAGE=${1}; shift
+    USERTAG=${1}; shift
 fi
 if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
+    PACKAGE=${USERTAG}
     USERTAG=${1}; shift
 fi
 CMDLINE="bts --mutt user ${PACKAGE}@packages.debian.org"
