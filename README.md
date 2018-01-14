@@ -16,6 +16,10 @@ The keep updating with:
  $ git pull
  $ git submodule update --init --recursive
 ```
+or
+```
+ $ hal update
+```
 
 To add a new ```<project>```:
 ```
@@ -43,6 +47,7 @@ any GNU/Linux system such as Ubuntu and Fedora.
     * hal bkup backup ~/    -- backup entire home directory
     * hal dotfiles install  -- setup dotfiles and pbuilder-files
     * hal dotfiles diff     -- check dotfiles and pbuilder-files
+    * hal update            -- update this ~/bin/* repository
 *   git-cvs     -- git cvs sync tool (submodule)
 *   odedup      -- dedup tool (submodule)
 * ...
