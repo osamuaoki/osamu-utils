@@ -32,7 +32,7 @@ mkdir -p ~/.cache/ben
 alias ben="BEN_CACHE_DIR=~/.cache/ben ben --config=${HOME}/.benrc"
 
 
-alias ml="getmails -v && mutt"
+alias ml="date --iso=sec && getmails -v && mutt"
 alias svi="sudo vim"
 alias sapt="sudo aptitude -u"
 alias up-apt="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
