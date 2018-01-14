@@ -82,3 +82,10 @@ These are pbuilder hook scripts installed into /var/cache/pbuilder/hooks.
 *   ~/src/debian (backed up to alioth or its successor)
 *   ~/src/github (backed up to github)
 *   ~/src/local  (local backup)
+
+## Permissions
+
+To be on safer end:
+
+* Executable: chmod 755 ...
+* Documents:  chmod 644 ...
