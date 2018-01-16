@@ -1,0 +1,28 @@
+#!/bin/bash
+
+MYKEY=D5DE453D
+
+# menu_command action1, action2, ...
+menu_choice()
+{
+    select cmd in $@ ; do
+	$cmd
+    done
+}
+
+gpg_list_keys()
+{
+    gpg --list-keys $MYKEY
+}
+gpg_export_public_keys()
+{
+    echo -n "Output filename: "
+    read fn
+    gpg --export -a $MYKEY --oitput $fn
+}
+quit()
+{
+    exit
+}
+
+menu_choice gpg_list_keys gpg_export_public_keys quit

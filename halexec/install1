@@ -31,7 +31,12 @@ PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
 # Desktop extras
 PKGS="$PKGS xdu meld" 
 PKGS="$PKGS gnote nixnote2 rxvt tomboy- zim" 
-PKGS="$PKGS chromium pepperflashplugin-nonfree" 
+PKGS="$PKGS chromium"
+. /etc/os-release # get OS version
+if [ $VERSION != "9 (stretch)" ]; then
+# Not available in released stretch
+PKGS="$PKGS pepperflashplugin-nonfree"
+fi
 # temperature sensor
 PKGS="$PKGS psensor" 
 

@@ -8,8 +8,24 @@ These are trivial scripts to make my life easy.  Install it via:
 ```
  $ mkdir ~/bin
  $ git clone git@github.com:osamuaoki/osamu-utils.git ~/bin
- $ git submodules update --init --recursive
+ $ git submodule update --init --recursive
 ```
+
+The keep updating with:
+```
+ $ git pull
+ $ git submodule update --init --recursive
+```
+or
+```
+ $ hal update
+```
+
+To add a new ```<project>```:
+```
+ $ git submodule add git@github.com:osamuaoki/<project>.git submodule/<project>
+```
+
 These commands are meant to be edited to customize their behavior.  So I
 intentionally avoid providing functionality via command option for the
 simplicity ;-)
@@ -31,6 +47,9 @@ any GNU/Linux system such as Ubuntu and Fedora.
     * hal bkup backup ~/    -- backup entire home directory
     * hal dotfiles install  -- setup dotfiles and pbuilder-files
     * hal dotfiles diff     -- check dotfiles and pbuilder-files
+    * hal update            -- update this ~/bin/* repository
+*   git-cvs     -- git cvs sync tool (submodule)
+*   odedup      -- dedup tool (submodule)
 * ...
 
 These are commands meant to be installed into the BIN directory listed in
@@ -63,3 +82,10 @@ These are pbuilder hook scripts installed into /var/cache/pbuilder/hooks.
 *   ~/src/debian (backed up to alioth or its successor)
 *   ~/src/github (backed up to github)
 *   ~/src/local  (local backup)
+
+## Permissions
+
+To be on safer end:
+
+* Executable: chmod 755 ...
+* Documents:  chmod 644 ...

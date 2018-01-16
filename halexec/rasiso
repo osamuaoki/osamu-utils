@@ -1,0 +1,548 @@
+#!/bin/sh
+#
+#    This script uses ras(1), split(1), and mkisofs(8)
+#
+# POSIX script
+#######################################################################
+# Author name
+COPYA="(c) 2004"
+NAMEA="Osamu Aoki <osamu@debian.org>"
+# Program name
+PROG=$(basename $0)
+# Date run
+DATE0=$(date -u +%Y%m%d)
+DATE=$(date -u)
+# Usage
+USAGE="
+$PROG -- backup data to CDROM / DVD with redundancy
+
+SYNTAX
+      $PROG [-<options> [<argument>]]... <file>
+DESCRIPTION
+      Split backup of <file> onto multiple cdroms/iso-images which
+      includ enough redundancy.  The <file> can still be regenerated
+      even if up to <number> cdroms fail. For a short file backup, 
+      a single CD with redundancy data will be generated.
+OPTIONS
+      -v, -vv  Increment verbosity
+      -1       one extra unit/disk of redundancy
+      -2       two extra units/disks of redundancy
+      -m       Always use multiple disks (>1) for backup
+      -c:      Just create iso image only, fake run for cdrecord.
+      -f       Create fine grained splits
+      -t<arg>  Use <arg> as work directory (wiped)
+      -o<arg>  Use <arg> as option to cdrecord. For CD-RW: \"blank=fast\"
+      -x       Set trace to debug script
+      -k       Keep intermidiate files
+
+FILES      /etc/${PROG}rc and \$HOME/.${PROG}rc for customization
+SEE ALSO   ras(1), split(1), mkisofs(8), md5sum(8), cdrecord(8)
+AUTHOR     $COPYA, $NAMEA"
+
+# standard constants
+KB=1024
+MB=$(($KB*$KB))
+GB=$(($KB*$KB*$KB))
+# Disk image generator $1=output $2=tree
+MKISOFS="mkisofs -J -r -V \"BU$DATE0\" -o"
+# Disk writer $1=image
+CDRECORD="sudo cdrecord -v -eject"
+#CDROPT="dev=0,0,0 blank=fast" # CD-RW
+CDROPT="dev=0,0,0" # CD-R
+# split generation program
+SPLIT="split"
+# RAS generation program
+RAS="ras"
+# MD5 generation program
+MD5SUM="md5sum"
+# PWD when started
+PWDX="$PWD"
+# Work directory (will be wiped!)
+TMP="$PWD/tmp-$PROG-$$"
+# Lock file for MD5SUM
+LOCK="$TMP/lock"
+# Remove directory
+RM_RF="rm -rf"
+# SIZE_DSK: Storage media size
+SIZE_DSK=650M
+# SIZE_DSK: Storage media size round off margin
+SIZE_ROUND=10M
+# BLK: Storage media block (byte)
+BLK=$((2*$KB))
+# RASDIV: maximum total chunks used by ras in multi disk mode
+RASDIV=256
+# DIV: total chunks per data used by ras in 1 disk mode: 8,...,128
+DIV=8
+# N_CNK: default max chunks per disk 4,...256
+N_CNK=4
+# prefix for data files
+DATA="data."
+# prefix for sum files
+SUM="sum."
+# sufix for disk image files
+ISO=".iso"
+# sufix for MD5 file
+MD5=".md5"
+# sufix for ID file
+ID=".id"
+# Split mode (single=auto)
+MODE=1
+# Default redundancy
+RDNX=1
+# Verbose level
+VERBOSE=0
+# Debug level
+DEBUG=0
+#
+unset SIZE
+#######################################################################
+# standard functions
+
+# execute command with command copied to stdout and time printed
+exec_line () {
+if [ $VERBOSE -eq 1 ]; then
+  # command to stderr
+  echo "$@" >&2
+  # execute command
+  $@
+elif [ $VERBOSE -ge 2 ]; then
+  # command to stderr
+  echo "$@" >&2
+  # time and execute to stderr
+  time $@
+else
+  # execute command
+  $@
+fi
+}
+
+# duplicate file
+dup_file () {
+INF=$1
+shift
+for i in "$@"; do
+  cp $INF $i
+done
+}
+
+# normalize file name to full path name
+normal_file () {
+NFILE=$1
+if [ "x${NFILE##/}" = "x${NFILE}" ]; then
+  NFILE=$PWD/$NFILE
+fi
+echo $NFILE
+}
+
+# Make full integer value from short hand like 640MB
+normal_size () {
+# Does not handle decimal points
+# ${SZ:n:m} was avoided to be POSIX script
+SZ=$1
+SZ=${SZ%B}
+SZ=${SZ%b}
+if [ "x${SZ%K}" != "x${SZ}" ]; then
+  SZ=$((${SZ%K}*$KB))
+elif [ "x${SZ%k}" != "x${SZ}" ]; then
+  SZ=$((${SZ%k} * $KB))
+elif [ "x${SZ%M}" != "x${SZ}" ]; then
+  SZ=$((${SZ%M}*$MB))
+elif [ "x${SZ%m}" != "x${SZ}" ]; then
+  SZ=$((${SZ%m}*$MB))
+elif [ "x${SZ%G}" != "x${SZ}" ]; then
+  SZ=$((${SZ%G}*$GB))
+elif [ "x${SZ%g}" != "x${SZ}" ]; then
+  SZ=$((${SZ%g}*$GB))
+fi
+echo $SZ
+}
+
+list_number () {
+# make list of sum file names
+INDEX=$1  # starting value    : 0...n-1
+MAX=$2    # never exceed this: n
+NUMBUFF=""
+while [ $INDEX -lt $MAX ]; do
+ NUMBUFF="$NUMBUFF $INDEX"
+ INDEX=$(($INDEX+1))
+done
+echo $NUMBUFF
+}
+
+list_name () {
+# make list of sum file names with 3 digit numbers with leading 0s
+INDEX=$1   # starting value    : 0...n-1
+MAX=$2     # never exceed this: n
+PREFIX=$3
+NAMEBUFF=""
+
+if [ $INDEX -ge $MAX ]; then
+  echo $INDEX is greater than $MAX for $PREFIX
+  exit 1
+fi
+
+while [ $INDEX -lt $MAX ]; do
+ if [ $INDEX -lt 10 ]; then
+  NAMEBUFF="$NAMEBUFF ${PREFIX}00$INDEX"
+ elif [ $INDEX -lt 100 ]; then
+  NAMEBUFF="$NAMEBUFF ${PREFIX}0$INDEX"
+ else
+  # Never exceed 256
+  NAMEBUFF="$NAMEBUFF ${PREFIX}$INDEX"
+ fi
+ INDEX=$(($INDEX+1))
+done
+echo $NAMEBUFF
+}
+
+#######################################################################
+# Initial values initialization
+# external parameter file
+if [ -f /etc/${PROG}rc ]; then
+  . /etc/${PROG}rc
+fi
+if [ -f $HOME/.${PROG}rc ]; then
+  . $HOME/.${PROG}rc
+fi
+#######################################################################
+# Option handling
+while getopts 'vmft:kx12345678l:dn:r:s:y:z:i:c:o:h?' f ; do
+  case $f in
+    v)      VERBOSE=$(($VERBOSE+1));;#increase verbose
+    m)      MODE=2;;       # Multi disk backup mode
+    f)      N_CNK=256 ; DIV=128 ;;# maximum fine grained splits
+    t)      TMP=$OPTARG;;  # work directory (wiped)
+    k)      RM_RF=": #";;  # Keep temp files
+    x)      set -x;;       # set trace
+    1)      RDNX=1;;       # extra 1/8 data segment/ 1 disk
+    2)      RDNX=2;;       # extra 2/8 data segment/ 2 disk
+    3)      RDNX=3;;       # extra 3/8 data segment/ 3 disk
+    4)      RDNX=4;;       # extra 4/8 data segment/ 4 disk
+    5)      RDNX=5;;       # extra 5/8 data segment/ 5 disk
+    6)      RDNX=6;;       # extra 6/8 data segment/ 6 disk
+    7)      RDNX=7;;       # extra 7/8 data segment/ 7 disk
+    8)      RDNX=8;;       # extra 8/8 data segment/ 8 disk
+    l)      RDNX=$OPTARG;; # redundancy level / disk(s)
+    d)      DEBUG=$(($DEBUG+1));;#increase debug
+    n)      N_CNK=$OPTARG;; #  maximum number of chunks in disk
+    r)      RASDIV=$OPTARG;; # maximum number of chunks used by ras
+    s)      DIV=$OPTARG;; # Single disk mode splits (8 defaults, ... 128)
+    y)      SIZE_ROUND=$OPTARG;; # disk size round off
+    z)      SIZE_DSK=$OPTARG;; # disk size
+    i)      MKISOFS=$OPTARG;; # file system creation script $1=file $2=indir
+    c)      CDRECORD=$OPTARG;; # CD burner $1=file
+    o)      CDROPT="$CDROPT $OPTARG";; # CD-RW blank mode
+    \?)      echo -e "$USAGE"; exit;;
+  esac
+done
+shift $(($OPTIND - 1))
+if [ $DIV -gt $(($RASDIV/2)) ]; then
+  DIV=$(($RASDIV/2))
+fi
+if [ $# -ne 1 ]; then
+  echo -e "$USAGE"
+  exit
+fi
+if [ $N_CNK -gt $RASDIV ]; then
+  N_CNK=$RASDIV
+fi
+
+# File name
+FILE=$(normal_file $1)
+FILE0=$(basename $FILE)
+FILE1=${FILE0%.*}
+FILEP=${FILE%/$FILE0}
+
+# get working area
+rm -rf $TMP
+mkdir -p $TMP
+chmod 700 $TMP
+
+#######################################################################
+# Does not handle decimal points
+SIZE_DSK=$(normal_size $SIZE_DSK)
+SIZE_ROUND=$(normal_size $SIZE_ROUND)
+# SIZE_DSK0: Effective storage media length (byte) $SIZE_ROUND less than full size
+SIZE_DSK0=$(($SIZE_DSK-$SIZE_ROUND))
+# 
+if [ $SIZE_DSK0 -le $(($RDNX*$BLK)) ]; then
+  echo "Disk of size $SIZE_DSK0 is too small a disk."
+  exit 1
+fi
+# SIZEB_DSK0: Effective storage media length (blk)
+SIZEB_DSK0=$((($SIZE_DSK0+$BLK-1)/$BLK))
+
+# SIZE: Size of archive contents (byte)
+if [ $SIZE ]; then
+  SIZE=$(normal_size $SIZE)
+else
+  SIZE=$(du -b "$FILE" |cut -f1)
+fi
+# SIZEB: Size of archive contents (blk/disk)
+SIZEB=$((($SIZE+$BLK-1)/$BLK))
+SIZED=$((($SIZEB+$SIZEB_DSK0-1)/$SIZEB_DSK0))
+
+# assume single disk mode
+SIZEB_CNK=$((($SIZEB+$DIV-1)/$DIV))                     # r-up
+M_CNK=$(((($SIZEB*$RDNX+7)/8+$SIZEB_CNK-1)/$SIZEB_CNK)) # r-up
+SIZEB_TOT=$(($SIZEB_CNK*$M_CNK+$SIZEB))                 # r-uped
+
+# Force mode (Default: MODE=1)
+if [ $SIZEB -le 1 ]; then
+  MODE=0 # use duplicate mode
+fi
+if [ $SIZEB_TOT -gt $SIZEB_DSK0 ]; then
+  MODE=2 # use fast multidisk mode
+fi
+
+# Now calculate parameters
+if [ $MODE -eq 0 ]; then
+  # duplicate mode, recalcurate basics
+  SIZEB_CNK=$SIZEB
+  M_CNK=$RDNX
+  SIZEB_TOT=$(($SIZEB_CNK*$M_CNK+$SIZEB))
+  if [ $SIZEB_TOT -gt $SIZEB_DSK0 ]; then
+    echo "Funny, M_CNK=$M_CNK, SIZEB_CNK=$SIZEB_CNK, MODE=$MODE"
+    echo "       SIZEB_TOT=$SIZEB_TOT, SIZEB_DSK0=$SIZEB_DSK0"
+    exit 1
+  fi
+  LM_DSK=1
+  L_DSK=1
+  M_DSK=0
+  L_CNK=1
+  LM_CNK=$(($L_CNK+$M_CNK))
+  N_CNK=$LM_CNK
+  SIZEB_DSK1=$(($N_CNK*$SIZEB_CNK))
+
+elif [ $MODE -eq 1 ]; then
+  # 1 disk with $RDNX/8 redundancy
+  if [ $SIZEB_TOT -gt $SIZEB_DSK0 ]; then
+    echo "Funny, M_CNK=$M_CNK, SIZEB_CNK=$SIZEB_CNK, MODE=$MODE"
+    echo "       SIZEB_TOT=$SIZEB_TOT, SIZEB_DSK0=$SIZEB_DSK0"
+    exit 1
+  fi
+  LM_DSK=1
+  L_DSK=1
+  M_DSK=0
+  L_CNK=$((($SIZEB+$SIZEB_CNK-1)/$SIZEB_CNK)) # r-up
+  LM_CNK=$(($L_CNK+$M_CNK))
+  N_CNK=$LM_CNK
+  SIZEB_DSK1=$(($N_CNK*$SIZEB_CNK))
+
+elif [ $MODE -eq 2 ] ; then
+  # $L_DSK disks with $RDNX redundancy disks
+  L_DSK=$((($SIZEB+$SIZEB_DSK0-1)/$SIZEB_DSK0))    # r-up
+  SIZEB_DSK1=$((($SIZEB+$L_DSK-1)/$L_DSK))         # r-up appx. disk size
+  M_DSK=$RDNX
+  if [ $M_DSK -gt $L_DSK ]; then
+    # No point having too many back up disks
+    M_DSK=$L_DSK
+  fi
+  
+  LM_DSK=$(($L_DSK+$M_DSK))
+  
+  if [ $LM_DSK -gt $RASDIV ]; then
+    echo "Funny, LM_DSK=$LM_DSK, RASDIV=$RASDIV, MODE=$MODE"
+    echo "       SIZEB_TOT=$SIZEB_TOT, SIZEB_DSK0=$SIZEB_DSK0"
+    exit 1
+  fi
+  
+  # get number of chunks per disk
+  N_CNK0=$(($RASDIV/$LM_DSK))                      # r-down (chunk/disk)
+  if [ $N_CNK -gt $N_CNK0 ]; then
+    N_CNK=$N_CNK0
+  fi
+  
+  SIZEB_CNK=$((($SIZEB_DSK1+$N_CNK-1)/$N_CNK))     # r-up chunk size
+  SIZEB_DSK1=$(($SIZEB_CNK*$N_CNK))                # exact (disk used)
+  M_CNK=$(($M_DSK*$N_CNK))                         # redundancy chunks
+  L_CNK=$((($SIZEB+$SIZEB_CNK-1)/$SIZEB_CNK))      # r-up
+  LM_CNK=$(($L_CNK+$M_CNK))                        # exact
+fi
+#######################################################################
+# Report strategy
+SIZE_CNK=$(($SIZEB_CNK*$BLK))
+SIZE_DSK1=$(($SIZEB_DSK1*$BLK))
+
+echo "========================================================================"
+echo "MODE=$MODE, FILE=$FILE, basename($FILE1)"
+echo "Input file size $SIZE (byte), $SIZEB (blk), $((($SIZE+$MB-1)/$MB)) (MB)"
+echo "Disks:  total=$LM_DSK, data=$L_DSK, extra=$M_DSK"
+echo "Chunks: total=$LM_CNK, data=$L_CNK, extra=$M_CNK"
+echo "Chunks: $N_CNK chunks in each disk $((($SIZE_DSK1+MB-1)/$MB)) (MB)"
+echo "Size of chunk=$SIZE_CNK (byte), $SIZEB_CNK (block), $((($SIZE_CNK+$MB-1)/$MB)) (MB)"
+echo "Disk size available: $SIZE_DSK0 (byte), $SIZEB_DSK0 (block), $((($SIZE_DSK0+$MB-1)/$MB)) (MB)"
+echo "Disk size used: $SIZE_DSK1 (byte), $SIZEB_DSK1 (block), $((($SIZE_DSK1+$MB-1)/$MB)) (MB)"
+echo "Disk extra space $SIZE_ROUND (byte), about $(($SIZE_ROUND/$BLK)) (block), $((($SIZE_ROUND+$MB-1)/$MB)) (MB)"
+echo "========================================================================"
+if [ $DEBUG -gt 1 ]; then
+  exit 0
+fi
+
+#######################################################################
+# Create disk images
+mkdir -p $TMP/0
+
+(
+cd $FILEP >/dev/null
+touch $LOCK.1
+exec_line $MD5SUM "$FILE0" 
+rm -f $LOCK.1
+) >$TMP/0/${FILE0}${MD5} &
+sleep 1
+
+cat > $TMP/0/$FILE1${ID} <<EOF
+#######################################################################
+Information:
+
+  Original data:  $FILE0
+  Date created:   $DATE
+  Mode used:      $MODE
+  Chunk size:     $SIZE_CNK
+  Chunks in data: $L_CNK
+  Chunks in sum:  $M_CNK
+  Disks for data: $L_DSK
+  Disks for sum:  $M_DSK
+
+The archives are created by the GPLed script: $PROG
+  $COPYA, $NAMEA
+
+Recovery basics: (uses: split, ras, md5sum)
+
+1. Put all recovered files in a working directory (3x data size capacity)
+   and check files.
+
+ \$ md5sum -v -c $FILE1$MD5 | pager
+
+2. If some files are corrupt, do followings.
+
+ \$ [ -f $FILE0 ] && split -a3 -d -b$SIZE_CNK $FILE0 ${DATA}
+ \$ rm \$( md5sum -v -c $FILE1$MD5 2>&1|grep -e 'FAILED\$'|awk '{print $1}' )
+ \$ ras -r $(list_name 0 $L_CNK "-f $DATA") $(list_name 0 $M_CNK "$SUM") 
+ \$ cat $(list_name 0 $L_CNK "$DATA") >$FILE0
+
+3. Do sanity check
+
+ \$ md5sum -v -c $FILE1$MD5 | pager
+
+#######################################################################
+EOF
+
+cd $TMP/0 >/dev/null
+
+# Start splitting files into directories
+if [ $MODE -eq 0 ]; then
+  # If tiny, just make duplicates and done
+  exec_line cp "$FILE" "$FILE0"
+  while [ -f $LOCK.1 ]; do sleep 1 ; done
+  # create duplicate files
+  if [ $M_CNK -gt 0 ]; then
+    exec_line dup_file "$FILE0" $(list_name 0 $M_CNK "${FILE0}.")
+    exec_line $MD5SUM $(list_name 0 $M_CNK "${FILE0}.") >>$TMP/0/${FILE0}${MD5}
+  fi
+elif [ $MODE -ge 1 ]; then
+  if [ $L_CNK -le 1 ]; then
+    echo "Funny, L_CNK:$L_CNK in MODE:$MODE, not allowed."
+    exit 1
+  fi
+  # split to $L_CNK pieces, data.000, data.001, data.002, ...
+  exec_line $SPLIT -a3 -d -b$SIZE_CNK "$FILE" "$DATA"
+  while [ -f $LOCK.1 ]; do sleep 1 ; done
+  ( 
+  touch $LOCK.2
+  exec_line $MD5SUM $(list_name 0 $L_CNK "$DATA") 
+  rm -f $LOCK.2
+  ) >>$TMP/0/${FILE0}${MD5} &
+  sleep 1
+  # create ras sum files
+  if [ $M_CNK -ge 1 ]; then
+    exec_line $RAS $(list_name 0 $L_CNK "-f $DATA") \
+                  -c $(list_name 0 $M_CNK "$SUM")
+    while [ -f $LOCK.2 ]; do sleep 1 ; done
+    exec_line $MD5SUM $(list_name 0 $M_CNK "$SUM") >>$TMP/0/${FILE0}${MD5}
+  fi
+  while [ -f $LOCK.2 ]; do sleep 1 ; done
+
+  ICNK=0 # index for chunk within disk (0...N_CNK-1)
+  IDSK=0 # overall index for disk (0...LM_DSK-1)
+
+  # Split data image into multiple disks if needed
+  if [ $L_DSK -gt 1 ]; then
+    for i in $(list_number 0 $L_CNK) ; do
+      if [ $IDSK -gt 0 ]; then
+        if [ $ICNK -eq 0 ]; then
+          mkdir -p ../$IDSK
+          exec_line cp "$FILE0${ID}" "../$IDSK/${FILE0}${ID}"
+          exec_line cp "${FILE0}${MD5}" "../$IDSK/${FILE0}${MD5SUM}"
+	fi
+        FILEX=$(list_name $i $(($i+1)) $DATA)
+        exec_line mv $FILEX ../$IDSK/$FILEX
+      fi
+      ICNK=$(($ICNK+1))
+      if [ $ICNK -ge $N_CNK ]; then
+        ICNK=0
+        IDSK=$(($IDSK+1))
+      fi
+    done
+    if [ $ICNK -ne 0 ]; then
+      ICNK=0
+      IDSK=$(($IDSK+1))
+    fi
+    if [ $IDSK -ne $L_DSK ]; then
+      echo "Funny, L_DSK:$L_DSK, IDSK:$IDSK, must match"
+      exit 1
+    fi
+  else # $L_DSK -eq 1
+    # remove small data files and replace with original file
+    $RM_RF ${DATA}???
+    exec_line cp "$FILE" "$FILE0"
+    IDSK=1
+  fi
+
+  # Split sum files into multiple disks if needed
+  if [ $M_DSK -ge 1 ]; then
+    for i in $(list_number 0 $M_CNK) ; do
+      if [ $ICNK -eq 0 ]; then
+        mkdir -p ../$IDSK
+        exec_line cp "${FILE0}${MD5}" "../$IDSK/${FILE0}${MD5}"
+        exec_line cp "$FILE0${ID}" "../$IDSK/${FILE0}${ID}"
+      fi
+      FILEX=$(list_name $i $(($i+1)) $SUM)
+      mv $FILEX ../$IDSK/$FILEX
+      ICNK=$(($ICNK+1))
+      if [ $ICNK -ge $N_CNK ]; then
+        ICNK=0
+        IDSK=$(($IDSK+1))
+      fi
+    done
+  fi
+else # 
+  echo "Funny, MODE:$MODE"
+  exit 1
+fi
+
+# Return to original location
+cd $PWDX >/dev/null
+
+#######################################################################
+# make a iso file
+for i in $(list_number 0 $LM_DSK) ; do
+  exec_line ${MKISOFS} "$TMP/${FILE1}_${i}${ISO}" "$TMP/${i}"
+  $RM_RF "$TMP/${i}"
+done
+#######################################################################
+# make a cdrom
+for i in $(list_number 0 $LM_DSK) ; do
+  if [ "x$(echo $CDROPT|grep "blank")" = "x" ]; then
+    echo "Insert a new disk to CDROM (CD-R) and type Enter."
+  else
+    echo "Insert a new disk to CDROM (CD-RW) and type Enter."
+    echo "Or type ^C to exit."
+  fi
+  read xkey
+  exec_line ${CDRECORD} $CDROPT "$TMP/${FILE1}_${i}${ISO}"
+done
+echo "To erase temporary files, type Enter. Otherwise, type ^C"
+read xkey
+$RM_RF "$TMP"
+

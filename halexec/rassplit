@@ -1,0 +1,169 @@
+#!/bin/bash
+
+#
+#   rassplitcd and rasmergecd: Using ras(1) to split a large
+#   file across multiple cdroms or dvds with redundancy.
+#
+#   rassplit usage: rassplitcd <number> <file> 
+#      Split <file> onto floppies, including enough redundancy that <file>
+#      can still be regenerated if up to <number> floppies fail.
+# 
+
+# The mount-point for the floppy drive
+FLOPPY=/floppy
+
+# The command used to mount the floppy
+MOUNT="mount $FLOPPY"
+
+# The unmount command
+UMOUNT="umount $FLOPPY"
+
+# The size of the chunks into which <file> is to be split. Should be a bit
+# less than the capacity of the floppies.
+SEGSIZE=1400000
+
+############################################################################
+
+function file_to_floppy ()
+# Copy the file $1 to the floppy drive, prefixed by a pre-calculated md5
+# checksum that's been saved in a file $1.md5.  Overwrite the current
+# contents of the floppy. 
+{
+   echo "Putting file $1, insert formated floppy and press RETURN"
+   printf '\a'
+   read -e
+
+   $MOUNT
+   rm -rf $FLOPPY/*
+   
+   #  Wait for the md5 checksum to appear (it will be calculated by a
+   #  background task that may not have done it yet)
+   until [ -r $1.md5 ]
+   do
+      echo "Waiting for $1.md5 ..."
+      sleep 1
+   done
+   
+   cat $1.md5 $1 >$FLOPPY/$1
+   $UMOUNT
+}
+
+############################################################################
+
+function sumnames ()
+# Convert a decimal number from 0 to 10 to a string holding the names to be
+# used for ras sumfiles, and put that string in the variable SUMNAMES.  For
+# example, "sumnames 3" will put "sum0 sum1 sum2" in SUMNAMES.
+{
+   case "$1" in
+   0)  NUMS="" ;;
+   1)  NUMS="0" ;;
+   2)  NUMS="01" ;;
+   3)  NUMS="012" ;;
+   4)  NUMS="0123" ;;
+   5)  NUMS="01234" ;;
+   6)  NUMS="012345" ;;
+   7)  NUMS="0123456" ;;
+   8)  NUMS="01234567" ;;
+   9)  NUMS="012345678" ;;
+   10) NUMS="0123456789" ;;
+
+   *) echo "Invalid arg to sumnames: $1"
+      exit 1
+      ;;
+   esac
+   
+   SUMNAMES=`echo $NUMS | sed -e 's/\(.\)/sum\1 /g' -e 's/ $//'`
+}
+
+############################################################################   
+
+
+FILE="$2"
+if [ ! -r $FILE ]
+then
+   echo "rassplit: Cannot read from file $FILE"
+   exit 1
+fi
+
+SUMCOUNT="$1"
+sumnames "$1" 
+
+#
+# Split a tar file of the file specified and an md5 sum of it into a
+# temporary directory.
+#
+TMP="/tmp/rassplit.$$"
+rm -rf $TMP
+mkdir $TMP
+
+md5sum "$FILE" >ras.md5sum
+tar cvf - "$FILE" ras.md5sum | (cd $TMP ; split -b 1400000)
+rm ras.md5sum
+cd $TMP
+
+#
+# Determine how many, if any, sumfiles need to be generated
+#
+if [ -r xab ]
+then 
+   ONESEG=No  # there are at least 2 segfiles
+else
+   ONESEG=Yes # there is only 1 segfile
+fi
+if [ "$SUMCOUNT" != "0" -a "$ONESEG" == "No" ]
+then
+   SUMFILES="$SUMNAMES"   #  We wish to generate some ras sumfiles
+else
+   SUMFILES=""            #  We don't want any sumfiles.
+fi
+
+# 
+# Launch a background job to calculate md5 checksums of the segfiles,
+# and then generate (and calculate checksums of) ras sumfiles if any
+# are required.
+#
+(
+   for i in x??
+   do
+      md5sum <$i | sed 's/ .*//' > $i.md5.tmp
+      mv $i.md5.tmp $i.md5
+   done
+
+   if [ ! -z "$SUMFILES" ]
+   then
+      # We want to generate some ras sumfiles, which will also need 
+      # checksums.
+      ras -cs $SUMFILES
+      for i in $SUMFILES
+      do
+	 md5sum <$i | sed 's/ .*//' > $i.md5.tmp
+	 mv $i.md5.tmp $i.md5
+      done
+   fi
+) &     
+
+#
+# Copy the files to floppies
+#
+if [ "$SUMCOUNT" != "0" -a "$ONESEG" == "Yes" ]
+then
+   # redundancy required and only one segment present, get the redundancy
+   # by having multiple copies of the segment.
+   for dummy in the_segment $SUMNAMES
+   do
+      file_to_floppy xaa
+   done
+else
+   for file in x?? $SUMFILES
+   do
+      file_to_floppy $file
+   done
+fi
+
+#
+# Done, tidy up
+#
+cd /  # abandon doomed dir
+rm -rf $TMP
+

@@ -1,0 +1,57 @@
+#!/bin/bash -e
+## EASYMENU   
+umask 022
+
+########### Initialize
+MENUCMD=/usr/bin/whiptail
+MENU_TMP=/tmp/easymenu
+MENU_SOURCE="$HOME/bin"
+MENU_SELECT=""
+MENU_EXEC=""
+
+if [ ! -d $MENU_TMP ]; then
+  mkdir $MENU_TMP
+  chmod 700 $MENU_TMP
+fi
+
+value=$MENU_TMP/value
+
+title="Osamu's Easy Menu"
+leader="                             (Please scroll down to read everything)
+Easy Menu    v 0.01             (c) Osamu Aoki <osamu@debian.org>
+                                    Licensed under GPL 2.0 or later
+Select script to run
+Or cansel and edit them"
+
+########## load list of shell scripts
+cd $MENU_SOURCE
+for file in * ; do
+  #echo $file
+  MENU_ITEM=$file
+  MENU_TITLE=`sed -n -e '/^XTITLE=/{s/^XTITLE=\(.*\)/\1/p
+q}' $file`
+  if [ -n "$MENU_ITEM" ] && [ -x "$MENU_ITEM" ] && [ -n "$MENU_TITLE" ]; then
+    MENU_SELECT="$MENU_SELECT $MENU_ITEM $MENU_TITLE" 
+  fi
+done
+#MENU_SELECT="echo  $MENU_SELECT"
+
+########## Actual script
+
+:>$value
+
+( eval "$MENUCMD --title \"$title\" \
+     --menu \
+\"$leader\" \
+24 78 10 \
+$MENU_SELECT \
+ 2>$value" ) || true
+MENU_EXEC=$(cat $value)
+rm -rf $MENU_TMP
+if [ -n "$MENU_EXEC" ] ; then
+  exec $MENU_EXEC
+else
+  echo "Canseled ..."
+fi
+
+

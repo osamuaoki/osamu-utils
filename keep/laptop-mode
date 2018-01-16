@@ -1,0 +1,129 @@
+#!/bin/sh
+# This can be editted and dropped into /etc/pm/power.d/laptop-mode 
+# to override the system script /usr/lib/pm-utils/power.d/laptop-mode .
+
+. "${PM_FUNCTIONS}"
+
+VM="/proc/sys/vm"
+vmfiles="laptop_mode dirty_ratio dirty_background_ratio 
+         dirty_writeback_centisecs"
+
+# Do not use /etc/sysctrl.conf to set 
+#    vm.laptop_mode
+#    vm.dirty_ratio
+#    vm.dirty_background_ratio
+#    vm.dirty_writeback_centisecs
+
+# set default timings for AC operation = kernel default
+LAPTOP_AC_MODE=${LAPTOP_AC_MODE:-0}
+LAPTOP_AC_DIRTY_RATIO=${LAPTOP_AC_DIRTY_RATIO:-10}
+LAPTOP_AC_DIRTY_BG_RATIO=${LAPTOP_AC_DIRTY_BG_RATIO:-5}
+LAPTOP_AC_DIRTY_WRITEBACK=${LAPTOP_AC_DIRTY_WRITEBACK:-500}
+
+# set default timings for battery operation
+LAPTOP_BT_MODE=${LAPTOP_BT_MODE:-5}
+LAPTOP_BT_DIRTY_RATIO=${LAPTOP_BT_DIRTY_RATIO:-60}
+LAPTOP_BT_DIRTY_BG_RATIO=${LAPTOP_BT_DIRTY_BG_RATIO:-40}
+LAPTOP_BT_DIRTY_WRITEBACK=${LAPTOP_BT_DIRTY_WRITEBACK:-60000}
+
+# set default harddisk for SSD detection
+MAIN_HDD=${MAIN_HDD:-sda}
+
+# override default timings for AC operation for Laptop + SSD
+if [ -d /sys/class/power_supply ] && \
+   grep -q Battery /sys/class/power_supply/*/type 2>/dev/null &&  \
+   [ "$(cat /sys/block/${MAIN_HDD}/queue/rotational)" = "0" ]; then
+    # This system has battery and SSD
+    LAPTOP_AC_MODE=$LAPTOP_BT_MODE
+    LAPTOP_AC_DIRTY_RATIO=$LAPTOP_BT_DIRTY_RATIO
+    LAPTOP_AC_DIRTY_BG_RATIO=$LAPTOP_BT_DIRTY_BG_RATIO
+    LAPTOP_AC_DIRTY_WRITEBACK=$LAPTOP_BT_DIRTY_WRITEBACK
+fi
+
+help() {
+    cat <<EOF
+--------
+$0: Laptop mode tuning parameters.
+This hook controls how agressive the system is at trying to avoid
+writing to disk depending on AC power or on battery.  
+
+The longer the disk is idle, the more power you can save while on battery.
+
+It has 8 tuneable parameters: 
+LAPTOP_BT_MODE = value for laptop_mode on battery.
+Defaults to 5, which enables laptop mode and forces the system to wait 
+5 seconds whenever something asks to write to disk to flush out as much
+data as we can.
+
+LAPTOP_BT_DIRTY_RATIO = the ratio of dirty memory to all memory that 
+processes start doing their own writeout.  
+Defaults to 60, which means that the kernel will not start forcing process
+to write out file information that has been changed but not saved until 60%
+of usable system memory is filled with dirty information.
+
+LAPTOP_BT_DIRTY_BG_RATIO = The ratio of dirty memory to all memory that 
+pdflush will wake up and start writing to disk.  
+Defaults to 40, which means that the kernel will wake up a helper process
+to try and write out dirty memory once 40% of usable system memory is dirty.
+
+LAPTOP_BT_DIRTY_WRITEBACK = The number of centiseconds between periodic
+wakeups of the pdflush daemons.  
+Defaults to 60000 (10 minutes), which menas that the kernel will flush dirty
+memory every 10 minutes if dirty memory never hits 40% of system memory.
+
+LAPTOP_AC_MODE = value for laptop_mode on AC power.
+Defaults to 0, which disables laptop mode.
+
+LAPTOP_AC_DIRTY_RATIO = the ratio of dirty memory to all memory that 
+processes start doing their own writeout.  
+Defaults to 10, which means that the kernel will not start forcing process
+to write out file information that has been changed but not saved until 10%
+of usable system memory is filled with dirty information.
+
+LAPTOP_AC_DIRTY_BG_RATIO = The ratio of dirty memory to all memory that 
+pdflush will wake up and start writing to disk.  
+Defaults to 5, which means that the kernel will wake up a helper process
+to try and write out dirty memory once 5% of usable system memory is dirty.
+
+LAPTOP_AC_DIRTY_WRITEBACK = The number of centiseconds between periodic
+wakeups of the pdflush daemons.  
+Defaults to 500, which menas that the kernel will flush dirty
+memory every 500 seconds if dirty memory never hits 5% of system memory.
+
+If system's primary harddisk /dev/sda is SSD and system is laptop, all 
+default values for AC are set to the same value of battery to reduce 
+write wear.
+
+EOF
+}
+
+[ -w $VM/laptop_mode -a -w $VM/dirty_ratio ] || exit $NA
+
+write_values() {
+    for f in $vmfiles; do
+	[ -w "$VM/$f" ] && echo $1 > "$VM/$f"
+	shift
+    done
+}
+
+laptop_mode_ac() {
+    # disable laptop mode
+    write_values "$LAPTOP_AC_MODE" "$LAPTOP_AC_DIRTY_RATIO" \
+	"$LAPTOP_AC_DIRTY_BG_RATIO" "$LAPTOP_AC_DIRTY_WRITEBACK"
+    echo "Laptop mode disabled."
+}
+
+laptop_mode_battery() {
+    write_values "$LAPTOP_BT_MODE" "$LAPTOP_BT_DIRTY_RATIO" \
+	"$LAPTOP_BT_DIRTY_BG_RATIO" "$LAPTOP_BT_DIRTY_WRITEBACK"
+    echo "Laptop mode enabled."
+}
+
+case $1 in
+    true) laptop_mode_battery ;;
+    false) laptop_mode_ac ;;
+    help) help;;
+    *) exit $NA ;;
+esac
+
+exit 0
