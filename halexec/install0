@@ -16,7 +16,8 @@ if [ $(id -un) != root ]; then
   exit
 fi
 #############################################################################
-# Basic set up after the install: Enable contrib + non-free
+# The following commands are run under ROOT
+# Basic apt set up after the install: Enable contrib + non-free
 if grep -q non-free /etc/apt/sources.list || \
    grep -q contrib /etc/apt/sources.list ; then
   echo "Already contrib + non-free enabled"
@@ -24,15 +25,25 @@ else
   echo "Enable contrib + non-free"
   sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
 fi
+echo "Debian distribution:"
+sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
 #############################################################################
-# The following commands are run under ROOT
+# Update package apt list
 apt update
-# basic tasks in case you skipped
+# Install basic packages in case you skipped
 apt install sudo aptitude locales-all firmware-linux\
     vim emacs vim-tiny- nano- \
     mc cryptsetup lvm2 ssh
-# upgrade all the way
-apt full-upgrade
+echo "One-time sudo password system, enabled."
+#############################################################################
+# Set one-time sudo password for the user in all terminals
+cat >/etc/sudoers.d/custom <<END
+# No password for 8 hours
+Defaults timestamp_timeout = 480
+Defaults timestamp_type = global
+# NO password for the primary user (disabled)
+#$USERNAME ALL=NOPASSWD: ALL
+END
 #############################################################################
 # Set up normal group membership
 adduser $USERNAME sudo
@@ -40,12 +51,12 @@ adduser $USERNAME adm
 adduser $USERNAME src
 adduser $USERNAME staff
 adduser $USERNAME games
+echo "One-time sudo password system, enabled."
 #############################################################################
-# Set passwordless sudo for the primary user (Don't ever use this on server)
-cat >/etc/sudoers.d/custom <<END
-# No password for 8 hours
-Defaults timestamp_timeout = 480
-Defaults timestamp_type = global
-# NO password for primary user (disabled)
-#$USERNAME ALL=NOPASSWD: ALL
-END
+echo -n "Full-Upgrade? (possibly large download!) "
+read YN
+YN="${YN:-y}"
+if [ "$YN" = "y" ]; then
+  # upgrade all the way
+  apt full-upgrade
+fi
