@@ -39,10 +39,10 @@ echo "One-time sudo password system, enabled."
 # Set one-time sudo password for the user in all terminals
 cat >/etc/sudoers.d/custom <<END
 # No password for 8 hours
-Defaults timestamp_timeout = 480
-Defaults timestamp_type = global
+#Defaults timestamp_timeout = 480
+#Defaults timestamp_type = global
 # NO password for the primary user (disabled)
-#$USERNAME ALL=NOPASSWD: ALL
+$USERNAME ALL=NOPASSWD: ALL
 END
 #############################################################################
 # Set up normal group membership

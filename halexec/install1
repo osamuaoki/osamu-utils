@@ -30,7 +30,7 @@ PKGS="$PKGS task-desktop"
 PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
 # Desktop extras
 PKGS="$PKGS xdu meld" 
-PKGS="$PKGS gnote nixnote2 rxvt tomboy- zim" 
+PKGS="$PKGS gnote nixnote2 rxvt tomboy-"
 PKGS="$PKGS chromium"
 . /etc/os-release # get OS version
 if [ $VERSION != "9 (stretch)" ]; then
@@ -41,9 +41,9 @@ fi
 PKGS="$PKGS psensor" 
 
 #############################################################################
-# Development environment for me (basics)
+# Development environment for me (basics - no TeX, gcc)
 #############################################################################
-PKGS="$PKGS devscripts debmake git-buildpackage ben"
+PKGS="$PKGS devscripts debmake git-buildpackage ben time"
 PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
 PKGS="$PKGS git gitk quilt subversion grip git-annex dgit"
 PKGS="$PKGS ccache eatmydata vim-addon-manager"
