@@ -1,0 +1,44 @@
+#!/bin/sh -e
+# vim:se tw=78 ai ts=2 sts=2 et:
+
+DEVSSD=$1
+DEVROOT="$(mount|fgrep -e 'on / type'|cut -d' ' -f1|sed -e 's/[0-9][0-9]*$//')"
+if  echo $DEVSSD | grep "[0-9]" >/dev/null  ; then
+  echo "Erase only full /dev/sd? device.  No partition like: $DEVSSD"
+  exit
+fi
+
+if [ "$DEVSSD" = "$DEVROOT" ]; then
+  echo "Root device can't be erased: $DEVSSD"
+fi
+
+if [ "$DEVSSD" = "${DEVSSD##/dev/sd}" ] || \
+   [ ! -b "$DEVSSD" ]; then
+  echo "'$DEVSSD' specified, please use available block device."
+  ls -l /dev/sd? | fgrep -v "$DEVROOT"
+  exit
+fi
+echo " ... $ hdparm -I $DEVSSD"
+sudo hdparm -I $DEVSSD
+echo "========================================================================"
+echo "Read https://ata.wiki.kernel.org/index.php/ATA_Secure_Erase"
+echo "Hot re-plug SATA and power cable to SSD"
+read -p "Type 'Return' ... " f
+echo " ... $ hdparm -I $DEVSSD | grep frozen"
+sudo hdparm -I $DEVSSD | grep frozen
+echo "Above must now show 'not frozen'."
+read -p "Type 'Return' ... " f
+read -p "Are you sure.  If not press ^C.  If sure, type 'Return' ... " f
+sudo hdparm -I $DEVSSD | grep -A6  -e "^Security:"
+sudo hdparm --user-master u --security-set-pass dummypassword $DEVSSD
+echo  "hdparm --user-master u --security-set-pass dummypassword $DEVSSD"
+sudo hdparm -I $DEVSSD | grep -A6  -e "^Security:"
+read -p "'enabled' ?.  If so, type 'Return' ... " f
+echo "sudo hdparm --user-master u --security-erase    dummypassword $DEVSSD"
+time sudo hdparm --user-master u --security-erase    dummypassword $DEVSSD
+echo "========================================================================"
+sudo hdparm --user-master u --security-disable  dummypassword $DEVSSD
+sudo hdparm -I $DEVSSD | grep -A6  -e "^Security:"
+
+
+

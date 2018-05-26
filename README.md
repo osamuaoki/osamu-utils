@@ -44,9 +44,11 @@ any GNU/Linux system such as Ubuntu and Fedora.
     * hal install0          -- setup system (minimum, make sudo ready)
     * hal install1          -- setup system (normal)
     * hal apt               -- log manually installed packages to ~/log
-    * hal bkup backup ~/    -- backup entire home directory
+    * hal bkup backup ~/    -- backup entire home directory (restic)
+    * hal bkup mount ~/     -- mount restic backup to /mnt (restic)
     * hal dotfiles install  -- setup dotfiles and pbuilder-files
     * hal dotfiles diff     -- check dotfiles and pbuilder-files
+    * hal newssd  /dev/sd?  -- factory reset of SSD (hdparam, time)
     * hal update            -- update this ~/bin/* repository
 *   git-cvs     -- git cvs sync tool (submodule)
 *   odedup      -- dedup tool (submodule)
