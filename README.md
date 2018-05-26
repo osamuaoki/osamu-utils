@@ -3,7 +3,55 @@
 vim:se tw=78 ai si sts=4 et:
 -->
 
-These are trivial scripts to make my life easy.  Install it via:
+These are trivial scripts to make my life easy.
+
+## Fresh install of system with HAL system
+
+For fresh system (probable with factory reset state SSD with 
+"hal newssd /dev/sdb" or similar).
+
+* Default install *even desktopless* from boot USB key.
+  (Leave some unused space)
+* Boot new system
+
+```
+ $ su -c bash
+ # apt install git
+  ...
+ # ^D
+ $ mkdir ~/bin
+ $ git clone git@github.com:osamuaoki/osamu-utils.git ~/bin
+ $ git submodule update --init --recursive
+ $ hal install0
+ $ hal install1
+```
+
+### Security files
+
+```
+~/.gnupg/
+~/.ssh/
+```
+
+### Manual refine
+
+* Terminal:
+
+```
+ Kill terminal bell
+ No limit to scroll
+ No F10
+ No Keybinding
+```
+
+* Packages:
+
+```
+ # aptitude -u
+```
+
+
+## Update HAL system
 
 ```
  $ mkdir ~/bin
