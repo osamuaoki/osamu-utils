@@ -33,7 +33,7 @@ PKGS="$PKGS xdu meld"
 PKGS="$PKGS gnote nixnote2 rxvt tomboy-"
 PKGS="$PKGS chromium"
 . /etc/os-release # get OS version
-if [ $VERSION != "9 (stretch)" ]; then
+if [ "$VERSION" != "9 (stretch)" ]; then
 # Not available in released stretch
 PKGS="$PKGS pepperflashplugin-nonfree"
 fi
