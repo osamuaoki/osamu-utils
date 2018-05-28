@@ -16,7 +16,7 @@ the factory condition using hdparm.
 ```
 ## Install system with USB boot media
 
-### Boot media preparation
+### Boot and account USB key preparation
 
 * Download `netinst' ISO image file, e.g. `debian-9.4.0-amd64-netinst.iso`
 * Plug in USB drive (> 1GB) and make it available as e.g. `/dev/sdx`.
@@ -25,6 +25,18 @@ the factory condition using hdparm.
  # cp debian-9.4.0-amd64-netinst.iso /dev/sdx
  # sync
 ```
+
+Please also have your account-USB key which contains basic account settings
+and secure its content using LUKS and filesystem encryption.  The data in
+backup/home_data directory of your account-USB key includes:
+
+* `~/.getmail/`
+* `~/.gnupg/`
+* `~/.ssh/`
+* `~/bin/`
+* `~/.mailfilter`
+* `~/.msmtprc`
+* `~/.muttrc`
 
 ### Install to the target HDD/SSD
 
@@ -46,24 +58,45 @@ the factory condition using hdparm.
  # vim /etc/apt/sources.list
  # apt update
  # apt dist-upgrade
- # apt install nano- vim-tiny- aptitude wget git ssh vim mc
+ # apt install nano- vim-tiny- aptitude wget git ssh vim mc git
  # apt install gdm3 task-desktop
  # shutdown -r now
-  ... reboot
 ```
 
-* Copy identity files
+* login to your primary user account on GNOME Desktop
+* insert your account-USB key
+* Copy files from backup/home_data directory in your account-USB key to the
+  home directory of your primary user account.  Now you have `~/bin`,
+  `~/.ssh`, and `~/gnupg`.
+* Use `~/bin/hal to set up system.
+
+```
+ $ cd ~/bin
+ $ ./hal update
+ $ ./hal dotfiles
+ $ ./hal install0
+ $ ./hal install1
+```
+
+* Unplug your account-USB key
+* reboot the system with full GUI tools.
+* Insert your account-USB key to set up GNOME keyring
+
+```
+ $ GPG/bin/setup
+```
 
 ### Installation Tips
 
 When manually building customized system or restoring system from the archive
-copy, you need to pay extra attension.
+copy, you need to pay extra attention.
 
-* Don't share swap partition among multiple instalations.
+* Don't share swap partition among multiple installations.
 * Don't set the file system type (such as ext4), if the installation doesn't
   mount it.
-* UUID may need to be adjusted when a file system or a swap partition are
-  initialized.
+* UUID may need to be adjusted when a file system is reformatted with `mkfs` a
+  swap partition are reinitialized with `mkswap`.  UUID can be identified
+  by `blkid`(8).
     * `/etc/fstab`
     * `/etc/initramfs-tools/conf.d/resume` 
 * host name and its domain may need to be adjusted.
@@ -72,38 +105,26 @@ copy, you need to pay extra attension.
     * `/etc/exim4????`
 * There are some dynamically assigned UID/GID for system users.  When copying
   system, be careful.
+* Ethernet interface name may be different.
+    * `ifupdown` via `/etc/network/interfaces`:
+        * virtual boot (qemu) may be named like: ens3
+        * new normal boot may be named like: enp0s25
+        * older normal boot may be named like: eth0
+    * Ethernet interface to be controlled by `network-manager`
+        * comment out hotplug devices in `/etc/network/interfaces`
 
-
-## Fresh install of system with HAL system
-
-For fresh system (probably after factory reset state SSD with 
-"hal newssd /dev/sdb" or similar).
-
-* Default install *even desktopless* from boot USB key.
-  (Leave some unused space ssd)
-* Boot new system
-
-If you reformat partition FS causing it to be different UUID, you need to
-match UUID in /etc/fstab and /etc/initramfs-tools/conf.d/resume with the new
-UUID.  UUID can be identified by `blkid`(8).
+## sudo
 
 ```
- $ su -c bash
- # apt install git
-  ...
- # ^D
- $ mkdir ~/bin
- $ git clone git@github.com:osamuaoki/osamu-utils.git ~/bin
- $ git submodule update --init --recursive
- $ hal install0
- $ hal install1
+ # addgroup <username> sudo
 ```
 
-### Security files
+Alternatively
 
 ```
-~/.gnupg/
-~/.ssh/
+# cat >/etc/sudoers.d/<username> <<EOF
+<username>  ALL=(ALL) NOPASSWD:ALL
+EOF
 ```
 
 ### Manual refine
@@ -122,4 +143,34 @@ UUID.  UUID can be identified by `blkid`(8).
  # aptitude -u
 ```
 
+## EXT4 optimize ideas for note PC
+
+* `sudo tune2fs -o journal_data_writeback /dev/sda2` from other boot media.
+* `/etc/fstab option field`:
+ 	* `noatime,discard,data=writeback,barrier=0,commit=60,errors=remount-ro`
+
+## GRUB
+
+* `grub-theme-starfield`
+* `grub2-splashimages`
+
+```
+ echo 'GRUB_BACKGROUND="/usr/share/images/grub/Lake_mapourika_NZ.tga"' \
+   >> /etc/default/grub
+ sudo update-grub
+```
+
+## Evolution
+
+Connect to gmail with IMAP/SSL and SMTP/STARTTLS
+(Mutt works as backup system if connected with POP3)
+
+## Japanese
+
+* Font: vlgothic, ipa*
+* IM: ibus-anthy
+    * add `libqt5gui5`
+* configure Keybinding to be like Mac
+    * latin_mode: Muhenkan
+    * hiragana_mode: henkan
 

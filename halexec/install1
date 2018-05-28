@@ -3,6 +3,19 @@
 # Copyright 2017 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 ai et:
 #############################################################################
+# Set to run as ROOT
+if [ $(id -un) != root ]; then
+  USERNAME=$(id -un)
+  export USERNAME
+  if [ -r /etc/sudoers.d/custom ]; then
+    sudo "$0"
+  else
+    echo "Please type the root password"
+    su -c "$0"
+  fi
+  exit
+fi
+#############################################################################
 . /etc/os-release # get OS version
 PKGS=""
 #############################################################################
@@ -13,8 +26,9 @@ PKGS="$PKGS task-desktop"
 # Japanese input method support for me
 PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
 # Desktop extras
-PKGS="$PKGS xdu meld" 
+PKGS="$PKGS xdu meld nautilus-compare"
 PKGS="$PKGS gnote nixnote2 rxvt tomboy-"
+PKGS="$PKGS gparted htop libsecret-tools"
 PKGS="$PKGS chromium"
 if [ "$VERSION" != "9 (stretch)" ]; then
 # Not available in released stretch
@@ -28,23 +42,33 @@ PKGS="$PKGS psensor"
 #############################################################################
 PKGS="$PKGS devscripts debmake git-buildpackage ben time"
 PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
-PKGS="$PKGS git gitk quilt subversion grip git-annex dgit"
+PKGS="$PKGS git gitk git-svn quilt subversion grip git-annex dgit"
+PKGS="$PKGS developers-reference debmake-doc"
 PKGS="$PKGS ccache eatmydata vim-addon-manager"
+PKGS="$PKGS glade"
+PKGS="$PKGS exuberant-ctags"
 # Development environment for me (debug)
 PKGS="$PKGS rlwrap lsof xtrace ltrace strace gdb moreutils"
 # Perl REPL and readline 
 PKGS="$PKGS libreply-perl libterm-readline-gnu-perl"
 # 
+PKGS="$PKGS rpm2cpio"
 PKGS="$PKGS imediff2"
 # Info
+PKGS="$PKGS doc-base"
 PKGS="$PKGS texinfo pinfo"
 PKGS="$PKGS texinfo-doc-nonfree"
 
 #PKGS="$PKGS net-tools"
 
+#PKGS="$PKGS gcc-doc cpp-doc gdb-doc make-doc"
+#PKGS="$PKGS gccintro"
+#PKGS="$PKGS net-tools"
+
+
 #############################################################################
 # Install packages
 #############################################################################
-sudo apt update
-sudo apt full-upgrade
-sudo apt install $PKGS
+apt update
+apt full-upgrade
+apt install $PKGS
