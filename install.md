@@ -33,7 +33,6 @@ backup/home_data directory of your account-USB key includes:
 * `~/.getmail/`
 * `~/.gnupg/`
 * `~/.ssh/`
-* `~/bin/`
 * `~/.mailfilter`
 * `~/.msmtprc`
 * `~/.muttrc`
@@ -65,9 +64,11 @@ backup/home_data directory of your account-USB key includes:
 
 * login to your primary user account on GNOME Desktop
 * insert your account-USB key
-* Copy files from backup/home_data directory in your account-USB key to the
-  home directory of your primary user account.  Now you have `~/bin`,
-  `~/.ssh`, and `~/gnupg`.
+* Copy files from backup/home_data directory (excluding files in `.git/`) in
+  your account-USB key to the home directory of your primary user account.
+  Now you have `~/.ssh`, and `~/gnupg`.
+* Copy files from backup/bin directory (including files in `.git/`) in
+  your account-USB key to the home directory of your primary user account.
 * Use `~/bin/hal to set up system.
 
 ```
