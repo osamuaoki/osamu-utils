@@ -46,7 +46,7 @@ fi
 PKGS="sudo aptitude locales-all cryptsetup lvm2"
 PKGS="$PKGS task-english"
 # editor of choice
-PKGS="$PKGS vim emacs vim-tiny- nano- mc ssh screen"
+PKGS="$PKGS vim emacs vim-tiny- nano- mc ssh screen xz liblz4-tool"
 # binary without library dependency
 PKGS="$PKGS e3 busybox"
 # shell environment of choice
@@ -97,17 +97,16 @@ PKGS="$PKGS sl-modem-dkms"
 apt install $PKGS
 
 #############################################################################
-# Set one-time sudo password for the user in all terminals
-echo "One-time sudo password system, enabled."
+echo "Setting passwordless sudo system"
 cat >/etc/sudoers.d/custom <<END
+# NO password for the user in sudo group
+%sudo ALL=NOPASSWD: ALL
+# Alternative setting for post buster
 # No password for 8 hours
 #Defaults timestamp_timeout = 480
-# next line is only for buster
 #Defaults timestamp_type = global
-# NO password for the primary user
-$USERNAME ALL=NOPASSWD: ALL
 END
-echo "One-time sudo password system, enabled."
+echo "Enabled passwordless sudo system."
 #############################################################################
 # Set up normal group membership
 adduser $USERNAME sudo
