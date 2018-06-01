@@ -46,8 +46,10 @@ any GNU/Linux system such as Ubuntu and Fedora.
 *   dpkg-ver    -- compare version strings              (dpkg)
 *   usertag ... -- add usertag to a package BTS
 *   hal         -- many trivial tasks via sub-commands
-    * hal install0          -- setup system (minimum, make sudo ready)
-    * hal install1          -- setup system (normal)
+    * hal install console      -- setup system (minimum)
+    * hal install gui          -- setup system (normal)
+    * hal install development  -- setup system (development)
+    * hal install full         -- setup system (full with TeX)
     * hal apt               -- log manually installed packages to ~/log
     * hal bkup backup ~/    -- backup entire home directory (restic)
     * hal bkup mount ~/     -- mount restic backup to /mnt (restic)

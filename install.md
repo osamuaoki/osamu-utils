@@ -75,9 +75,10 @@ backup/home_data directory of your account-USB key includes:
  $ cd ~/bin
  $ ./hal update
  $ ./hal dotfiles
- $ ./hal install0
- $ ./hal install1
+ $ ./hal install
 ```
+If full packages including TeX and non-free documentation packages are
+required, use `./hal install full`.
 
 * Unplug your account-USB key
 * reboot the system with full GUI tools.

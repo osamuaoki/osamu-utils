@@ -1,0 +1,210 @@
+#!/bin/sh -e
+# Setup initial install (console system)
+# Copyright 2017 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+# Set to run as ROOT
+if [ $(id -un) != root ]; then
+  if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
+    sudo "$0"
+  else
+    echo "Please type the root password"
+    su -c "$0"
+  fi
+  exit
+fi
+# Set install mode
+INSTALL_MODE="$1"
+if [ -z "$INSTALL_MODE" ]; then
+  INSTALL_MODE="development_packages"
+fi
+if [ -z "${INSTALL_MODE%%h*}" ]; then
+  echo "hal install # default=development"
+  echo "hal install user"
+  echo "hal install apt"
+  echo "hal install console"
+  echo "hal install gui"
+  echo "hal install development"
+  echo "hal install full"
+  exit
+fi
+#############################################################################
+# The following commands are run under ROOT
+#############################################################################
+echo "set the primary user privileges"
+#############################################################################
+# Set primary user name (even if it was started as root)
+USERNAME=$(id -un 1000)
+# Set up normal group membership
+adduser $USERNAME sudo
+adduser $USERNAME adm
+adduser $USERNAME src
+adduser $USERNAME staff
+adduser $USERNAME games
+echo "Reboot system to renew user/firmware"
+mkdir -p /etc/sudoers.d
+cat >/etc/sudoers.d/custom <<END
+# NO password for the primary user
+$USERNAME ALL=NOPASSWD: ALL
+# Alternative setting for the user in sudo group
+#%sudo ALL=NOPASSWD: ALL
+# Alternative setting for post buster
+# No password for 8 hours
+#Defaults timestamp_timeout = 480
+#Defaults timestamp_type = global
+END
+echo "reboot to enable the new primary user privileges"
+if [ -z "${INSTALL_MODE%%u*}" ]; then
+  echo "exit after setting the primary user privileges"
+  exit
+fi
+#############################################################################
+echo "set apt with non-free"
+#############################################################################
+# Basic apt set up after the install: Enable contrib + non-free
+if grep -q non-free /etc/apt/sources.list || \
+   grep -q contrib /etc/apt/sources.list ; then
+  echo "Already contrib + non-free enabled"
+else
+  echo "Enable contrib + non-free"
+  sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
+fi
+# report distribution supported
+echo "Debian distribution:"
+sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
+if [ -z "${INSTALL_MODE%%a*}" ]; then
+  echo "exit after setting apt with non-free"
+  exit
+fi
+#############################################################################
+# Update package apt list and update system
+apt update
+apt full-upgrade
+#############################################################################
+# Add console programs
+#############################################################################
+. /etc/os-release # get OS version
+# basic packages in case it was skipped
+#############################################################################
+echo "install basic command line packages"
+#############################################################################
+PKGS="sudo"
+PKGS="$PKGS aptitude locales-all cryptsetup lvm2"
+PKGS="$PKGS task-english"
+# editor of choice
+PKGS="$PKGS vim emacs vim-tiny- nano-"
+# compression tools
+PKGS="$PKGS gzip bzip2 xz-utils liblz4-tool"
+# binary without library dependency
+PKGS="$PKGS e3 busybox"
+# shell environment of choice
+PKGS="$PKGS mc ssh screen iproute2"
+# security related
+PKGS="$PKGS pinentry-curses gnupg scdaemon"
+# default-mta
+PKGS="$PKGS exim4-daemon-light" 
+# Easy GMAIL access for me
+PKGS="$PKGS msmtp msmtp-gnome maildrop mutt" 
+if [ "$VERSION" = "9 (stretch)" ]; then
+PKGS="$PKGS getmail4" 
+else
+# buster
+PKGS="$PKGS getmail" 
+fi
+# Filesystem tools
+PKGS="$PKGS testdisk xfsprogs xorriso btrfs-tools eject"
+# memory test
+PKGS="$PKGS memtest86+"
+# probably installed by installer
+#PKGS="$PKGS discover grub-pc console-setup initramfs-tools"
+#PKGS="$PKGS usbutils keyboard-configuration laptop-detect"
+# firmwares for network drivers (includes non-free ones)
+PKGS="$PKGS firmware-linux"
+PKGS="$PKGS atmel-firmware"
+PKGS="$PKGS bluez-firmware"
+PKGS="$PKGS broadcom-sta-dkms"
+PKGS="$PKGS firmware-atheros"
+PKGS="$PKGS firmware-bnx2"
+PKGS="$PKGS firmware-bnx2x"
+PKGS="$PKGS firmware-brcm80211"
+PKGS="$PKGS firmware-crystalhd"
+PKGS="$PKGS firmware-intel-sound"
+PKGS="$PKGS firmware-intelwimax"
+PKGS="$PKGS firmware-ipw2x00"
+PKGS="$PKGS firmware-iwlwifi"
+PKGS="$PKGS firmware-libertas"
+PKGS="$PKGS firmware-myricom"
+PKGS="$PKGS firmware-netxen"
+PKGS="$PKGS firmware-qlogic"
+PKGS="$PKGS firmware-realtek"
+PKGS="$PKGS firmware-ti-connectivity"
+PKGS="$PKGS firmware-zd1211"
+PKGS="$PKGS amd64-microcode"
+PKGS="$PKGS intel-microcode"
+PKGS="$PKGS sl-modem-dkms"
+if [ -z "${INSTALL_MODE%%c*}" ]; then
+  apt install $PKGS
+  echo "exit after installing basic command line packages"
+  exit
+fi
+#############################################################################
+echo "install basic GUI packages"
+#############################################################################
+# Spell checker
+PKGS="$PKGS task-desktop"
+# Japanese input method support for me
+PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
+# Desktop extras
+PKGS="$PKGS xdu meld nautilus-compare"
+PKGS="$PKGS gnote nixnote2 rxvt tomboy-"
+PKGS="$PKGS gparted htop libsecret-tools"
+PKGS="$PKGS chromium"
+if [ "$VERSION" != "9 (stretch)" ]; then
+# Not available in released stretch
+PKGS="$PKGS pepperflashplugin-nonfree"
+fi
+# temperature sensor
+PKGS="$PKGS psensor" 
+if [ -z "${INSTALL_MODE%%g*}" ]; then
+  apt install $PKGS
+  echo "exit after installing basic GUI packages"
+  exit
+fi
+#############################################################################
+echo "install basic development packages"
+#############################################################################
+PKGS="$PKGS build-essential"
+PKGS="$PKGS devscripts debmake git-buildpackage ben time"
+PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
+PKGS="$PKGS git gitk git-svn quilt subversion grip git-annex dgit"
+PKGS="$PKGS developers-reference debmake-doc"
+PKGS="$PKGS ccache eatmydata vim-addon-manager"
+PKGS="$PKGS exuberant-ctags"
+# Development environment for me (debug)
+PKGS="$PKGS rlwrap lsof xtrace ltrace strace gdb moreutils"
+# Perl REPL and readline 
+PKGS="$PKGS libreply-perl libterm-readline-gnu-perl"
+# 
+PKGS="$PKGS rpm2cpio"
+PKGS="$PKGS imediff2"
+# Info
+PKGS="$PKGS doc-base"
+PKGS="$PKGS texinfo pinfo"
+PKGS="$PKGS texinfo-doc-nonfree"
+if [ -z "${INSTALL_MODE%%d*}" ]; then
+  apt install $PKGS
+  echo "exit after installing basic development packages"
+  exit
+fi
+#############################################################################
+echo "install full packages"
+#############################################################################
+PKGS="$PKGS texlive-full"
+PKGS="$PKGS gccintro"
+PKGS="$PKGS glade"
+PKGS="$PKGS gcc-doc cpp-doc gdb-doc make-doc"
+PKGS="$PKGS iproute2-doc"
+apt install $PKGS
+echo "exit after installing full packages"
+exit
+
