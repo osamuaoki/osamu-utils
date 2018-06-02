@@ -48,7 +48,8 @@ if [ -n "${INSTALL_MODE%%[uacgdft]*}" ]; then
   echo " * press 'l' and input: "
   echo '    ~i!~prequired!~pimportant!~pstandard!~M!~skernel!~sadmin!~stasks!~n^firmware'
   echo " * press 'M' on 'Installed Packages' line or on 'tex' section."
-  echo " * press 'm' on key packages like 'vim' 'mc' 'git' 'ssh' ..."
+  echo " * press 'm' on key packages like 'vim' 'mc' 'git' 'ssh' 'exim4-daemon-light' ..."
+  echo " * If pressing '+' on a package causes 'B', you can press '+' again to install that package."
   echo " * press 'g' and proceed to remove bulk of packages."
   echo "Once you get the minimum system, get back to 'com' or 'gui'."
   exit
