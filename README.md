@@ -49,7 +49,8 @@ any GNU/Linux system such as Ubuntu and Fedora.
     * hal install console      -- setup system (minimum)
     * hal install gui          -- setup system (normal)
     * hal install development  -- setup system (development)
-    * hal install full         -- setup system (full with TeX)
+    * hal install full         -- setup system (full without TeX)
+    * hal install tex          -- setup system (full with TeX)
     * hal apt               -- log manually installed packages to ~/log
     * hal bkup backup ~/    -- backup entire home directory (restic)
     * hal bkup mount ~/     -- mount restic backup to /mnt (restic)

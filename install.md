@@ -121,11 +121,9 @@ copy, you need to pay extra attention.
  # addgroup <username> sudo
 ```
 
-Alternatively
-
 ```
-# cat >/etc/sudoers.d/<username> <<EOF
-<username>  ALL=(ALL) NOPASSWD:ALL
+# cat >/etc/sudoers.d/custom <<EOF
+%sudo  ALL=(ALL) NOPASSWD:ALL
 EOF
 ```
 
@@ -175,4 +173,14 @@ Connect to gmail with IMAP/SSL and SMTP/STARTTLS
 * configure Keybinding to be like Mac
     * latin_mode: Muhenkan
     * hiragana_mode: henkan
+
+## exim4
+
+```
+ $ sudo dpkg-reconfigure -plow exim4-conf
+```
+
+* mail sent by smarthost; received via SMTP or fetchmail
+* System mail name: goofy.osamu.debian.net (for hostname=goofy,
+  domainname=osamu.debian.net, should be default presented.)
 
