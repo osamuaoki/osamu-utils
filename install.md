@@ -27,15 +27,22 @@ the factory condition using hdparm.
 ```
 
 Please also have your account-USB key which contains basic account settings
-and secure its content using LUKS and filesystem encryption.  The data in
-backup/home_data directory of your account-USB key includes:
+and secure its content using LUKS and filesystem encryption.
 
+The backup/home_data directory of your account-USB key holds basic set ups:
+
+* `~/bin/`
 * `~/.getmail/`
 * `~/.gnupg/`
 * `~/.ssh/`
+* `~/.bash_aliases`
+* `~/.bashrc`
+* `~/.bashrc_local`
 * `~/.mailfilter`
 * `~/.msmtprc`
 * `~/.muttrc`
+* `~/.profile`
+* `~/.vimrc`
 
 ### Install to the target HDD/SSD
 
@@ -50,43 +57,51 @@ backup/home_data directory of your account-USB key includes:
   by selecting, e.g., `/dev/sda`.
 * For the secondary system on the multi-boot system, install grub to the
   partition of its root filesystem by selecting, e.g., `/dev/sda2`.
-* Edit `/etc/apt/sources.list` to point to the desired distribution and do as
-  follows:
-
+* If you wish to install the `testing/unstable` system instead of the
+  default `stable` system using the `stable` boot CD/USB, edit
+  `/etc/apt/sources.list` to point to the desired distribution, e.g.,
+  `stretch` --> `buster`:
 ```
- # vim /etc/apt/sources.list
+ # sed -ipe 's/stretch/buster/g' /etc/apt/sources.list
+ # shutdown -r now
+```
+* Login to non-X console as root
+```
  # apt update
  # apt dist-upgrade
- # apt install nano- vim-tiny- aptitude wget git ssh vim mc git
+ # apt install nano- vim-tiny- aptitude ssh vim mc git
  # apt install gdm3 task-desktop
  # shutdown -r now
 ```
-
-* login to your primary user account on GNOME Desktop
-* insert your account-USB key
-* Copy files from backup/home_data directory (excluding files in `.git/`) in
-  your account-USB key to the home directory of your primary user account.
-  Now you have `~/.ssh`, and `~/gnupg`.
-* Copy files from backup/bin directory (including files in `.git/`) in
-  your account-USB key to the home directory of your primary user account.
-* Use `~/bin/hal to set up system.
-
+* Login to Gnome Desktop and console terminal to your primary user account
+* Sert-up gnome-terminal preferences
+    * Disable F1, F10, shortcut for terminal
+* Sert-up mc preferences
+    * Always pause for `mc`
+* Insert your account-USB key (Decrypt disk with LUKS keyphrase)
+* Copy files from `/media/<uswername>/GPG/backup/` directory of your
+  account-USB key to the home directory of your primary user account.
+* Relogin to update the shell environment setting.
 ```
- $ cd ~/bin
- $ ./hal update
- $ ./hal dotfiles
- $ ./hal install
+ $ hal install
+```
+
+TIP: If you have permission issue, execute `su` to get the root shell.
+
+* Relogin to update the  user and group ID setting.
+```
+ $ hal update
+ $ hal dotfiles install
 ```
 If full packages including TeX and non-free documentation packages are
-required, use `./hal install full`.
+required, use `hal install full`.
 
-* Unplug your account-USB key
-* reboot the system with full GUI tools.
-* Insert your account-USB key to set up GNOME keyring
+* Insert your account-USB key again to set up GNOME keyring for `msmtp-gnome`
 
 ```
- $ GPG/bin/setup
+ $ /media/<uswername>/GPG/setup/setup
 ```
+
 
 ### Installation Tips
 
@@ -95,7 +110,7 @@ copy, you need to pay extra attention.
 
 * Don't share swap partition among multiple installations.
 * Don't set the file system type (such as ext4), if the installation doesn't
-  mount it.
+  mount that partition
 * UUID may need to be adjusted when a file system is reformatted with `mkfs` a
   swap partition are reinitialized with `mkswap`.  UUID can be identified
   by `blkid`(8).

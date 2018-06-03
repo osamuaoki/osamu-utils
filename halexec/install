@@ -66,9 +66,9 @@ echo "Reboot system to renew user/firmware"
 mkdir -p /etc/sudoers.d
 cat >/etc/sudoers.d/custom <<END
 # NO password for the primary user
-#$USERNAME ALL=NOPASSWD: ALL
+#$USERNAME ALL = NOPASSWD: ALL
 # Alternative setting for the user in sudo group
-%sudo ALL=NOPASSWD: ALL
+%sudo ALL = NOPASSWD: ALL
 # Alternative setting for post buster
 # No password for 8 hours
 #Defaults timestamp_timeout = 480
@@ -110,7 +110,9 @@ PKGS="$PKGS firmware-atheros"
 PKGS="$PKGS firmware-bnx2"
 PKGS="$PKGS firmware-bnx2x"
 PKGS="$PKGS firmware-brcm80211"
+if [ "$VERSION" = "9 (stretch)" ]; then
 PKGS="$PKGS firmware-crystalhd"
+fi
 PKGS="$PKGS firmware-intel-sound"
 PKGS="$PKGS firmware-intelwimax"
 PKGS="$PKGS firmware-ipw2x00"
@@ -162,7 +164,12 @@ else
 PKGS="$PKGS getmail" 
 fi
 # Filesystem tools
-PKGS="$PKGS testdisk xfsprogs xorriso btrfs-tools eject"
+PKGS="$PKGS testdisk xfsprogs xorriso eject"
+if [ "$VERSION" = "9 (stretch)" ]; then
+PKGS="$PKGS btrfs-tools"
+else
+PKGS="$PKGS btrfs-progs"
+fi
 # memory test
 PKGS="$PKGS memtest86+"
 # probably installed by installer

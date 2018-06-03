@@ -8,10 +8,14 @@ if [ -n "$1" -a -z "${1%%i*}" ] ; then
 elif [ -n "$1" -a -z "${1%%d*}" ] ; then
   # start with "d"
   COMMAND="diff -u"
+elif [ -n "$1" -a -z "${1%%b*}" ] ; then
+  # start with "b"
+  COMMAND=":" # NOP
 else
   echo "Syntax:"
   echo " $ hal dotfiles i[nstall]"
   echo " $ hal dotfiles d[iff]"
+  echo " $ hal dotfiles b[ackup]"
   exit
 fi
 
@@ -30,6 +34,7 @@ if [ "$COMMAND" = "cp" ] ; then
   echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
   echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
 fi
+
 # install latest dotfiles
 for f in ~/bin/dotfiles/.* ; do
   if [ -f $f ]; then
@@ -45,3 +50,25 @@ for f in ~/bin/pbuilder/* ; do
   fi
 done
 
+if [ "$COMMAND" = ":" ] ; then
+  BUPATH=BU$(date -u +'%Y%m%d')
+  mkdir -p $BUPATH/home
+  mkdir -p $BUPATH/etc
+  cd $BUPATH/home
+  cp -a ~/bin/          bin/
+  cp -a ~/.getmail/     .getmail/
+  cp -a ~/.gnupg/       .gnupg/
+  cp -a ~/.ssh/         .ssh/
+  cp -a ~/.bash_aliases .bash_aliases
+  cp -a ~/.bashrc       .bashrc
+  cp -a ~/.bashrc_local .bashrc_local
+  cp -a ~/.mailfilter   .mailfilter
+  cp -a ~/.msmtprc      .msmtprc
+  cp -a ~/.muttrc       .muttrc
+  cp -a ~/.profile      .profile
+  cp -a ~/.vimrc        .vimrc
+  cd ../etc
+  sudo cp -a /etc/exim4/passwd.client exim4_passwd.client
+  sudo cp -a /etc/exim4/update-exim4.conf.conf exim4-update-exim4.conf.conf
+  echo "You need to do `dpkg-reconfigure -plow exim4-config` later"
+fi
