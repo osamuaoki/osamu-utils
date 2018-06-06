@@ -74,10 +74,15 @@ The backup/home_data directory of your account-USB key holds basic set ups:
  # shutdown -r now
 ```
 * Login to Gnome Desktop and console terminal to your primary user account
-* Sert-up gnome-terminal preferences
-    * Disable F1, F10, shortcut for terminal
-* Sert-up mc preferences
-    * Always pause for `mc`
+* Set-up gnome-terminal preferences
+    * Profile preferences
+        * General -> Kill terminal bell
+        * Scrolling -> No limit to scroll
+    * Preferences
+        * General   -> Disable Menu access by F10
+        * Shortcuts -> Disable shortcut
+* Set-up mc preferences
+    * Always pause after shell execution for `mc`
 * Insert your account-USB key (Decrypt disk with LUKS keyphrase)
 * Copy files from `/media/<uswername>/GPG/backup/` directory of your
   account-USB key to the home directory of your primary user account.
@@ -102,8 +107,17 @@ required, use `hal install full`.
  $ /media/<uswername>/GPG/setup/setup
 ```
 
+* Install packages as you feel like:
 
-### Installation Tips
+```
+ # aptitude -u
+```
+
+
+## Installation Tips
+
+
+### Basic post install tips
 
 When manually building customized system or restoring system from the archive
 copy, you need to pay extra attention.
@@ -130,41 +144,14 @@ copy, you need to pay extra attention.
     * Ethernet interface to be controlled by `network-manager`
         * comment out hotplug devices in `/etc/network/interfaces`
 
-## sudo
 
-```
- # addgroup <username> sudo
-```
-
-```
-# cat >/etc/sudoers.d/custom <<EOF
-%sudo  ALL=(ALL) NOPASSWD:ALL
-EOF
-```
-
-### Manual refine
-
-* Terminal:
-    * Profile preferences
-        * General -> Kill terminal bell
-        * Scrolling -> No limit to scroll
-    * Preferences
-        * General   -> Disable Menu access by F10
-        * Shortcuts -> Disable shortcut
-
-* Packages:
-
-```
- # aptitude -u
-```
-
-## EXT4 optimize ideas for note PC
+### EXT4 optimize ideas for note PC
 
 * `sudo tune2fs -o journal_data_writeback /dev/sda2` from other boot media.
 * `/etc/fstab option field`:
  	* `noatime,discard,data=writeback,barrier=0,commit=60,errors=remount-ro`
 
-## GRUB
+### GRUB
 
 * `grub-theme-starfield`
 * `grub2-splashimages`
@@ -175,12 +162,12 @@ EOF
  sudo update-grub
 ```
 
-## Evolution
+### Evolution
 
 Connect to gmail with IMAP/SSL and SMTP/STARTTLS
 (Mutt works as backup system if connected with POP3)
 
-## Japanese
+### Japanese
 
 * Font: vlgothic, ipa*
 * IM: ibus-anthy
@@ -189,7 +176,7 @@ Connect to gmail with IMAP/SSL and SMTP/STARTTLS
     * latin_mode: Muhenkan
     * hiragana_mode: henkan
 
-## exim4
+### exim4
 
 ```
  $ sudo dpkg-reconfigure -plow exim4-conf

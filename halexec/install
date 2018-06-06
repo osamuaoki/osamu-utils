@@ -197,8 +197,10 @@ if [ "$VERSION" != "9 (stretch)" ]; then
 # Not available in released stretch
 PKGS="$PKGS pepperflashplugin-nonfree"
 fi
+if [ "$VERSION" = "9 (stretch)" ]; then
 # temperature sensor
 PKGS="$PKGS psensor" 
+fi
 if [ -z "${INSTALL_MODE%%g*}" ]; then
   apt install $PKGS
   echo "exit after installing basic GUI packages"

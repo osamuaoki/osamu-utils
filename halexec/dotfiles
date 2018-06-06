@@ -42,19 +42,24 @@ for f in ~/bin/dotfiles/.* ; do
   fi
 done
 
+if [ "$COMMAND" != ":" ] ; then
 # install latest pbuilder files
-sudo mkdir -p /var/cache/pbuilder/hooks
-for f in ~/bin/pbuilder/* ; do
-  if [ -f $f ]; then
-    sudo $COMMAND $f /var/cache/pbuilder/hooks/$(basename $f)
-  fi
-done
+  sudo mkdir -p /var/cache/pbuilder/hooks
+  for f in ~/bin/pbuilder/* ; do
+    if [ -f $f ]; then
+      sudo $COMMAND $f /var/cache/pbuilder/hooks/$(basename $f)
+    fi
+  done
+fi
 
 if [ "$COMMAND" = ":" ] ; then
-  BUPATH=BU$(date -u +'%Y%m%d')
+  BUPATH="backup_$(date -u +'%Y%m%d')"
+  echo "Back up to $BUPATH"
   mkdir -p $BUPATH/home
   mkdir -p $BUPATH/etc
-  cd $BUPATH/home
+  cd $BUPATH/home >/dev/null
+  echo "backup home directory"
+  set -x
   cp -a ~/bin/          bin/
   cp -a ~/.getmail/     .getmail/
   cp -a ~/.gnupg/       .gnupg/
@@ -67,8 +72,15 @@ if [ "$COMMAND" = ":" ] ; then
   cp -a ~/.muttrc       .muttrc
   cp -a ~/.profile      .profile
   cp -a ~/.vimrc        .vimrc
-  cd ../etc
-  sudo cp -a /etc/exim4/passwd.client exim4_passwd.client
+  set +x
+  cd ../etc >/dev/null
+  echo "backup /etc directory"
+  set -x
+  sudo cp -a /etc/exim4/passwd.client          exim4_passwd.client
   sudo cp -a /etc/exim4/update-exim4.conf.conf exim4-update-exim4.conf.conf
-  echo "You need to do `dpkg-reconfigure -plow exim4-config` later"
+  sudo cp -a /etc/email-addresses              email-addresses
+  set +x
+  echo "===================================================================="
+  echo "You need to do 'dpkg-reconfigure -plow exim4-config' later"
+  echo "to update exim server"
 fi
