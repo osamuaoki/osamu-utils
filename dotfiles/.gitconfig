@@ -18,3 +18,6 @@
 #	citool = gui citool
 [push]
 	default = simple
+[url "git@salsa.debian.org:"]
+	pushInsteadOf = https://salsa.debian.org/
+	insteadOf = salsa:
