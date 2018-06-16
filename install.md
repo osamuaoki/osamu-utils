@@ -27,7 +27,7 @@ the factory condition using hdparm.
 ```
 
 Please also have your account-USB key which contains basic account settings
-and secure its content using LUKS and filesystem encryption.
+and secures its content using LUKS and filesystem encryption.
 
 The backup/home_data directory of your account-USB key holds basic set ups:
 
@@ -52,72 +52,73 @@ The backup/home_data directory of your account-USB key holds basic set ups:
 * If system is intended to be upgraded to testing or unstable system, don't
   install Desktop (GUI) system and install only basic console system.  This
   extra-precaution prevents buggy dependency packages to cause upgrade
-  nightmare.  
+  nightmare when installing `testing/unstable` system from `stable` boot
+  CD/USB.
 * For the primary system on the multi-boot system, install grub to the MBR
   by selecting, e.g., `/dev/sda`.
 * For the secondary system on the multi-boot system, install grub to the
   partition of its root filesystem by selecting, e.g., `/dev/sda2`.
-* If you wish to install the `testing/unstable` system instead of the
-  default `stable` system using the `stable` boot CD/USB, edit
-  `/etc/apt/sources.list` to point to the desired distribution, e.g.,
-  `stretch` --> `buster`:
+* Login to non-X console as the primary user.
+    * If you wish to install the `stable` system, you skip this step.
+    * If you wish to install the `testing/unstable` system instead using the
+      `stable` boot CD/USB, edit `/etc/apt/sources.list` to point to the
+      desired distribution, e.g., `stretch` --> `buster`:
 ```
- # sed -ipe 's/stretch/buster/g' /etc/apt/sources.list
- # shutdown -r now
+ $ su --preserve-environment -l
+ # sed -i -e 's/stretch/buster/g' /etc/apt/sources.list
+ # ^D
 ```
-* Login to non-X console as root
+* Proceed to the initial setup (install `git` and `sudo`)
 ```
- # apt update
- # apt dist-upgrade
- # apt install nano- vim-tiny- aptitude ssh vim mc git
- # apt install gdm3 task-desktop
- # shutdown -r now
+ $ su --preserve-environment -l
+ # apt install sudo git equivs
+ # ^D
+ $ git clone https://github.com/osamuaoki/osamu-utils.git bin
+ $ hal dotfiles
+ $ hal initial-setup
+ ... reboot system
 ```
-* Login to Gnome Desktop and console terminal to your primary user account
+* Login to non-X console as the primary user.
+```
+ $ hal install gui
+ $ sudo shoutdown -r now
+ ... reboot system
+```
+If full packages including TeX and non-free documentation packages are
+required, use `hal install tex`.
+* Login to Gnome Desktop and console terminal to your primary user account.
 * Set-up gnome-terminal preferences
     * Profile preferences
         * General -> Kill terminal bell
         * Scrolling -> No limit to scroll
     * Preferences
         * General   -> Disable Menu access by F10
-        * Shortcuts -> Disable shortcut
+        * Shortcuts -> Disable shortcut (F1 etc.)
 * Set-up mc preferences
     * Always pause after shell execution for `mc`
-* Insert your account-USB key (Decrypt disk with LUKS keyphrase)
+* Insert your account-USB key (Decrypt disk with LUKS keyphrase) and mount it.
 * Copy files from `/media/<uswername>/GPG/backup/` directory of your
   account-USB key to the home directory of your primary user account.
-* Relogin to update the shell environment setting.
+* Update `bin/.git/config` to have:
 ```
- $ hal install
+...
+[remote "origin"]
+    url = git@github.com:osamuaoki/osamu-utils.git
+...
 ```
-
-TIP: If you have permission issue, execute `su` to get the root shell.
-
-* Relogin to update the  user and group ID setting.
+* Update `~/bin` with submodules:
 ```
  $ hal update
- $ hal dotfiles install
 ```
-If full packages including TeX and non-free documentation packages are
-required, use `hal install full`.
-
 * Insert your account-USB key again to set up GNOME keyring for `msmtp-gnome`
 
 ```
  $ /media/<uswername>/GPG/setup/setup
 ```
 
-* Install packages as you feel like:
-
-```
- # aptitude -u
-```
-
+TIP: If you have permission issue, execute `su --preserve-environment -l` to get the root shell.
 
 ## Installation Tips
-
-
-### Basic post install tips
 
 When manually building customized system or restoring system from the archive
 copy, you need to pay extra attention.
@@ -144,6 +145,14 @@ copy, you need to pay extra attention.
     * Ethernet interface to be controlled by `network-manager`
         * comment out hotplug devices in `/etc/network/interfaces`
 
+## Post installation tips
+
+
+### Package selection
+
+```
+ $ sudo aptitude -u
+```
 
 ### EXT4 optimize ideas for note PC
 
@@ -169,9 +178,6 @@ Connect to gmail with IMAP/SSL and SMTP/STARTTLS
 
 ### Japanese
 
-* Font: vlgothic, ipa*
-* IM: ibus-anthy
-    * add `libqt5gui5`
 * configure Keybinding to be like Mac
     * latin_mode: Muhenkan
     * hiragana_mode: henkan

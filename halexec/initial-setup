@@ -1,0 +1,63 @@
+#!/bin/sh -e
+# Initial setup
+# Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+# Set to run as ROOT
+if [ $(id -un) != root ]; then
+  export INSTALL_MODE
+  if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
+    sudo --preserve-env "$0"
+  else
+    echo "Please type the root password"
+    su --preserve-environment -c "$0"
+  fi
+  exit
+fi
+
+echo "Executing 'hal ${0##*/}'" >&2
+
+#############################################################################
+# The following commands are run under ROOT
+#############################################################################
+echo "set apt with non-free"
+#############################################################################
+# Basic apt set up after the install: Enable contrib + non-free
+if grep -q non-free /etc/apt/sources.list || \
+   grep -q contrib /etc/apt/sources.list ; then
+  echo "Already contrib + non-free enabled"
+else
+  echo "Enable contrib + non-free"
+  sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
+fi
+apt update
+apt full-upgrade
+#############################################################################
+echo "set the primary user privileges"
+#############################################################################
+apt install sudo equivs git
+# Set primary user name (even if it was started as root)
+USERNAME=$(id -un 1000)
+mkdir -p /etc/sudoers.d
+cat >/etc/sudoers.d/custom <<END
+# NO password for the primary user
+#$USERNAME ALL = NOPASSWD: ALL
+# Alternative setting for the user in sudo group
+%sudo ALL = (ALL) NOPASSWD : ALL
+# Alternative setting for post buster
+# No password for 8 hours
+#Defaults timestamp_timeout = 480
+#Defaults timestamp_type = global
+END
+# Set up normal group membership
+adduser $USERNAME sudo
+adduser $USERNAME adm
+adduser $USERNAME src
+adduser $USERNAME staff
+adduser $USERNAME games
+echo ""
+echo "Debian distribution supported:"
+sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
+echo ""
+read -p "Type 'RETURN'-key to reboot the system (otherwise ^C to stop here)." FOO
+shutdown -r now

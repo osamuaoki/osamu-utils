@@ -12,10 +12,10 @@ elif [ -n "$1" -a -z "${1%%b*}" ] ; then
   # start with "b"
   COMMAND=":" # NOP
 else
-  echo "Syntax:"
-  echo " $ hal dotfiles i[nstall]"
-  echo " $ hal dotfiles d[iff]"
-  echo " $ hal dotfiles b[ackup]"
+  echo "Syntax:"                   # $COMMAND
+  echo " $ hal dotfiles i[nstall]" # "cp"
+  echo " $ hal dotfiles d[iff]"    # "diff -u"
+  echo " $ hal dotfiles b[ackup]"  # ":"
   exit
 fi
 
@@ -24,26 +24,22 @@ if [ "$COMMAND" = "diff -u" ] ; then
   echo
 fi
 
+# install/diff with latest skel/.*
 for f in /etc/skel/.* ; do
   if [ -f $f ]; then
     $COMMAND $f ~/$(basename $f)
   fi
 done
 
-if [ "$COMMAND" = "cp" ] ; then
-  echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
-  echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
-fi
-
-# install latest dotfiles
+# install/diff with latest dotfiles
 for f in ~/bin/dotfiles/.* ; do
   if [ -f $f ]; then
     $COMMAND $f ~/$(basename $f)
   fi
 done
 
+# install/diff latest pbuilder files
 if [ "$COMMAND" != ":" ] ; then
-# install latest pbuilder files
   sudo mkdir -p /var/cache/pbuilder/hooks
   for f in ~/bin/pbuilder/* ; do
     if [ -f $f ]; then
@@ -52,6 +48,13 @@ if [ "$COMMAND" != ":" ] ; then
   done
 fi
 
+# tweak for install
+if [ "$COMMAND" = "cp" ] ; then
+  echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
+  echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
+fi
+
+# backup to directory under current working directory
 if [ "$COMMAND" = ":" ] ; then
   BUPATH="backup_$(date -u +'%Y%m%d')"
   echo "Back up to $BUPATH"
@@ -84,3 +87,4 @@ if [ "$COMMAND" = ":" ] ; then
   echo "You need to do 'dpkg-reconfigure -plow exim4-config' later"
   echo "to update exim server"
 fi
+

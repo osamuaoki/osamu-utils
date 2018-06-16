@@ -1,42 +1,19 @@
 #!/bin/sh -e
-# Setup initial install (console system)
-# Copyright 2017 Osamu Aoki <osamu@debian.org>, GPL-2+
+# install packages with equivs
+# Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 ai et:
 #############################################################################
-# Set to run as ROOT
-if [ $(id -un) != root ]; then
-  INSTALL_MODE=$1
-  export INSTALL_MODE
-  if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
-    sudo --preserve-env "$0"
-  else
-    echo "Please type the root password"
-    su --preserve-environment -c "$0"
-  fi
-  exit
-else
-  if [ -n "$1" ]; then
-    INSTALL_MODE="$1"
-  fi
-fi
-#echo "XXX: INSTALL_MODE='$INSTALL_MODE'"
-#if [ -z "${INSTALL_MODE%%x*}" ]; then
-#  echo "Check: INSTALL_MODE='$INSTALL_MODE'"
-#  id
-#  exit
-#fi
+INSTALL_MODE=$1
 if [ -z "$INSTALL_MODE" ]; then
   INSTALL_MODE="gui"
 fi
 
-echo "Executing 'hal install $INSTALL_MODE'" >&2
+echo "Executing 'hal ${0##*/} $INSTALL_MODE'" >&2
 
 # if not matching, print help
-if [ -n "${INSTALL_MODE%%[uacgdft]*}" ]; then
+if [ -n "${INSTALL_MODE%%[cgdft]*}" ]; then
   echo "Set up default configurations and packages"
   echo "syntax:"
-  echo "hal install user    # up to setting primary user for sudo etc."
-  echo "hal install apt     # up to setting non-free network drivers"
   echo "hal install com     # up to basic command line environment"
   echo "hal install gui"    # up to basic GUI environment"
   echo "hal install         # equivalent of 'gui'"
@@ -44,7 +21,7 @@ if [ -n "${INSTALL_MODE%%[uacgdft]*}" ]; then
   echo "hal install full    # up to full system with Docs"
   echo "hal install tex     # up to full system with TeX"
   echo ""
-  echo "For de-installing bulk of packages, from aptitude,"
+  echo "For manually de-installing bulk of packages, from aptitude,"
   echo " * press 'l' and input: "
   echo '    ~i!~prequired!~pimportant!~pstandard!~M!~skernel!~sadmin!~stasks!~n^firmware'
   echo " * press 'M' on 'Installed Packages' line or on 'tex' section."
@@ -52,57 +29,16 @@ if [ -n "${INSTALL_MODE%%[uacgdft]*}" ]; then
   echo " * If pressing '+' on a package causes 'B', you can press '+' again to install that package."
   echo " * press 'g' and proceed to remove bulk of packages."
   echo "Once you get the minimum system, get back to 'com' or 'gui'."
+  echo ""
+  echo "You can also use locally installed equivs-* packages to manage in group"
   exit
 fi
+. /etc/os-release # get OS version
 #############################################################################
-# The following commands are run under ROOT
+echo "non-free firmwares"
 #############################################################################
-echo "set the primary user privileges"
-#############################################################################
-# Set primary user name (even if it was started as root)
-USERNAME=$(id -un 1000)
-PKGS="sudo"
-echo "Reboot system to renew user/firmware"
-mkdir -p /etc/sudoers.d
-cat >/etc/sudoers.d/custom <<END
-# NO password for the primary user
-#$USERNAME ALL = NOPASSWD: ALL
-# Alternative setting for the user in sudo group
-%sudo ALL = NOPASSWD: ALL
-# Alternative setting for post buster
-# No password for 8 hours
-#Defaults timestamp_timeout = 480
-#Defaults timestamp_type = global
-END
-# Set up normal group membership
-adduser $USERNAME sudo
-adduser $USERNAME adm
-adduser $USERNAME src
-adduser $USERNAME staff
-adduser $USERNAME games
-echo "reboot to enable the new primary user privileges"
-if [ -z "${INSTALL_MODE%%u*}" ]; then
-  echo "exit after setting the primary user privileges"
-  exit
-fi
-#############################################################################
-echo "set apt with non-free"
-#############################################################################
-# Basic apt set up after the install: Enable contrib + non-free
-if grep -q non-free /etc/apt/sources.list || \
-   grep -q contrib /etc/apt/sources.list ; then
-  echo "Already contrib + non-free enabled"
-else
-  echo "Enable contrib + non-free"
-  sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
-fi
-apt update
-apt full-upgrade
-# report distribution supported
-echo "Debian distribution supported:"
-sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
 # firmwares for network drivers (including non-free ones)
-PKGS="$PKGS firmware-linux"
+PKGS="firmware-linux"
 PKGS="$PKGS atmel-firmware"
 PKGS="$PKGS bluez-firmware"
 PKGS="$PKGS broadcom-sta-dkms"
@@ -110,7 +46,7 @@ PKGS="$PKGS firmware-atheros"
 PKGS="$PKGS firmware-bnx2"
 PKGS="$PKGS firmware-bnx2x"
 PKGS="$PKGS firmware-brcm80211"
-if [ "$VERSION" = "9 (stretch)" ]; then
+if [ "$VERSION" != "9 (stretch)" ]; then
 PKGS="$PKGS firmware-crystalhd"
 fi
 PKGS="$PKGS firmware-intel-sound"
@@ -127,26 +63,24 @@ PKGS="$PKGS firmware-zd1211"
 PKGS="$PKGS amd64-microcode"
 PKGS="$PKGS intel-microcode"
 PKGS="$PKGS sl-modem-dkms"
-if [ -z "${INSTALL_MODE%%a*}" ]; then
-  echo "exit after setting apt with non-free"
-  exit
-fi
+hal equivs equivs-firmware $PKGS
 #############################################################################
 # Add console programs
 #############################################################################
-. /etc/os-release # get OS version
 # basic packages in case it was skipped
 #############################################################################
 echo "install basic command line packages"
 #############################################################################
+PKGS="sudo equivs git"
 PKGS="$PKGS aptitude locales-all cryptsetup lvm2"
 PKGS="$PKGS task-english"
 # editor of choice
-PKGS="$PKGS vim emacs vim-tiny- nano- git"
+PKGS="$PKGS vim emacs"
+PPKG="nano vim.tiny"
 # Use graphicsmagick instead of imagemagick (emacs)
 PKGS="$PKGS graphicsmagick-imagemagick-compat"
 # compression tools
-PKGS="$PKGS gzip bzip2 xz-utils liblz4-tool"
+PKGS="$PKGS gzip bzip2 xz-utils liblz4-tool zstd"
 # binary without library dependency
 PKGS="$PKGS e3 busybox"
 # shell environment of choice
@@ -165,18 +99,22 @@ PKGS="$PKGS getmail"
 fi
 # Filesystem tools
 PKGS="$PKGS testdisk xfsprogs xorriso eject"
-if [ "$VERSION" = "9 (stretch)" ]; then
+if [ "$VERSION" != "9 (stretch)" ]; then
 PKGS="$PKGS btrfs-tools"
 else
 PKGS="$PKGS btrfs-progs"
 fi
 # memory test
 PKGS="$PKGS memtest86+"
+# backup
+PKGS="$PKGS rsync"
+PKGS="$PKGS rsnapshot"
 # probably installed by installer
 #PKGS="$PKGS discover grub-pc console-setup initramfs-tools"
 #PKGS="$PKGS usbutils keyboard-configuration laptop-detect"
+# Install basic console packages while removing useless ones
+hal equivs equivs-console $PKGS -p $PPKG
 if [ -z "${INSTALL_MODE%%c*}" ]; then
-  apt install $PKGS
   echo "exit after installing basic command line packages"
   exit
 fi
@@ -184,32 +122,34 @@ fi
 echo "install basic GUI packages"
 #############################################################################
 # Desktop=Gnome
-PKGS="$PKGS task-desktop"
+PKGS="task-desktop"
+# install gnote and make sure to remove tomboy
+PKGS="$PKGS gnote"
+PPKGS="tomboy"
 # Japanese input method support for me
-PKGS="$PKGS ibus-anthy fonts-vlgothic fonts-ipaexfont"
+PKGS="$PKGS im-config ibus-anthy ibus-gtk ibus-gtk3 ibus-qt4 libqt5gui5"
+PKGS="$PKGS fonts-vlgothic fonts-ipaexfont nkf"
 # Desktop extras
 PKGS="$PKGS xdu meld nautilus-compare"
 PKGS="$PKGS gitk"
-PKGS="$PKGS gnote nixnote2 rxvt tomboy-"
+PKGS="$PKGS gnote nixnote2 rxvt"
 PKGS="$PKGS gparted htop libsecret-tools"
 PKGS="$PKGS chromium"
 if [ "$VERSION" != "9 (stretch)" ]; then
 # Not available in released stretch
 PKGS="$PKGS pepperflashplugin-nonfree"
 fi
-if [ "$VERSION" = "9 (stretch)" ]; then
 # temperature sensor
-PKGS="$PKGS psensor" 
-fi
+PKGS="$PKGS psensor"
+hal equivs equivs-gui $PKGS -p $PPKGS
 if [ -z "${INSTALL_MODE%%g*}" ]; then
-  apt install $PKGS
   echo "exit after installing basic GUI packages"
   exit
 fi
 #############################################################################
 echo "install basic development packages"
 #############################################################################
-PKGS="$PKGS build-essential"
+PKGS="build-essential"
 PKGS="$PKGS devscripts debmake git-buildpackage ben time"
 PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
 PKGS="$PKGS git-svn quilt subversion grip git-annex dgit"
@@ -226,8 +166,11 @@ PKGS="$PKGS imediff2"
 PKGS="$PKGS doc-base"
 PKGS="$PKGS texinfo pinfo"
 PKGS="$PKGS texinfo-doc-nonfree"
+PKGS="$PKGS gccintro"
+PKGS="$PKGS etherape"
+PKGS="$PKGS librecad"
+hal equivs equivs-develop $PKGS
 if [ -z "${INSTALL_MODE%%d*}" ]; then
-  apt install $PKGS
   echo "exit after installing basic development packages"
   exit
 fi
@@ -246,22 +189,19 @@ PKGS="$PKGS python-all-dev python-doc"
 PKGS="$PKGS python3-all-dev python3-doc"
 PKGS="$PKGS gcc-doc cpp-doc gdb-doc make-doc"
 PKGS="$PKGS gdb cgdb gdb-doc"
-PKGS="$PKGS gccintro"
 PKGS="$PKGS rustc rust-gdb rust-doc"
 PKGS="$PKGS glade"
 PKGS="$PKGS iproute2-doc"
-PKGS="$PKGS etherape"
+hal equivs equivs-full $PKGS
 if [ -z "${INSTALL_MODE%%f*}" ]; then
-  apt install $PKGS
   echo "exit after installing full packages"
   exit
 fi
 #############################################################################
 echo "install TeX packages"
 #############################################################################
-PKGS="$PKGS texlive-full"
+hal equivs equivs-tex texlive-full
 if [ -z "${INSTALL_MODE%%t*}" ]; then
-  apt install $PKGS
   echo "exit after installing TeX packages"
   exit
 fi

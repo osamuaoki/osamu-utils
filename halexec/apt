@@ -1,9 +1,0 @@
-#!/bin/sh -e
-# vim:se tw=78 ai ts=2 sts=2 et:
-# list manually installed packages
-mkdir -p ~/log
-if [ ! -d ~/log/.git ]; then
-  cd ~/log ; git init; cd
-fi
-aptitude search '~i!~prequired!~pimportant!~pstandard!~M' >~/log/installed.log
-cd ~/log ; git add installed.log ; git commit -m "$(date)" || true ; cd

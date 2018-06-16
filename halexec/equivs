@@ -1,0 +1,136 @@
+#!/bin/sh -e
+# Setup a fake package for modular package install
+# Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+echo "Executing 'hal ${0##*/} $@'" >&2
+EQUIVS="$1"
+shift
+help () {
+  echo "For installing a set of packages as <name>:"
+  echo "hal ${0##*/} <name> <pkg0> <pkg1> ... [-[d|r|s|p] <pkg2> <pkg3> ...]..."
+  echo "   -d: depends, -r: recommends, -s: suggests, -p: provides and purge after install"
+  exit
+}
+# if not matching, print help
+if [ -z "$1" ]; then
+  help
+fi
+n=1
+type="-r"
+DEPENDS=""
+RECOMMENDS=""
+SUGGESTS=""
+PROVIDES=""
+KEEP=0
+VERBOSE=":"
+NOP=""
+while [ -n "$1" ]; do {
+  n=$((n+1))
+  case $1 in
+    -[drsp])
+      type="$1"
+      ;;
+    -k)
+      KEEP=1
+      ;;
+    -n)
+      NOP="echo"
+      ;;
+    -v)
+      VERBOSE="echo"
+      ;;
+    -*)
+      help # wrong
+      ;;
+    *)
+      case $type in
+        -d)
+          if [ -z "$DEPENDS" ]; then
+            DEPENDS="$1"
+          else
+            DEPENDS="$DEPENDS, $1"
+          fi
+        ;;
+        -r)
+          if [ -z "$RECOMMENDS" ]; then
+            RECOMMENDS="$1"
+          else
+            RECOMMENDS="$RECOMMENDS, $1"
+          fi
+        ;;
+        -s)
+          if [ -z "$SUGGESTS" ]; then
+            SUGGESTS="$1"
+          else
+            SUGGESTS="$SUGGESTS, $1"
+          fi
+        ;;
+        -p)
+          if [ -z "$PROVIDES" ]; then
+            PROVIDES="$1"
+          else
+            PROVIDES="$PROVIDES, $1"
+          fi
+        ;;
+      esac
+  esac
+  shift
+} done
+EQUIVS_DIR=`mktemp -t -d equivs_$EQUIVS.XXXXXXXX`
+$VERBOSE "working in EQUIVS_DIR"
+cd $EQUIVS_DIR >/dev/null
+CONTROL="$EQUIVS_DIR/control"
+echo "Source: $EQUIVS" >$CONTROL
+echo "Section: equivs"    >>$CONTROL
+echo "Priority: optional" >>$CONTROL
+echo "Standards-Version: 3.9.2" >>$CONTROL
+echo "Package: $EQUIVS" >>$CONTROL
+echo "Version: 1.0" >>$CONTROL
+if [ -n "$DEBFULLNAME" -a -n "DEBEMAIL" ]; then
+  MAINTAINER="$DEBFULLNAME <$DEBEMAIL>"
+else
+  MAINTAINER="Foo Bar <foo.bar@example.org>"
+fi
+echo "Maintainer: $MAINTAINER" >>$CONTROL
+echo "Depends: $DEPENDS" >>$CONTROL
+echo "Recommends: $RECOMMENDS" >>$CONTROL
+echo "Suggests: $SUGGESTS" >>$CONTROL
+#echo "Breaks: $PROVIDES" >>$CONTROL
+#echo "Replaces: $PROVIDES" >>$CONTROL
+echo "Provides: $PROVIDES" >>$CONTROL
+echo "Architecture: any" >>$CONTROL
+echo "Multi-Arch: foreign" >>$CONTROL
+equivs-build $CONTROL
+$NOP sudo dpkg --force-depends -i ${EQUIVS}_1.0_*.deb
+$NOP sudo apt-get update
+$NOP sudo apt-get install -o Debug::pkgProblemResolver=yes --fix-broken
+
+RECOMMENDS_AUTO=$(echo "$RECOMMENDS" | sed -e 's/ *,/+M /g' -e 's/ *|/+M /g' -e 's/ *$/+M/')
+if $NOP sudo aptitude install $RECOMMENDS_AUTO ; then
+  echo "All recommendation auto-installed at once"
+else
+  echo "All recommendation installed one-by-one"
+  for p in $RECOMMENDS_AUTO ; do
+    # install but ignore missing
+    $NOP sudo aptitude install ${p} || true
+  done
+fi
+
+PROVIDES_AUTO=$(echo "$PROVIDES" | sed -e 's/ *,/ /g' -e 's/ *|/ /g' -e 's/ *$//')
+if $NOP sudo apt-get purge $PROVIDES_AUTO ; then
+  echo "All provides auto-deinstalled at once"
+else
+  echo "All provides deinstalled one-by-one"
+  for p in $PROVIDES_AUTO ; do
+    # deinstall but ignore missing
+    $NOP sudo apt-get purge ${p} || true
+  done
+fi
+
+cd - >/dev/null
+if [ "$KEEP" = 0 ]; then
+  rm -rf $EQUIVS_DIR
+fi
+
+echo "Please run 'sudo aptitude -u' to sort out remaining dependency issues."

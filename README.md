@@ -5,10 +5,11 @@ vim:se tw=78 ai si sts=4 et:
 
 These are trivial scripts to make my life easy.
 
-For installing system with this script, see [install memo](install.md).
+This assumes my git account and my ssh key installed by hand properly.
 
+For new installation, see [install memo](install.md).
 
-## Update HAL system
+## Updating scripts
 
 ```
  $ mkdir ~/bin
@@ -46,16 +47,18 @@ any GNU/Linux system such as Ubuntu and Fedora.
 *   dpkg-ver    -- compare version strings              (dpkg)
 *   usertag ... -- add usertag to a package BTS
 *   hal         -- many trivial tasks via sub-commands
+    * hal initial-setup        -- initial setup system
     * hal install console      -- setup system (minimum)
     * hal install gui          -- setup system (normal)
     * hal install development  -- setup system (development)
     * hal install full         -- setup system (full without TeX)
     * hal install tex          -- setup system (full with TeX)
-    * hal apt               -- log manually installed packages to ~/log
+    * hal equivs ...           -- install packages as a group with equivs
     * hal bkup backup ~/    -- backup entire home directory (restic)
     * hal bkup mount ~/     -- mount restic backup to /mnt (restic)
-    * hal dotfiles install  -- setup dotfiles and pbuilder-files
-    * hal dotfiles diff     -- check dotfiles and pbuilder-files
+    * hal dotfiles install  -- setup public dotfiles and pbuilder-files
+    * hal dotfiles diff     -- check public dotfiles and pbuilder-files
+    * hal dotfiles backup   -- backup secret and public dotfiles and pbuilder-files
     * hal newssd  /dev/sd?  -- factory reset of SSD (hdparam, time)
     * hal update            -- update this ~/bin/* repository
 *   git-cvs     -- git cvs sync tool (submodule)
@@ -65,33 +68,42 @@ any GNU/Linux system such as Ubuntu and Fedora.
 These are commands meant to be installed into the BIN directory listed in
 $PATH.
 
-## dotfiles
+## public dotfiles
 
-*   ~/.bashrc_alias
-*   ~/.bashrc_local
-*   ~/.benrc
-*   ~/.devscripts
-*   ~/.gitconfig
-*   ~/.imediff2
-*   ~/.pbuilderrc
-*   ~/.quiltrc-dpkg
-*   ~/.vimrc
+* ~/.bashrc_alias
+* ~/.bashrc_local
+* ~/.benrc
+* ~/.devscripts
+* ~/.gitconfig
+* ~/.imediff2
+* ~/.pbuilderrc
+* ~/.quiltrc-dpkg
+* ~/.vimrc
 
 These are dotfiles are installed into the HOME directory of the user. 
 
 ## pbuilder-files
 
-*   pbuilder/A10ccache
-*   pbuilder/B90lintian
-*   pbuilder/C10shell
+* pbuilder/A10ccache
+* pbuilder/B90lintian
+* pbuilder/C10shell
 
 These are pbuilder hook scripts installed into /var/cache/pbuilder/hooks.
 
+## seceret dotfiles
+
+* ~/.ssh/
+* ~/.gnupg/
+* /etc/exim4/
+
 ## Home directory
 
-*   ~/src/debian (backed up to alioth or its successor)
-*   ~/src/github (backed up to github)
-*   ~/src/local  (local backup)
+* ~/pub/ : use public server as backup
+    * ~/pub/debian (backed up to alioth or its successor)
+    * ~/pub/github (backed up to github)
+* ~/prv/ : use USB media as backup
+    * ~/prv/local  (local backup)
+* ~/tmp/ : use no backup
 
 ## Permissions
 
