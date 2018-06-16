@@ -18,6 +18,17 @@
 #	citool = gui citool
 [push]
 	default = simple
+
+# salsa shorthand and push trouble evasion
+# $ git config --global url."git@salsa.debian.org:".pushInsteadOf "https://salsa.debian.org/"
+# $ git config --global url."git@salsa.debian.org:".insteadOf salsa:
 [url "git@salsa.debian.org:"]
 	pushInsteadOf = https://salsa.debian.org/
 	insteadOf = salsa:
+
+# github shorthand and push trouble evasion
+# $ git config --global url."git@github.com:".pushInsteadOf "https://github.com/"
+# $ git config --global url."git@github.com:".insteadOf github:
+[url "git@github.com:"]
+	pushInsteadOf = https://github.com/
+	insteadOf = github:
