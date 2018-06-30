@@ -34,10 +34,17 @@ if [ -n "${INSTALL_MODE%%[cgdft]*}" ]; then
   exit
 fi
 . /etc/os-release # get OS version
+# VERSION_ID
+#  7: wheezy  = 2013-
+#  8: jessie  = 2015-
+#  9: stretch = 2017-
+# 10: buster  = 2019?
+# 11: bullseye
+# 12: Bookworm
 #############################################################################
 echo "non-free firmwares"
 #############################################################################
-# firmwares for network drivers (including non-free ones)
+# firmware packages for network drivers (including non-free ones)
 PKGS="firmware-linux"
 PKGS="$PKGS atmel-firmware"
 PKGS="$PKGS bluez-firmware"
@@ -46,7 +53,8 @@ PKGS="$PKGS firmware-atheros"
 PKGS="$PKGS firmware-bnx2"
 PKGS="$PKGS firmware-bnx2x"
 PKGS="$PKGS firmware-brcm80211"
-if [ "$VERSION" != "9 (stretch)" ]; then
+if [ "$VERSION_ID" -ge "10" ]; then
+# buster and after buster
 PKGS="$PKGS firmware-crystalhd"
 fi
 PKGS="$PKGS firmware-intel-sound"
@@ -91,18 +99,20 @@ PKGS="$PKGS pinentry-curses gnupg scdaemon"
 PKGS="$PKGS exim4-daemon-light" 
 # Easy GMAIL access for me
 PKGS="$PKGS msmtp msmtp-gnome maildrop mutt" 
-if [ "$VERSION" = "9 (stretch)" ]; then
-PKGS="$PKGS getmail4" 
-else
-# buster
+if [ "$VERSION_ID" -ge "10" ]; then
+# buster and after buster
 PKGS="$PKGS getmail" 
+else
+# before stretch
+PKGS="$PKGS getmail4" 
 fi
 # Filesystem tools
 PKGS="$PKGS testdisk xfsprogs xorriso eject"
-if [ "$VERSION" != "9 (stretch)" ]; then
-PKGS="$PKGS btrfs-tools"
-else
+if [ "$VERSION_ID" -ge "9" ]; then
+# stretch and after stretch
 PKGS="$PKGS btrfs-progs"
+else
+PKGS="$PKGS btrfs-tools"
 fi
 # memory test
 PKGS="$PKGS memtest86+"
@@ -135,7 +145,7 @@ PKGS="$PKGS gitk"
 PKGS="$PKGS gnote nixnote2 rxvt"
 PKGS="$PKGS gparted htop libsecret-tools"
 PKGS="$PKGS chromium"
-if [ "$VERSION" != "9 (stretch)" ]; then
+if [ "$VERSION_ID" -ge "10" ]; then
 # Not available in released stretch
 PKGS="$PKGS pepperflashplugin-nonfree"
 fi
