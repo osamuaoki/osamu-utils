@@ -17,7 +17,7 @@ if [ -z "$1" ]; then
   help
 fi
 n=1
-type="-r"
+type="-d"
 DEPENDS=""
 RECOMMENDS=""
 SUGGESTS=""
