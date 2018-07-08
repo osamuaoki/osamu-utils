@@ -78,7 +78,7 @@ while [ -n "$1" ]; do {
   shift
 } done
 EQUIVS_DIR=`mktemp -t -d equivs_$EQUIVS.XXXXXXXX`
-$VERBOSE "working in EQUIVS_DIR"
+$VERBOSE "*** Working in '$EQUIVS_DIR'"
 cd $EQUIVS_DIR >/dev/null
 CONTROL="$EQUIVS_DIR/control"
 echo "Source: $EQUIVS" >$CONTROL
@@ -101,6 +101,10 @@ echo "Suggests: $SUGGESTS" >>$CONTROL
 echo "Provides: $PROVIDES" >>$CONTROL
 echo "Architecture: any" >>$CONTROL
 echo "Multi-Arch: foreign" >>$CONTROL
+$VERBOSE "******"
+$VERBOSE "*** control:"
+$VERBOSE "$(cat $CONTROL)"
+$VERBOSE "******"
 equivs-build $CONTROL
 $NOP sudo dpkg --force-depends -i ${EQUIVS}_1.0_*.deb
 $NOP sudo apt-get update
