@@ -72,11 +72,14 @@ else
          /From: .*omssrilak.*@gmail.com/:h ||\
          /From: .*vivaaerobus.com/:h )
     {
-    # spam mails
+    # black list for spam mails
         MAILBOX="Inbox-spam"
     }
-    elsif ( /From: .*@connpass.com/:h )
+    elsif ( /From: .*@connpass.com/:h ||\
+            /From: .*@github.com/:h ||\
+            /From: .*@accounts.google.com/:h )
     {
+    # white list for inbox
         MAILBOX="Inbox"
     }
     elsif ( /^Subject: Validation failed/:h )
@@ -104,6 +107,7 @@ else
 	 /From: .*nomura-shomen@jp.nomura.com/:h || \
 	 /From: .*paypal@.*.paypal.com/:h || \
 	 /From: .*toshiba_magazine@room1048.jp/:h || \
+	 /From: .*@facebookmail.com/:h || \
          /From: .*<jobs-listings@linkedin.com/:h ||\
          /From: .*<linkedin@e.linkedin.com>/:h ||\
          /From: .*<mailmaster@carview.co.jp/:h ||\
