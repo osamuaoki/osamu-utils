@@ -44,13 +44,14 @@ else
     help
     exit
 fi
-FILES="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
 git reset HEAD^
 
 # noglob and IFS=newline ... may fail in some rare cases
 set -f
 IFS="${NL}"
 for f in ${FILES} ; do
+  echo "process --- $f"
   git add "$f"
   git commit -m "$f: $MSG"
 done
