@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Split a git commit for each file
+# Un-squash a git commit for each file (delete, rename, add)
 #############################################################################
 # Copyright (c) 2019 Osamu Aoki
 #
@@ -23,38 +23,45 @@
 #############################################################################
 
 help() {
-    echo "Split a git commit for each file
+    echo "Un-squash a git commit for each file
 
-Usage: ${0##*/} [--hash]"
+Usage: ${0##*/}"
 }
 # dash/bash/ksh compatible
 LF='
 '
 if [ -z "$1" ]; then
-MSG="$(git show -s --format=%s HEAD)
-
-$(git show -s --format=%b HEAD)
-"
-elif [ "$1" = "--hash" ]; then
-MSG="$(git show -s --format=%s HEAD) $(git rev-parse --short HEAD)
-
-$(git show -s --format=%b HEAD)
-"
+    MSGSUB="$(git show -s --format=%s HEAD)"
+    MSGBDY="$(git show -s --format=%b HEAD)"
 else
     help
     exit
 fi
-FILES=$(git diff-tree --no-commit-id -R -C --name-status -r HEAD)
+
+HEAD_ORIG=$(git rev-parse HEAD)
 git reset HEAD^
 
-# noglob and IFS=newline ... may fail in some rare cases
-set -f
-IFS="${NL}"
-for f in ${FILES} ; do
-  echo "process --- $f"
-  git add "$f"
-  git commit -m "$f: $MSG"
+git diff-tree --no-commit-id -C -C --name-status -r $HEAD_ORIG |\
+while read LINE; do
+    STATUS="${LINE%%	*}"
+    FILES="${LINE#*	}"
+    echo "STATUS=$STATUS"
+    echo "FILES=$FILES"
+    # RENAME
+    # ADD
+    # DELETE
 done
-set +f
-unset IFS
+git reset $HEAD_ORIG
 
+## noglob and IFS=newline ... may fail in some rare cases
+#set -f
+#IFS="${NL}"
+#for f in ${FILES} ; do
+#  echo "process --- $f"
+#  git add "$f"
+#  git commit -m "$f: $MSG"
+#done
+#set +f
+#unset IFS
+
+# vim:se tw=78 ai sts=4 et:
