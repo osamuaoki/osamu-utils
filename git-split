@@ -1,60 +1,125 @@
-#!/bin/sh -e
-# Split a git commit for each file
-#############################################################################
-# Copyright (c) 2019 Osamu Aoki
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#############################################################################
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 et ai:
+# python is used not to worry about dash/bash/ksh/zsh differences,
+"""
+git-unsquash: Un-squash a git commit for each file
 
-help() {
-    echo "Split a git commit for each file
+Copyright © 2019 Osamu Aoki
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Usage: ${0##*/} [--hash]"
-}
-# dash/bash/ksh compatible
-LF='
-'
-if [ -z "$1" ]; then
-MSG="$(git show -s --format=%s HEAD)
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-$(git show -s --format=%b HEAD)
-"
-elif [ "$1" = "--hash" ]; then
-MSG="$(git show -s --format=%s HEAD) $(git rev-parse --short HEAD)
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 
-$(git show -s --format=%b HEAD)
-"
-else
-    help
-    exit
-fi
-FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
-git reset HEAD^
+import sys
+from subprocess import *
+import csv
+import pprint
 
-# noglob and IFS=newline ... may fail in some rare cases
-set -f
-IFS="${NL}"
-for f in ${FILES} ; do
-  echo "process --- $f"
-  git add "$f"
-  git commit -m "$f: $MSG"
-done
-set +f
-unset IFS
+MIN_PYTHON = (3, 5)
+if sys.version_info < MIN_PYTHON:
+    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
+msg_sub = (
+    run(["git", "show", "-s", "--format=%s", "HEAD"], stdout=PIPE)
+    .stdout.decode("utf8")
+    .rstrip()
+)
+# print("message subject: '{}'".format(msg_sub))
+
+msg_bdy = run(["git", "show", "-s", "--format=%b", "HEAD"], stdout=PIPE).stdout.decode(
+    "utf8"
+)
+# print("message body: '{}'".format(msg_bdy))
+
+head_org = run(["git", "rev-parse", "HEAD"], stdout=PIPE).stdout.decode("utf8").rstrip()
+# print("head: '{}'".format(head_org))
+
+
+# git diff-tree --find-copies-harder -C10 --no-commit-id --name-status -r HEAD
+diff_stat = run(
+    [
+        "git",
+        "diff-tree",
+        "--find-copies-harder",
+        "-C10",
+        "--no-commit-id",
+        "--name-status",
+        "-r",
+        head_org,
+    ],
+    stdout=PIPE,
+).stdout.decode("utf8")
+
+run(["git", "reset", "HEAD^"])
+file0 = ""
+i = 0
+for row in csv.reader(diff_stat.splitlines(), delimiter="\t"):
+    if row[0][0] == "D":
+        run(["git", "rm", "-f", row[1]])
+        run(
+            [
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                msg_sub + " #D{}\n\n".format(i) + msg_bdy,
+            ]
+        )
+    elif row[0][0] == "A" or row[0][0] == "M":
+        i += 1
+        run(["git", "add", row[1]])
+        run(
+            [
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                msg_sub + " #A{}\n\n".format(i) + msg_bdy,
+            ]
+        )
+    elif row[0][0] == "C" or row[0][0] == "R":
+        run(["git", "add", row[2]])
+        if row[0][0] == "R":
+            run(["git", "rm", "-f", row[1]])
+        if file0 == row[1]:
+            # make sure to commit together with previous one
+            run(
+                [
+                    "git",
+                    "commit",
+                    "--allow-empty",
+                    "--amend",
+                    "-m",
+                    msg_sub + " #A{}\n\n".format(i) + msg_bdy,
+                ]
+            )
+        else:
+            i += 1
+            run(
+                [
+                    "git",
+                    "commit",
+                    "--allow-empty",
+                    "-m",
+                    msg_sub + " #A{}\n\n".format(i) + msg_bdy,
+                ]
+            )
+    else:
+        print("STRANGE row")
+        print(row)
+        exit(1)
+    file0 = row[1]
