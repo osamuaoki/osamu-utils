@@ -6,7 +6,7 @@ vim:se tw=78 ai si sts=4 et:
 This is my memo on Debian GNU/Linux system install.  This was written in 2018
 based on stretch/stable and buster/testing.
 
-## Factory reset of SSD 
+## Factory reset of SSD
 
 If SSD is used (suppose it to be `/dev/sdx`), it is a good idea to reset it to
 the factory condition using hdparm.
@@ -130,7 +130,7 @@ copy, you need to pay extra attention.
   swap partition are reinitialized with `mkswap`.  UUID can be identified
   by `blkid`(8).
     * `/etc/fstab`
-    * `/etc/initramfs-tools/conf.d/resume` 
+    * `/etc/initramfs-tools/conf.d/resume`
 * host name and its domain may need to be adjusted.
     * `/etc/hosts`
     * `/etc/hostname`
