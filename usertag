@@ -33,12 +33,12 @@ esac
 
 PACKAGE="devscripts"
 USERTAG="uscan"
-if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
+if ! { echo "${1}" | grep -q -e '^[0-9]*$'; }; then
     USERTAG=${1}; shift
 fi
-if ! { echo ${1} | grep -q -e '^[0-9]*$'; }; then
-    PACKAGE=${USERTAG}
-    USERTAG=${1}; shift
+if ! { echo "${1}" | grep -q -e '^[0-9]*$'; }; then
+    PACKAGE="${USERTAG}"
+    USERTAG="${1}"; shift
 fi
 CMDLINE="bts --mutt user ${PACKAGE}@packages.debian.org"
 while [ -n "$1" ] ; do
