@@ -1,0 +1,6 @@
+#!/bin/sh
+setfont /usr/share/consolefonts/Lat15-Fixed16.psf.gz
+# This was not good ...
+# install fonts-ubuntu-console package first
+#setfont /usr/share/consolefonts/UbuntuMono-R-8x16.psf
+#setfont /usr/share/consolefonts/UbuntuMono-B-8x16.psf
