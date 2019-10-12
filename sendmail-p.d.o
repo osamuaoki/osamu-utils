@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 # vim:se tw=0 sts=2 ts=2 et ai:
 # Send mail from people.debian.org via ssh-login
 

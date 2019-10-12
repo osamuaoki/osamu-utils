@@ -27,7 +27,6 @@ SOFTWARE.
 import sys
 from subprocess import *
 import csv
-import pprint
 
 MIN_PYTHON = (3, 5)
 if sys.version_info < MIN_PYTHON:
@@ -38,16 +37,12 @@ msg_sub = (
     .stdout.decode("utf8")
     .rstrip()
 )
-# print("message subject: '{}'".format(msg_sub))
 
 msg_bdy = run(["git", "show", "-s", "--format=%b", "HEAD"], stdout=PIPE).stdout.decode(
     "utf8"
 )
-# print("message body: '{}'".format(msg_bdy))
 
 head_org = run(["git", "rev-parse", "HEAD"], stdout=PIPE).stdout.decode("utf8").rstrip()
-# print("head: '{}'".format(head_org))
-
 
 # git diff-tree --find-copies-harder -C10 --no-commit-id --name-status -r HEAD
 diff_stat = run(
@@ -62,12 +57,12 @@ diff_stat = run(
         head_org,
     ],
     stdout=PIPE,
-).stdout.decode("utf8")
+).stdout
 
 run(["git", "reset", "HEAD^"])
 file0 = ""
 i = 0
-for row in csv.reader(diff_stat.splitlines(), delimiter="\t"):
+for row in csv.reader(diff_stat, delimiter="\t"):
     if row[0][0] == "D":
         run(["git", "rm", "-f", row[1]])
         run(
