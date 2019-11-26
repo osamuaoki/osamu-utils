@@ -48,6 +48,7 @@ fi
 RW_COMMIT_BRANCH=$(git branch --list --no-color| sed -n 's/^\* \(.*\)/\1/p')
 if [ ! -e $(dirname "$PWD")/git-sync.conf ]; then
   echo "Edit $(dirname "$PWD")/git-sync.conf and re-start" >&2
+  add_git_sync
   exit 1
 fi
 # shellcheck disable=SC2231
