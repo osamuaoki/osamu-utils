@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+#  git@salsa.debian.org:debian/anthy.git
+#
+#  salsa example
+#  git@salsa.debian.org:input-method-team/ibus-array.git
+#  https://salsa.debian.org/input-method-team/ibus-array.git
+#
+#  github
+#  git@github.com:osamuaoki/fish-shell.git
+#  https://github.com/osamuaoki/fish-shell.git
+#
+PWD=$(pwd)
+
+#DEBUG=":"
+DEBUG="echo"
+
+PROJECT=$(basename "$PWD") # ibus-array
+OWNER=$(basename "$(dirname "$PWD")") # input-method-team
+REPO=$(basename "$(dirname "$(dirname "$PWD")")") # salsa
+
+$DEBUG "PROJECT=$PROJECT, OWNER=$OWNER, REPO=$REPO"
+
+$DEBUG
+
+case "$REPO" in
+github) URL="git@github.com:"
+;;
+github_) URL="https://github.com/"
+;;
+salsa) URL="git@salsa.debian.org:"
+;;
+salsa_) URL="https://salsa.debian.org/"
+;;
+http*) URL="$REPO/"
+;;
+git@*) URL="$REPO:"
+;;
+*) echo "E: Illegal path: Execute ${0##*/} from working directory with the parent path:"
+echo    "   .../{salsa|github|salsa_|github_|...}/<OWNER>/<PROJECT>/"
+echo
+exit 1
+;;
+esac
+
+$DEBUG "git clone $URL$OWNER/$PROJECT.git"
+git clone "$URL$OWNER/$PROJECT.git"
+
+$DEBUG
+echo " >> Execute 'cd $PROJECT' to start hacking ...."
+
