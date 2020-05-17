@@ -3,8 +3,8 @@
 vim:se tw=78 ai si sts=4 et:
 -->
 
-This is my memo on Debian GNU/Linux system install.  This was written in 2018
-based on stretch/stable and buster/testing.
+This is my memo on Debian GNU/Linux system install.  This is written in
+2020-05 based on buster/stable for the GPT/UEFI boot system.
 
 ## Factory reset of SSD
 

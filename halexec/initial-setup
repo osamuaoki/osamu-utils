@@ -5,8 +5,8 @@
 #############################################################################
 # Set to run as ROOT
 if [ $(id -un) != root ]; then
-  export INSTALL_MODE
   if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
+    echo "Please type the password of your account"
     sudo --preserve-env "$0"
   else
     echo "Please type the root password"
@@ -15,10 +15,16 @@ if [ $(id -un) != root ]; then
   exit
 fi
 
-echo "Executing 'hal ${0##*/}'" >&2
+echo "Executing 'hal ${0##*/}' as root" >&2
 
 #############################################################################
 # The following commands are run under ROOT
+#############################################################################
+echo "add bare minimum packages"
+#############################################################################
+
+apt install aptitude mc vim sudo locales-all git wget gnupg openssh-client nano-
+
 #############################################################################
 echo "set apt with non-free"
 #############################################################################
@@ -35,7 +41,6 @@ apt full-upgrade
 #############################################################################
 echo "set the primary user privileges"
 #############################################################################
-apt install sudo equivs git
 # Set primary user name (even if it was started as root)
 USERNAME=$(id -un 1000)
 mkdir -p /etc/sudoers.d
@@ -50,14 +55,14 @@ cat >/etc/sudoers.d/custom <<END
 #Defaults timestamp_type = global
 END
 # Set up normal group membership
-adduser $USERNAME sudo
-adduser $USERNAME adm
-adduser $USERNAME src
-adduser $USERNAME staff
-adduser $USERNAME games
+/usr/sbin/adduser $USERNAME sudo
+/usr/sbin/adduser $USERNAME adm
+/usr/sbin/adduser $USERNAME src
+/usr/sbin/adduser $USERNAME staff
+/usr/sbin/adduser $USERNAME games
 echo ""
 echo "Debian distribution supported:"
 sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
 echo ""
 read -p "Type 'RETURN'-key to reboot the system (otherwise ^C to stop here)." FOO
-shutdown -r now
+/usr/sbin/shutdown -r now

@@ -1,7 +1,0 @@
-#!/usr/bin/perl -n
-# Larry Wall's compact perl script for cuecat
-printf "Serial: %s Type: %s; Code: %s\n",
- map { tr/a-zA-Z0-9+-/ -_/;
-       $_ = unpack 'u', chr(32+ length()*3/4) . $_;
-       s/\0+$//;
-       $_ ^= "C" x length; } /\.([^.]+)/g;

@@ -1,4 +1,5 @@
 #!/bin/sh -e
 # vim:se ts=2 sts=2 et ai tw=78:
 #vim -N -u NONE "$@"
+# Start vim without plugin
 vim -N --noplugin -u ~/.vim/vimrc0 "$@"

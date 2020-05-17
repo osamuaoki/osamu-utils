@@ -1,0 +1,190 @@
+#!/bin/sh -e
+# install package candudates
+# Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 ai et:
+#############################################################################
+. /etc/os-release # get OS version
+# VERSION_ID
+#  7: wheezy  = 2013-
+#  8: jessie  = 2015-
+#  9: stretch = 2017-
+# 10: buster  = 2019?
+# 11: bullseye
+# 12: Bookworm
+#############################################################################
+echo "non-free firmwares"
+#############################################################################
+# firmware packages for network drivers (including non-free ones)
+PKGS="firmware-linux"
+PKGS="$PKGS atmel-firmware"
+PKGS="$PKGS bluez-firmware"
+PKGS="$PKGS broadcom-sta-dkms"
+PKGS="$PKGS firmware-atheros"
+PKGS="$PKGS firmware-bnx2"
+PKGS="$PKGS firmware-bnx2x"
+PKGS="$PKGS firmware-brcm80211"
+if [ "$VERSION_ID" -ge "10" ]; then
+# buster and after buster
+PKGS="$PKGS firmware-crystalhd"
+fi
+PKGS="$PKGS firmware-intel-sound"
+PKGS="$PKGS firmware-intelwimax"
+PKGS="$PKGS firmware-ipw2x00"
+PKGS="$PKGS firmware-iwlwifi"
+PKGS="$PKGS firmware-libertas"
+PKGS="$PKGS firmware-myricom"
+PKGS="$PKGS firmware-netxen"
+PKGS="$PKGS firmware-qlogic"
+PKGS="$PKGS firmware-realtek"
+PKGS="$PKGS firmware-ti-connectivity"
+PKGS="$PKGS firmware-zd1211"
+PKGS="$PKGS amd64-microcode"
+PKGS="$PKGS intel-microcode"
+PKGS="$PKGS sl-modem-dkms"
+hal equivs equivs-firmware $PKGS
+#############################################################################
+# Add console programs
+#############################################################################
+# basic packages in case it was skipped
+#############################################################################
+echo "install basic command line packages"
+#############################################################################
+PKGS="sudo equivs git"
+PKGS="$PKGS aptitude locales-all cryptsetup lvm2"
+PKGS="$PKGS task-english"
+# editor of choice
+PKGS="$PKGS vim emacs"
+PPKG="nano vim.tiny"
+# Use graphicsmagick instead of imagemagick (emacs)
+PKGS="$PKGS graphicsmagick-imagemagick-compat"
+# compression tools
+PKGS="$PKGS gzip bzip2 xz-utils liblz4-tool zstd"
+# binary without library dependency
+PKGS="$PKGS e3 busybox"
+# shell environment of choice
+PKGS="$PKGS mc ssh screen iproute2"
+# security related
+PKGS="$PKGS pinentry-curses gnupg scdaemon"
+# default-mta
+PKGS="$PKGS exim4-daemon-light" 
+# Easy GMAIL access for me
+PKGS="$PKGS msmtp msmtp-gnome maildrop mutt" 
+if [ "$VERSION_ID" -ge "10" ]; then
+# buster and after buster
+PKGS="$PKGS getmail" 
+else
+# before stretch
+PKGS="$PKGS getmail4" 
+fi
+# Filesystem tools
+PKGS="$PKGS testdisk xfsprogs xorriso eject"
+if [ "$VERSION_ID" -ge "9" ]; then
+# stretch and after stretch
+PKGS="$PKGS btrfs-progs"
+else
+PKGS="$PKGS btrfs-tools"
+fi
+# memory test
+PKGS="$PKGS memtest86+"
+# backup
+PKGS="$PKGS rsync"
+PKGS="$PKGS rsnapshot"
+# probably installed by installer
+#PKGS="$PKGS discover grub-pc console-setup initramfs-tools"
+#PKGS="$PKGS usbutils keyboard-configuration laptop-detect"
+# Install basic console packages while removing useless ones
+hal equivs equivs-console $PKGS -p $PPKG
+if [ -z "${INSTALL_MODE%%c*}" ]; then
+  echo "exit after installing basic command line packages"
+  exit
+fi
+#############################################################################
+echo "install basic GUI packages"
+#############################################################################
+# Desktop=Gnome
+PKGS="task-desktop"
+# install gnote and make sure to remove tomboy
+PKGS="$PKGS gnote"
+PPKGS="tomboy"
+# Japanese input method support for me
+PKGS="$PKGS im-config ibus-anthy ibus-gtk ibus-gtk3 ibus-qt4 libqt5gui5"
+PKGS="$PKGS fonts-vlgothic fonts-ipaexfont nkf"
+# Desktop extras
+PKGS="$PKGS xdu meld nautilus-compare"
+PKGS="$PKGS gitk"
+PKGS="$PKGS gnote nixnote2 rxvt"
+PKGS="$PKGS gparted htop libsecret-tools"
+PKGS="$PKGS chromium"
+if [ "$VERSION_ID" -ge "10" ]; then
+# Not available in released stretch
+PKGS="$PKGS pepperflashplugin-nonfree"
+fi
+# temperature sensor
+PKGS="$PKGS psensor"
+hal equivs equivs-gui $PKGS -p $PPKGS
+if [ -z "${INSTALL_MODE%%g*}" ]; then
+  echo "exit after installing basic GUI packages"
+  exit
+fi
+#############################################################################
+echo "install basic development packages"
+#############################################################################
+PKGS="build-essential"
+PKGS="$PKGS devscripts debmake git-buildpackage ben time"
+PKGS="$PKGS wget w3m xxd screen tmux rename signing-party"
+PKGS="$PKGS git-svn quilt subversion grip git-annex dgit"
+PKGS="$PKGS ccache eatmydata vim-addon-manager"
+PKGS="$PKGS exuberant-ctags"
+# Development environment for me (debug)
+PKGS="$PKGS rlwrap lsof xtrace ltrace strace gdb moreutils"
+# Perl REPL and readline 
+PKGS="$PKGS libreply-perl libterm-readline-gnu-perl"
+# 
+PKGS="$PKGS rpm2cpio"
+PKGS="$PKGS imediff2"
+# Info
+PKGS="$PKGS doc-base"
+PKGS="$PKGS texinfo pinfo"
+PKGS="$PKGS texinfo-doc-nonfree"
+PKGS="$PKGS gccintro"
+PKGS="$PKGS etherape"
+PKGS="$PKGS librecad"
+hal equivs equivs-develop $PKGS
+if [ -z "${INSTALL_MODE%%d*}" ]; then
+  echo "exit after installing basic development packages"
+  exit
+fi
+#############################################################################
+echo "install full packages"
+#############################################################################
+PKGS="$PKGS debian-policy"
+PKGS="$PKGS developers-reference"
+PKGS="$PKGS debian-reference"
+PKGS="$PKGS maint-guide"
+PKGS="$PKGS debmake-doc"
+PKGS="$PKGS ibus-doc"
+PKGS="$PKGS git-doc"
+PKGS="$PKGS perl perl-doc perl-doc-html"
+PKGS="$PKGS python-all-dev python-doc"
+PKGS="$PKGS python3-all-dev python3-doc"
+PKGS="$PKGS gcc-doc cpp-doc gdb-doc make-doc"
+PKGS="$PKGS gdb cgdb gdb-doc"
+PKGS="$PKGS rustc rust-gdb rust-doc"
+PKGS="$PKGS glade"
+PKGS="$PKGS iproute2-doc"
+hal equivs equivs-full $PKGS
+if [ -z "${INSTALL_MODE%%f*}" ]; then
+  echo "exit after installing full packages"
+  exit
+fi
+#############################################################################
+echo "install TeX packages"
+#############################################################################
+hal equivs equivs-tex texlive-full
+if [ -z "${INSTALL_MODE%%t*}" ]; then
+  echo "exit after installing TeX packages"
+  exit
+fi
+echo "Strange: INSTALL_MODE='$INSTALL_MODE'"
+id
+

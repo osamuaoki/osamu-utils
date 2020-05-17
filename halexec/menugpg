@@ -18,7 +18,7 @@ gpg_export_public_keys()
 {
     echo -n "Output filename: "
     read fn
-    gpg --export -a $MYKEY --oitput $fn
+    gpg --export -a $MYKEY --output $fn
 }
 quit()
 {
