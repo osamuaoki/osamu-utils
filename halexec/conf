@@ -89,9 +89,6 @@ f_backup () {
   BUPATH="backup/BU$(date -u +'%Y%m%d')"
   echo "Back up to ~/$BUPATH"
   mkdir -p ~/$BUPATH/dot
-  mkdir -p ~/$BUPATH/bin
-  mkdir -p ~/$BUPATH/.gnupg
-  mkdir -p ~/$BUPATH/.ssh
   mkdir -p ~/$BUPATH/pbuilder/hooks
   mkdir -p ~/$BUPATH/etc
   mkdir -p ~/$BUPATH/etc/ssh
@@ -123,13 +120,13 @@ f_backup () {
   done
 # backup the latest ~/bin directory
   echo "backup from ~/bin directory"
-  cp -a ~/bin/ ~/$BUPATH/bin/
+  cp -a ~/bin/ ~/$BUPATH/
 # backup the latest ~/.gnupg directory
   echo "backup from ~/.gnupg directory"
-  cp -a ~/.gnupg/ ~/$BUPATH/.gnupg/
+  cp -a ~/.gnupg/ ~/$BUPATH/
 # backup the latest ~/.ssh directory
   echo "backup from ~/.ssh directory"
-  cp -a ~/.ssh/ ~/$BUPATH/.ssh/
+  cp -a ~/.ssh/ ~/$BUPATH/
 # backup the latest /etc directory
   echo "backup from /etc directory"
   for f in aliases email-addresses debian_version fstab hostname hosts sysctl.conf sudoers; do
