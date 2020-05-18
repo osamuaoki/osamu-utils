@@ -1,0 +1,174 @@
+#!/bin/bash -e
+# vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
+#
+# configutration 
+#
+pre=$(echo ~)
+
+echo "$pre"
+
+# functions
+f_help () {
+  echo "Syntax:"              
+  echo "  hal conf i[nstall]"
+  echo "  hal conf d[iff]"   
+  echo "  hal conf b[ackup]" 
+  exit
+}
+
+f_diff () {
+# install the latest system skel files
+  for p in /etc/skel/.* ; do
+    f=$(basename $p)
+    if [ "$f" = ".bashrc" ] && [ -f "$p" ] ; then
+      echo " $ diff -u $p  ~/$f"
+      diff -u "$p" <(head -n -2 ~/"$f") || true
+      echo " ... ignore tweak on ~/.bashrc"
+    elif [ -f "$p" ]; then
+      echo " $ diff -u ~$p  ~/$f"
+      diff -u "$p" ~/"$f" || true
+    else
+      :
+    fi
+  done
+# install the latest dot files
+  for p in ~/bin/dot/.* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ diff -u ~${p#${pre}}  ~/$f"
+      diff -u "$p" ~/"$f" || true
+    fi
+  done
+# install the latest pbuilder hooks
+  sudo mkdir -p /var/cache/pbuilder/hooks
+  for p in ~/bin/pbuilder/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ diff -u ~${p#${pre}}  .../hooks/$f"
+      sudo diff -u "$p" "/var/cache/pbuilder/hooks/$f" || true
+    fi
+  done
+}
+
+f_install () {
+# check diff
+  f_diff
+  echo "============================================================================"
+# install the latest system skel files
+  for p in /etc/skel/.* ; do
+    f=$(basename $p)
+    if [ -f $p ]; then
+      echo " $ cp -f $p ~/$f"
+      cp -f $p ~/$f
+    fi
+  done
+# tweak for install
+  echo " ... tweak ~/.bashrc"
+  echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
+  echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
+# install the latest dot files
+  for p in ~/bin/dot/.* ; do
+    f=$(basename $p)
+    if [ -f $p ]; then
+      echo " $ cp -f ~${p#${pre}}  ~/$f"
+      cp -f $p ~/$f
+    fi
+  done
+# install the latest pbuilder hooks
+  sudo mkdir -p /var/cache/pbuilder/hooks
+  for p in ~/bin/pbuilder/* ; do
+    f=$(basename $p)
+    if [ -f $p ]; then
+      echo " $ sudo cp -f ~${p#${pre}}  .../hooks/$f"
+      sudo cp -p $p /var/cache/pbuilder/hooks/$f
+    fi
+  done
+}
+
+f_backup () {
+  BUPATH="backup/BU$(date -u +'%Y%m%d')"
+  echo "Back up to ~/$BUPATH"
+  mkdir -p ~/$BUPATH/dot
+  mkdir -p ~/$BUPATH/pbuilder/hooks
+  mkdir -p ~/$BUPATH/bin
+  mkdir -p ~/$BUPATH/etc
+  mkdir -p ~/$BUPATH/etc/ssh
+  mkdir -p ~/$BUPATH/etc/sudoers.d
+  mkdir -p ~/$BUPATH/etc/exim4
+# backup the latest system skel files
+  for p in /etc/skel/.* ; do
+    f=$(basename $p)
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/$f  ~/$BUPATH/dot/$f"
+      cp -f ~/"$f" ~/"$BUPATH/dot/$f"
+    fi
+  done
+# backup the latest dot files
+  for p in ~/bin/dot/.* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/$f  ~/$BUPATH/dot/$f"
+      cp -f ~/"$f" ~/"$BUPATH/dot/$f"
+    fi
+  done
+# backup the latest pbuilder hooks
+  for p in ~/bin/pbuilder/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f .../hooks/$f  ~/$BUPATH/pbuilder/hooks/$f"
+      sudo cp -f "/var/cache/pbuilder/hooks/$f" ~/"$BUPATH/pbuilder/hooks/$f"
+    fi
+  done
+# backup the latest ~/bin directory
+  echo "backup from ~/bin directory"
+  cp -a ~/bin/ ~/$BUPATH/bin/
+# backup the latest /etc directory
+  echo "backup from /etc directory"
+  for f in aliases email-addresses debian_version fstab hostname hosts sysctl.conf sudoers; do
+    p="/etc/$f"
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f /etc/$f  ~/$BUPATH/etc/$f"
+      sudo cp -f "/etc/$f" ~/"$BUPATH/etc/$f"
+    fi
+  done
+  for p in /etc/sudoers.d/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f /etc/sudoers.d/$f  ~/$BUPATH/etc/sudoers.d/$f"
+      sudo cp -f "/etc/sudoers.d/$f" ~/"$BUPATH/etc/sudoers.d/$f"
+    fi
+  done
+  for p in /etc/ssh/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f /etc/ssh/$f  ~/$BUPATH/etc/ssh/$f"
+      sudo cp -f "/etc/ssh/$f" ~/"$BUPATH/etc/ssh/$f"
+    fi
+  done
+  for p in /etc/exim4/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f /etc/exim4/$f  ~/$BUPATH/etc/exim4/$f"
+      sudo cp -f "/etc/exim4/$f" ~/"$BUPATH/etc/exim4/$f"
+    fi
+  done
+  echo "===================================================================="
+  echo "You need to do 'dpkg-reconfigure -plow exim4-config' later"
+  echo "to update exim server"
+}
+
+case "$1" in
+  b*)
+    f_backup
+        ;;
+  i*)
+    f_install
+        ;;
+  d*)
+    f_diff
+        ;;
+  *)
+    f_help
+esac
+
+

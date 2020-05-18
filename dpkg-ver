@@ -1,4 +1,6 @@
 #!/bin/sh
+    echo "... checking $(basename $f)"
+    echo "... checking $(basename $f)"
 # Compare debian package version strings
 #############################################################################
 # Copyright (c) 2015 Osamu Aoki

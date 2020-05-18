@@ -1,0 +1,168 @@
+#
+# Baseline package selection list
+# #     comment out
+# @GUI@ only for GUI
+# @DEV@ only for Development
+# @DOC@ only for Development with Doc
+# @TEX@ only for Development with Doc+TeX
+# @ALL@ only for Development with Doc+TeX+All
+#
+#############################################################################
+# *** NON-FREE firmwares ***
+#############################################################################
+# * micro code etc.
+firmware-linux
+# * wifi etc.
+atmel-firmware
+bluez-firmware
+@DEV@ broadcom-sta-dkms
+firmware-atheros
+firmware-bnx2
+firmware-bnx2x
+firmware-brcm80211
+#firmware-cavium
+firmware-intel-sound
+firmware-intelwimax
+firmware-ipw2x00
+firmware-iwlwifi
+firmware-libertas
+#firmware-myricom
+firmware-netxen
+firmware-qlogic
+firmware-realtek
+firmware-ti-connectivity
+firmware-zd1211
+#sl-modem-dkms
+#############################################################################
+# *** Bare minimum Utilities ***
+#############################################################################
+aptitude mc vim sudo locales-all git wget gnupg ssh
+# remove nano
+nano-
+#############################################################################
+# *** Typical Utilities ***
+#############################################################################
+# * basic GUI packages
+@GUI@ task-gnome-desktop
+# * security related (gnupg friends)
+scdaemon
+@GUI@ pinentry-gnome3
+pinentry-curses
+@GUI@ libsecret-tools
+# * text editors (vim friends)
+vim-addon-manager
+@DEV@ exuberant-ctags
+@GUI@ vim-gtk3
+#emacs
+task-english
+# * terminal multiplexer
+screen
+tmux
+# * filesystem/block device tools
+e2fsprogs
+btrfs-progs
+xfsprogs
+ntfs-3g
+exfat-utils
+xorriso
+cryptsetup
+lvm2
+kpartx
+eject
+# * partition tools
+fdisk
+gdisk
+parted
+@GUI@ gparted
+# * filesystem fix-up
+gpart
+testdisk
+# * file compression tools
+gzip bzip2 xz-utils liblz4-tool zstd
+# * other basic utilities (git friends)
+@GUI@ gitk
+rsync
+wget
+w3m
+time
+xxd
+rename
+moreutils
+less
+imediff
+pinfo
+# * image utilities
+graphicsmagick-imagemagick-compat # Use graphicsmagick instead of imagemagick
+# * network utilities
+iproute2
+#default-mta
+getmail
+maildrop
+msmtp
+# * system utilities
+memtest86+
+hdparm
+htop
+@GUI@ psensor
+#############################################################################
+# Japanese input method support for me
+#############################################################################
+nkf lv
+@GUI@ ibus-anthy ibus-gtk ibus-gtk3 libqt5gui5
+@GUI@ fonts-vlgothic fonts-ipaexfont
+#############################################################################
+# Desktop GUI extras
+#############################################################################
+@GUI@ xdu meld
+@GUI@ nautilus-compare
+@GUI@ gnote nixnote2
+@GUI@ rxvt-unicode
+@GUI@ chromium
+@GUI@ pepperflashplugin-nonfree
+#############################################################################
+# install basic development packages
+#############################################################################
+#git-annex
+@DEV@ build-essential
+@DEV@ devscripts debmake git-buildpackage ben
+@DEV@ dgit grip
+@DEV@ signing-party
+@DEV@ git-svn quilt subversion
+@DEV@ ccache eatmydata
+@DEV@ shellcheck # bash
+@DEV@ black # python2/3: black filename.py
+@DEV@ clang-format # C++: clang-format -style=Google -i filename.c
+# Development environment for me (debug)
+@DEV@ lsof xtrace ltrace strace
+@DEV@ rlwrap gdb
+# Perl REPL and readline
+@DEV@ libreply-perl libterm-readline-gnu-perl
+#
+@DEV@ rpm2cpio
+# Info
+@DOC@ doc-base
+@DEV@ texinfo
+@DEV@ texinfo-doc-nonfree
+@DOC@ gccintro
+@DEV@ etherape
+@DEV@ librecad
+# install full packages
+@DOC@ debian-policy
+@DOC@ developers-reference
+@DOC@ debian-reference
+@DOC@ maint-guide
+@DOC@ debmake-doc
+@DOC@ ibus-doc
+@DOC@ git-doc
+@DEV@ perl
+@DOC@ perl-doc
+@DEV@ python-all-dev python3-all-dev
+@DOC@ python-doc python3-doc
+#@DOC@ gcc-doc cpp-doc # Not in Debian non-free
+@DOC@ gdb-doc make-doc
+@DEV@ gdb cgdb
+@DOC@ gdb-doc
+@DEV@ glade
+@DOC@ iproute2-doc
+# install TeX packages
+@TEX@ texlive-full

@@ -1,5 +1,5 @@
 # vim:sts=4 ai:
-# Local configuration 
+#Local configuration 
 MAILROOT="$HOME/Maildir"
 MAILHOST="localhost"
 VARMAILUSER="osamu"
@@ -27,15 +27,14 @@ if (     /^Precedence:.*list/:h || /^Precedence:.*bulk/:h || /^Precedence:.*junk
         MAILBOX="Inbox-courier"
     }
     elsif ( /From: .*eBay@reply1.ebay.com/:h || \
-         /From: .*<news-googleplay@google.com/:h ||\
-         /From: .*<noreply-.*@google.com>/:h ||\
-         /From: .*<newsletter@seeed.cc/:h ||\
-         /From: .*<newsmaster@topcard.co.jp/:h ||\
-         /From: .*<info@twitter.com/:h ||\
-         /From: .*digital-.*@asahi.com/:h )
+         /From: .*digital-.*@asahi.com/:h || \
+         /From: .*<info[-_@]/:h ||\
+         /From: .*<news[-_@]/:h ||\
+         /From: .*<no[-_]reply[-_@]/:h ||\
+         /From: .*<noreply.*@/:h )
     {
     # mailbox for mailing list for google
-        MAILBOX="Inbox-junk-list"
+        MAILBOX="Inbox-list-news"
     }
     elsif ( /^List-Id:.*<([^<>]*)>/:h )
     {
@@ -77,6 +76,10 @@ else
     }
     elsif ( /From: .*@connpass.com/:h ||\
             /From: .*@github.com/:h ||\
+            /From: .*info@so-net.ne.jp/:h ||\
+            /From: .*@kognitiv.com/:h ||\
+            /From: .*tokyo2020.jp/:h ||\
+            /From: .*@ticket.tokyo2020.org/:h ||\
             /From: .*@accounts.google.com/:h )
     {
     # white list for inbox
@@ -101,28 +104,31 @@ else
     # local mails (non-mailing list)
         MAILBOX="Inbox-local"
     }
-    elsif ( /From: .*<announce[-_]noreply[-_@]/:h ||\
-	 /From: .*imagegateway@canon-mj.co.jp/:h || \
-	 /From: .*jobs-listings@linkedin.com/:h || \
-	 /From: .*nomura-shomen@jp.nomura.com/:h || \
-	 /From: .*paypal@.*.paypal.com/:h || \
-	 /From: .*toshiba_magazine@room1048.jp/:h || \
-	 /From: .*@facebookmail.com/:h || \
-         /From: .*<jobs-listings@linkedin.com/:h ||\
-         /From: .*<linkedin@e.linkedin.com>/:h ||\
-         /From: .*<mailmaster@carview.co.jp/:h ||\
-         /From: .*<bounce@mail.mecsumai.com/:h ||\
-         /From: .*<teikibin@minkara.carview.co.jp/:h ||\
+    elsif ( /From: .*info@fujimaki-select.com/:h ||\
          /From: .*-master@mail.yahoo.co.jp/:h ||\
-         /From: .*<ymall@tpgaw.jp/:h ||\
+         /From: .*@.*canon-mj.co.jp/:h || \
+         /From: .*@.*dynabook.com/:h || \
+         /From: .*@.*facebookmail.com/:h || \
+         /From: .*@.*hp.com/:h || \
+         /From: .*@.*lenovo.com/:h || \
+         /From: .*@.*linkedin.com/:h || \
+         /From: .*@.*pinterest.com>/:h || \
+         /From: .*@.*thelalu.com.tw/:h ||\
+         /From: .*@.*tokyu.jp/:h || \
+         /From: .*@.*twitter.com/:h || \
+         /From: .*anamagazine@.*ana.co.jp/:h || \
+         /From: .*bounce@mail.mecsumai.com/:h ||\
+         /From: .*jmbtournews@.*jal.com/:h || \
+         /From: .*paypal@.*.paypal.com/:h || \
+         /From: .*pontaweb@point.recruit.co.jp/:h ||\
+         /From: .*ymall@tpgaw.jp/:h ||\
          /From: .*yoyaku@expy.jp/:h ||\
-         /From: .*trafficpoint@tokyu.jp/:h ||\
-         /From: .*<order@seeed.cc/:h ||\
-         /From: .*vector@vector.co.jp/:h ||\
-         /From: .*theboxteam@box.com/:h ||\
+         /From: .*rhnewsletter-jp@redhat.com/:h ||\
+         /From: .*nomura-shomen@jp.nomura.com/:h ||\
          /From: .*<delivers-master[-_@]/:h ||\
          /From: .*<donotreply[-_@]/:h ||\
          /From: .*<info[-_@]/:h ||\
+         /From: .*<mailnews[-_@]/:h ||\
          /From: .*<messages[-_]noreply[-_@]/:h ||\
          /From: .*<news[-_@]/:h ||\
          /From: .*<newsletter[-_@]/:h ||\
@@ -130,10 +136,17 @@ else
          /From: .*<no[-_]reply[-_@]/:h ||\
          /From: .*<noreply[-_@]/:h ||\
          /From: .*<notifications-noreply@/:h ||\
+         /From: .*<promotion@/:h ||\
          /From: .*<service[-_@]/:h )
     {
     # junk mails
-        MAILBOX="Inbox-junk-nonlist"
+        MAILBOX="Inbox-frequent"
+    }
+    elsif ( /From: .*<announce[-_]noreply[-_@]/:h ||\
+         /From: .*<service[-_@]/:h )
+    {
+    # junk mails
+        MAILBOX="Inbox-infrequent"
     }
 }
 

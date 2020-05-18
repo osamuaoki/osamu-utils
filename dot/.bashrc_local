@@ -2,13 +2,16 @@
 umask 002
 
 # bash history: shorthand for ignorespace and ignoredups
-export HISTCONTROL=ignoreboth
+export HISTCONTROL=ignoreboth:erasedups
 
 # mc related
 . /usr/lib/mc/mc.sh
 
+# FZF
+source /usr/share/doc/fzf/examples/key-bindings.bash
+
 # set CDPATH
-export CDPATH=.:/usr/share/doc:~:~/src/debian:~/src/github:~src/local
+export CDPATH=.:/usr/share/doc:~:~/pub/salsa:~/pub/github:~/pub/tmp
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
@@ -29,6 +32,9 @@ export VISUAL=vim
 export BROWSER=firefox
 export MKISOFS="xorrisofs"
 export GIT_PAGER=
+
+# make core file
+ulimit -c unlimited
 
 # devscripts related
 DEBEMAIL=osamu@debian.org
