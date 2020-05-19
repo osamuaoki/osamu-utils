@@ -5,8 +5,6 @@
 #
 pre=$(echo ~)
 
-echo "$pre"
-
 # functions
 f_help () {
   echo "Syntax:"
@@ -20,11 +18,7 @@ f_diff () {
 # install the latest system skel files
   for p in /etc/skel/.* ; do
     f=$(basename $p)
-    if [ "$f" = ".bashrc" ] && [ -f "$p" ] ; then
-      echo " $ diff -u $p  ~/$f"
-      diff -u "$p" <(head -n -2 ~/"$f") || true
-      echo " ... ignore tweak on ~/.bashrc"
-    elif [ -f "$p" ]; then
+    if [ -f "$p" ]; then
       echo " $ diff -u ~$p  ~/$f"
       diff -u "$p" ~/"$f" || true
     else
@@ -62,10 +56,6 @@ f_install () {
       cp -f $p ~/$f
     fi
   done
-# tweak for install
-  echo " ... tweak ~/.bashrc"
-  echo "###### Extra entries as ~/.bashrc_local ######" >>~/.bashrc
-  echo '[ -f ~/.bashrc_local ] && . ~/.bashrc_local' >>~/.bashrc
 # install the latest dot files
   for p in ~/bin/dot/.* ; do
     f=$(basename $p)
@@ -86,7 +76,7 @@ f_install () {
 }
 
 f_backup () {
-  BUPATH="backup/BU$(date -u +'%Y%m%d')"
+  BUPATH="backup/BU$(date -u +'%Y%m%d%H%M')"
   echo "Back up to ~/$BUPATH"
   mkdir -p ~/$BUPATH/dot
   mkdir -p ~/$BUPATH/pbuilder/hooks
@@ -118,6 +108,8 @@ f_backup () {
       sudo cp -f "/var/cache/pbuilder/hooks/$f" ~/"$BUPATH/pbuilder/hooks/$f"
     fi
   done
+  echo "===================================================================="
+# Non-public data
 # backup the latest ~/bin directory
   echo "backup from ~/bin directory"
   cp -a ~/bin/ ~/$BUPATH/
@@ -127,6 +119,9 @@ f_backup () {
 # backup the latest ~/.ssh directory
   echo "backup from ~/.ssh directory"
   cp -a ~/.ssh/ ~/$BUPATH/
+# backup the latest ~/.msmtprc file
+  echo "backup from ~/.msmtprc file"
+  cp -a ~/.msmtprc ~/$BUPATH/
 # backup the latest /etc directory
   echo "backup from /etc directory"
   for f in aliases email-addresses debian_version fstab hostname hosts sysctl.conf sudoers; do
