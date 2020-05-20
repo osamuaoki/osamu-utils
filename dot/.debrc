@@ -13,6 +13,7 @@
 # * micro code etc.
 firmware-linux
 # * wifi etc.
+firmware-linux-nonfree
 atmel-firmware
 bluez-firmware
 @DEV@ broadcom-sta-dkms
@@ -69,6 +70,8 @@ cryptsetup
 lvm2
 kpartx
 eject
+dmsetup
+usbutils
 # * partition tools
 fdisk
 gdisk
@@ -99,8 +102,13 @@ iproute2
 getmail
 maildrop
 msmtp
+mutt
 # * system utilities
 memtest86+
+lsb-base
+popularity-contest
+python3
+fzf
 hdparm
 htop
 @GUI@ psensor
@@ -108,7 +116,7 @@ htop
 # Japanese input method support for me
 #############################################################################
 nkf lv
-@GUI@ ibus-anthy ibus-gtk ibus-gtk3 libqt5gui5
+@GUI@ ibus-anthy ibus-gtk ibus-gtk3 libqt5gui5 ibus-wayland ibus-mozc
 @GUI@ fonts-vlgothic fonts-ipaexfont
 #############################################################################
 # Desktop GUI extras

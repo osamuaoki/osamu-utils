@@ -3,8 +3,25 @@
 # Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 sw=2 ai et:
 #############################################################################
-cat /etc/os-release
-. /etc/os-release # get OS version
+if [ "$1" = "-s" ]; then
+  echo
+  echo "... Simulation ... no actual install"
+  echo
+  OPTS="-s"
+  shift
+elif [ "$1" = "-c" ]; then
+  echo
+  echo "... Check ... no actual install"
+  echo
+  OPTS="-c"
+  shift
+else
+  OPTS=""
+fi
+#############################################################################
+if [ "$OPTS" != "-c" ]; then
+  cat /etc/os-release
+fi
 # VERSION_ID
 #  7: wheezy  = 2013-
 #  8: jessie  = 2015-
@@ -13,15 +30,6 @@ cat /etc/os-release
 # 11: bullseye
 # 12: Bookworm
 #############################################################################
-if [ "$1" = "-s" ]; then
-  echo
-  echo "... Simulation ... no actual install"
-  echo
-  OPTS="-s"
-  shift
-else
-  OPTS=""
-fi
 if [ -z "$1" ]; then
   echo "1) Console only Desktop"
   echo "2) GUI Desktop (GNOME)"
@@ -89,6 +97,14 @@ case $CHOICE in
       sed -e 's/@ALL@/#/' |\
       sed -e 's/#.*$//' |xargs -n1)"
 esac
+if [ "$OPTS" = "-c" ]; then
+  echo "-----------------------------------------------------------------------"
+  aptitude search '~i!~prequired!~pimportant!~pstandard!~M' | \
+  grep -v "$(echo -n '\(';echo -n "$PACKAGES" | sed -e 's/^/^i  /g' | sed -e 's/$/ - \\|/g' | tr -d '\n';echo -n 'XXX_NON_EXISTING_PACKAGE_XXX\)')"
+  echo "-----------------------------------------------------------------------"
+  exit 0
+fi
+
 echo "-----------------------------------------------------------------------"
 echo $PACKAGES
 echo "-----------------------------------------------------------------------"

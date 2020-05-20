@@ -11,6 +11,7 @@ f_help () {
   echo "  hal conf i[nstall]"
   echo "  hal conf d[iff]"
   echo "  hal conf b[ackup]"
+  echo "  hal conf u[pdate]"
   exit
 }
 
@@ -157,6 +158,26 @@ f_backup () {
   echo "to update exim server"
 }
 
+f_update () {
+# update the template files by the latest installed dot files
+  for p in ~/bin/dot/.* ; do
+    f=$(basename $p)
+    if [ -f $p ]; then
+      echo " $ cp -f ~/$f  ~${p#${pre}}"
+      cp -f ~/$f $p
+    fi
+  done
+# update the template files by the latest installed pbuilder hooks
+  sudo mkdir -p /var/cache/pbuilder/hooks
+  for p in ~/bin/pbuilder/* ; do
+    f=$(basename $p)
+    if [ -f $p ]; then
+      echo " $ sudo cp -f .../hooks/$f ~${p#${pre}}"
+      sudo cp -p /var/cache/pbuilder/hooks/$f $p
+    fi
+  done
+}
+
 case "$1" in
   b*)
     f_backup
@@ -166,6 +187,9 @@ case "$1" in
         ;;
   d*)
     f_diff
+        ;;
+  u*)
+    f_update
         ;;
   *)
     f_help

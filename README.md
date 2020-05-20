@@ -142,10 +142,12 @@ Then refine GUI desktop as needed:
 *   hal         -- many trivial tasks via sub-commands
     * hal newssd  /dev/sd?  -- factory reset of SSD (hdparam, time)
     * hal initial-setup     -- initial setup of the new system
-    * hal conf install      -- setup public dot files and pbuilder-files
-    * hal conf diff         -- check public dot files and pbuilder-files
-    * hal conf backup       -- backup secret and public dotfiles and pbuilder-files
-    * hal install           -- setup system (based on ~/.debrc)
+    * hal conf install      -- setup public configuration files
+    * hal conf diff         -- check public configuration files
+    * hal conf backup       -- backup secret and public configuration files
+    * hal conf update       -- update template dot-files and pbuilder-files
+    * hal install           -- install predefined packages (based on ~/.debrc)
+    * hal install -c        -- check extra packages (based on ~/.debrc)
     * hal update            -- update this `~/bin/*` repository
 * ...
 
@@ -197,6 +199,83 @@ the factory condition using hdparm.
  # hal newssd /dev/sdx
 ```
 
+## Dig out manually installed packages
+
+
+Basically `hal install -c` is a filtered output of following command:
+
+```
+$ aptitude '~i!~prequired!~pimportant!~pstandard!~M'
+```
+
+All packages listed in `~/.debrc` are dropped.  Let's see:
+
+```
+$ hal install -c
+ ...
+
+... Check ... no actual install
+
+1) Console only Desktop
+2) GUI Desktop (GNOME)
+3) Developer Desktop (C, Python3, ...) 7 GB
+4) ... + Documentation
+5) ... + TeX tools 13 GB
+6) ... + All extras
+Enter your choice (1-6): 5
+
+Install 'Developer Desktop (C, Python3, TeX, ...) + Documentation'
+-----------------------------------------------------------------------
+i  busybox - Tiny utilities for small and embedded systems
+i  ca-cacert - CAcert.org root certificates
+i  console-setup - console font and keymap setup program
+i  discover - hardware identification system
+i  dmsetup - Linux Kernel Device Mapper userspace library
+i  firmware-linux-nonfree - Binary firmware for various drivers in the Linux kernel (meta-package)
+i  font-viewer - Full-featured font preview application for GTK Environments
+i  fonts-dejavu-core - Vera font family derivate with additional characters
+i  fonts-opensymbol - OpenSymbol TrueType font
+i  fzf - general-purpose command-line fuzzy finder
+i  grub-common - GRand Unified Bootloader (common files)
+i  grub-efi-amd64 - GRand Unified Bootloader, version 2 (EFI-AMD64 version)
+i  ibus-mozc - Mozc engine for IBus - Client of the Mozc input method
+i  ibus-wayland - Intelligent Input Bus - Wayland support
+i  initramfs-tools - generic modular initramfs generator (automation)
+i  installation-report - system installation report
+i  keyboard-configuration - system-wide keyboard preferences
+i  laptop-detect - system chassis type checker
+i  linux-config-5.4 - Debian kernel configurations for Linux 5.4
+i  linux-config-5.5 - Debian kernel configurations for Linux 5.5
+i  linux-image-amd64 - Linux for 64-bit PCs (meta-package)
+i  lsb-base - Linux Standard Base init script functionality
+i  memtest86+ - thorough real-mode memory tester
+i  mutt - text-based mailreader supporting MIME, GPG, PGP and threading
+i  popularity-contest - Vote for your favourite packages automatically
+i  python3 - interactive high-level object-oriented language (default python3 version)
+i  shim-signed - Secure Boot chain-loading bootloader (Microsoft-signed binary)
+i  task-ssh-server - SSH server
+i  usbutils - Linux USB utilities
+i  wireguard-dkms - fast, modern, secure kernel VPN tunnel (DKMS version)
+i  xterm - X terminal emulator
+```
+
+The initial invocation result of `hal install -c` contains many false
+positives.  In order for `hal install -c` to dig out manually installed
+packages effectively, you need to mark a automatically installed package as
+so.  Somehow, automatically installed packages in early installation process
+lacks registration of the automatically installed flag used by `aptitude`.
+
+You can set the automatically installed flag properly by playing with
+`aptitude`.  For example, in `aptitude`, I press `l` and input `~n^lib` .
+Then, I press `M` over `Installed Packages` line.  You now see many packages
+for dependency breakage and pending removal indicated by `B` or `d` under
+`Installed Packages`.  Press `+` once over `Installed Packages`.  For `B`
+packages, move to each `B` package and press `+` once. For `d` packages, move
+to each `d` package and press `+` twice.  (Few more dances on such packages as
+`python3` not being automatically installed to mark it automatically installed
+until no more removal nor install happen and `hal install -c` becomes
+minimal.)  Then you are all set.
+
 ## Clean up installed packages to get back to minimal system
 
 For manually de-installing bulk of packages, do the followings from `aptitude`:
@@ -213,8 +292,6 @@ You should get the minimum system by now.  You can get your baseline system by
 the following:
 
 ```
-$ vim ~/.debrc
- ...
 $ hal install
  ...
 ```
@@ -300,4 +377,3 @@ Connect to gmail with IMAP/SSL and SMTP/STARTTLS
 * mail sent by smarthost; received via SMTP or fetchmail
 * System mail name: goofy.osamu.debian.net (for hostname=goofy,
   domainname=osamu.debian.net, should be default presented.)
-
