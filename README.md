@@ -6,7 +6,7 @@ vim:se tw=78 ai si sts=4 sw=4 et:
 These are scripts to set up my typical workstation and meant to be installed
 in `~/bin` directory.
 
-Let's go over my recent practices. (My user account is `osamu`.)
+Let's go over my recent install practice. (My user account is `osamu`.)
 
 ## Download the Debian Install ISO image
 
@@ -33,6 +33,8 @@ $ sudo sync
 
 ## System install
 
+### Partition
+
 Here is how I set up my system `/home` in the btrfs submodule on GPT/UEFI
 system.  Notable feature is my home directory is in the btrfs submodule.
 
@@ -40,6 +42,15 @@ system.  Notable feature is my home directory is in the btrfs submodule.
 * install with USB memory w/o desktop initially as UEFI system
     * split `/home` partitioning and format the whole `/home` as btrfs (Debian
       doesn't allow to use btrfs submodule here)
+      ```
+      Number  Start (sector)    End (sector)  Size       Code  Name
+         1            2048         1034239   504.0 MiB   EF00  EFI System Partition
+         2         1034240         2988031   954.0 MiB   EF02
+         3         2988032       100644863   46.6 GiB    8300  System root
+         4       100644864       468860927   175.6 GiB   8300  User data
+      ```
+      (Maybe, I should have used 1024 MiB instead of 954.0 MiB for bios_boot
+      partition, etc.)
 * start the new system as root from the Linux console
 * Do the minimal set-up for osamu (uid=1000) from the Linux console on the new
   system:
@@ -82,6 +93,18 @@ frim the root shell (optional):
 * `aptitude`: Tasks -> End-user -> GNOME -> task-gnome-desktop
 * `apt install task-gnome-desktop`
 
+### Network
+
+Installation sets up network with `/etc/network/interfaces`.  Let's disable it
+by renaming it to `/etc/network/interfaces.disabled`.
+
+* For desktop environment, use the GNOME network manager as the GUI-supported
+network configuration mechanism.  Disabling `/etc/network/interfaces`
+automatically makes GNOME network icon to be displayed nicely for Desktop use
+:-)
+* For server environment, use the systemd based network configuration mechanism
+with its configuration files in `/etc/systemd/network` as described in
+https://wiki.debian.org/SystemdNetworkd .
 
 ## Set up shell environment
 
