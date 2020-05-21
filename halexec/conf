@@ -81,6 +81,7 @@ f_backup () {
   echo "Back up to ~/$BUPATH"
   mkdir -p ~/$BUPATH/dot
   mkdir -p ~/$BUPATH/pbuilder/hooks
+  mkdir -p ~/$BUPATH/.config/
   mkdir -p ~/$BUPATH/etc
   mkdir -p ~/$BUPATH/etc/ssh
   mkdir -p ~/$BUPATH/etc/sudoers.d
@@ -120,6 +121,9 @@ f_backup () {
 # backup the latest ~/.ssh directory
   echo "backup from ~/.ssh directory"
   cp -a ~/.ssh/ ~/$BUPATH/
+# backup the latest ~/.config/evolution directory
+  echo "backup from ~/.config/evolution directory"
+  cp -a ~/.config/evolution/ ~/$BUPATH/.config/
 # backup the latest ~/.msmtprc file
   echo "backup from ~/.msmtprc file"
   cp -a ~/.msmtprc ~/$BUPATH/
