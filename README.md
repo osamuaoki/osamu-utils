@@ -140,14 +140,17 @@ This lacks some extra scripts but provides mostly usable work environment.
 
 Submodules provide some extra scripts.
 
-Thenm use this to set system:
+Then use this to set system:
 
 ```
 $ hal initial-setup
-$ hal dotfiles install
+$ hal conf install
 $ vim ~/.debrc
  ...
+$ hal install -c
+ ...
 $ hal install
+ ...
 ```
 
 Then refine GUI desktop as needed:
@@ -181,13 +184,12 @@ Then refine GUI desktop as needed:
 * `~/.benrc`
 * `~/.devscripts`
 * `~/.gitconfig`
-* `~/.imediff2`
 * `~/.pbuilderrc`
 * `~/.quiltrc-dpkg`
 * `~/.vimrc`
 * `~/.debrc`
 
-These dotfiles are installed into the HOME directory of the user.
+These dot files are installed into the HOME directory of the user.
 
 ## pbuilder-files
 
