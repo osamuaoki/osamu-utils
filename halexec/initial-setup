@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # Initial setup
 # Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
-# vim: set ts=2 sts=2 ai et:
+# vim: set ts=2 sts=2 sw=2 ai et:
 #############################################################################
 # Set to run as ROOT
 if [ $(id -un) != root ]; then
@@ -36,6 +36,17 @@ else
   echo "Enable contrib + non-free"
   sed -i -e 's/main/main contrib non-free/' /etc/apt/sources.list
 fi
+
+if grep -q "backports" /etc/apt/sources.list ; then
+  echo "Already backports enabled"
+else
+  echo "Enable backports"
+  cp /etc/apt/sources.list /etc/apt/sources.list.orig
+  echo >> /etc/apt/sources.list
+  sed -n -e 's/, previously.*$/ from testing/' -e 's/-updates/-backports/gp' \
+    /etc/apt/sources.list.orig >> /etc/apt/sources.list
+fi
+
 apt update
 apt full-upgrade
 #############################################################################
@@ -44,7 +55,8 @@ echo "set the primary user privileges"
 # Set primary user name (even if it was started as root)
 USERNAME=$(id -un 1000)
 mkdir -p /etc/sudoers.d
-cat >/etc/sudoers.d/custom <<END
+if [ ! -f /etc/sudoers.d/custom ]; then
+  cat >/etc/sudoers.d/custom <<END
 # NO password for the primary user
 #$USERNAME ALL = NOPASSWD: ALL
 # Alternative setting for the user in sudo group
@@ -55,11 +67,12 @@ cat >/etc/sudoers.d/custom <<END
 #Defaults timestamp_type = global
 END
 # Set up normal group membership
-/usr/sbin/adduser $USERNAME sudo
-/usr/sbin/adduser $USERNAME adm
-/usr/sbin/adduser $USERNAME src
-/usr/sbin/adduser $USERNAME staff
-/usr/sbin/adduser $USERNAME games
+  /usr/sbin/adduser $USERNAME sudo
+  /usr/sbin/adduser $USERNAME adm
+  /usr/sbin/adduser $USERNAME src
+  /usr/sbin/adduser $USERNAME staff
+  /usr/sbin/adduser $USERNAME games
+fi
 echo ""
 echo "Debian distribution supported:"
 sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list

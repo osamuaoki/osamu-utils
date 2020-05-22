@@ -242,7 +242,7 @@ $ hal install -c
 ... Check ... no actual install
 
 1) Console only Desktop
-2) GUI Desktop (GNOME)
+2) GUI Desktop (GNOME) 5 GB
 3) Developer Desktop (C, Python3, ...) 7 GB
 4) ... + Documentation
 5) ... + TeX tools 13 GB
@@ -291,15 +291,17 @@ so.  Somehow, automatically installed packages in early installation process
 lacks registration of the automatically installed flag used by `aptitude`.
 
 You can set the automatically installed flag properly by playing with
-`aptitude`.  For example, in `aptitude`, I press `l` and input `~n^lib` .
-Then, I press `M` over `Installed Packages` line.  You now see many packages
-for dependency breakage and pending removal indicated by `B` or `d` under
-`Installed Packages`.  Press `+` once over `Installed Packages`.  For `B`
-packages, move to each `B` package and press `+` once. For `d` packages, move
-to each `d` package and press `+` twice.  (Few more dances on such packages as
-`python3` not being automatically installed to mark it automatically installed
-until no more removal nor install happen and `hal install -c` becomes
-minimal.)  Then you are all set.
+`aptitude`.  For example, in `aptitude`, I press `l` and input `~n^lib` to
+pick up probable packages with automatically installed flag.  Then, I press
+`M` over `Installed Packages` line.  You now see many packages for dependency
+breakage and pending removal indicated by `B` or `d` under `Installed
+Packages`.  I press `m` over all `d` packages to false picks.  Press `+` once
+over `Installed Packages`.  If `B` remains, move to each `B` package and press
+`+` once. For `d` packages, move to each `d` package and press `+` twice mat
+resolve situation.  (Few more dances on such packages as `python3` not being
+automatically installed to mark it automatically installed until no more
+removal nor install happen and `hal install -c` becomes minimal.)  Then you
+are all set.
 
 ## Clean up installed packages to get back to minimal system
 
@@ -384,8 +386,10 @@ To add a new ```<project>```:
 
 ### Evolution
 
-Connect to gmail with IMAP/SSL and SMTP/STARTTLS
-(Mutt works as backup system if connected with POP3)
+Firstm set up with your primary Google accounr and add other mails.  You can
+ass send-only ssh-sendmail too.
+
+Use IMAP/SSL and SMTP/STARTTLS for Gmail.
 
 ### Japanese
 
@@ -402,3 +406,8 @@ Connect to gmail with IMAP/SSL and SMTP/STARTTLS
 * mail sent by smarthost; received via SMTP or fetchmail
 * System mail name: goofy.osamu.debian.net (for hostname=goofy,
   domainname=osamu.debian.net, should be default presented.)
+
+### vim
+
+See https://github.com/osamuaoki/dot-vim
+

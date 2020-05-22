@@ -32,7 +32,7 @@ fi
 #############################################################################
 if [ -z "$1" ]; then
   echo "1) Console only Desktop"
-  echo "2) GUI Desktop (GNOME)"
+  echo "2) GUI Desktop (GNOME) 5 GB"
   echo "3) Developer Desktop (C, Python3, ...) 7 GB"
   echo "4) ... + Documentation"
   echo "5) ... + TeX tools 13 GB"
