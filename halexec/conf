@@ -82,10 +82,13 @@ f_backup () {
   mkdir -p ~/$BUPATH/dot
   mkdir -p ~/$BUPATH/pbuilder/hooks
   mkdir -p ~/$BUPATH/.config/
+  mkdir -p ~/$BUPATH/.local/share/
+  mkdir -p ~/$BUPATH/.getmail/
   mkdir -p ~/$BUPATH/etc
   mkdir -p ~/$BUPATH/etc/ssh
   mkdir -p ~/$BUPATH/etc/sudoers.d
   mkdir -p ~/$BUPATH/etc/exim4
+  mkdir -p ~/$BUPATH/backup
 # backup the latest system skel files
   for p in /etc/skel/.* ; do
     f=$(basename $p)
@@ -124,12 +127,19 @@ f_backup () {
 # backup the latest ~/.config/evolution directory
   echo "backup from ~/.config/evolution directory"
   cp -a ~/.config/evolution/ ~/$BUPATH/.config/
+# backup the latest ~/.local/evolution directory
+  echo "backup from ~/.local/evolution directory"
+  cp -a ~/.local/share/evolution/ ~/$BUPATH/.local/share/
+# backup the latest ~/.getmail directory
+  echo "backup from ~/.getmail directory"
+  cp -a ~/.getmail/ ~/$BUPATH/
 # backup the latest ~/.msmtprc file
   echo "backup from ~/.msmtprc file"
   cp -a ~/.msmtprc ~/$BUPATH/
 # backup the latest /etc directory
   echo "backup from /etc directory"
-  for f in aliases email-addresses debian_version fstab hostname hosts sysctl.conf sudoers; do
+  for f in aliases email-addresses debian_version fstab hostname hosts \
+	  sysctl.conf sudoers group gshadow passwd shadow; do
     p="/etc/$f"
     if [ -f "$p" ]; then
       echo " $ sudo cp -f /etc/$f  ~/$BUPATH/etc/$f"
@@ -156,6 +166,16 @@ f_backup () {
       echo " $ sudo cp -f /etc/exim4/$f  ~/$BUPATH/etc/exim4/$f"
       sudo cp -f "/etc/exim4/$f" ~/"$BUPATH/etc/exim4/$f"
     fi
+  done
+  echo " $ sudo tar --create -v -f ~/$BUPATH/backup/alternatives.tar -C /etc alternatives"
+  sudo tar --create -v -f ~/"$BUPATH/backup/alternatives.tar" -C /etc alternatives
+# backup the latest /var/lib directory
+  for p in apt/extended_states aptitude/pkgstates dpkg/diversions \
+	  dpkg/statoverride dpkg/status;  do
+    f=$(basename "$p")
+    d=$(dirname "$p")
+    echo " $ sudo cp -f /var/lib/$d/$f  ~/$BUPATH/backup/$d.$f"
+    sudo cp -f "/var/lib/$d/$f" ~/"$BUPATH/backup/$d.$f"
   done
   echo "===================================================================="
   echo "You need to do 'dpkg-reconfigure -plow exim4-config' later"
