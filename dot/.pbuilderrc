@@ -1,5 +1,6 @@
 AUTO_DEBSIGN="${AUTO_DEBSIGN:-no}"
 PDEBUILD_PBUILDER=cowbuilder
+PBUILDERROOTCMD="sudo -E"
 HOOKDIR="/var/cache/pbuilder/hooks"
 MIRRORSITE="http://deb.debian.org/debian"
 #APTCACHE=/var/cache/pbuilder/aptcache

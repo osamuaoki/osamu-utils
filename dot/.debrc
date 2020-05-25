@@ -1,12 +1,25 @@
-#
+#############################################################################
 # Baseline package selection list
-# #     comment out
-# @GUI@ only for GUI
-# @DEV@ only for Development
-# @DOC@ only for Development with Doc
-# @TEX@ only for Development with Doc+TeX
-# @ALL@ only for Development with Doc+TeX+All
 #
+# #     comment out
+# @GUI@ -2 only for GUI
+# @DEV@ -3 only for Development
+# @DOC@ -4 only for Development with Doc
+# @TEX@ -5 only for Development with Doc+TeX
+# @ALL@ -6 only for Development with Doc+TeX+All
+#
+#############################################################################
+# *** Bare Minimum Utilities ***
+#############################################################################
+# This is installed to track auto/manual install
+aptitude
+# remove nano abs ubstall vim
+nano-
+vim
+# very basics installed via aptitude
+mc sudo locales-all git wget gnupg
+task-english
+task-ssh-server
 #############################################################################
 # *** NON-FREE firmwares *** (mostly wifi)
 #############################################################################
@@ -33,15 +46,8 @@ firmware-zd1211
 #firmware-myricom
 #sl-modem-dkms
 #############################################################################
-# *** Bare Minimum Utilities ***
-#############################################################################
-aptitude mc vim sudo locales-all git wget gnupg ssh
-# remove nano
-nano-
-#############################################################################
 # *** System Utilities ***
 #############################################################################
-task-ssh-server
 # filesystem/block device tools
 btrfs-progs
 cryptsetup
@@ -67,11 +73,12 @@ testdisk
 # file compression tools
 gzip bzip2 xz-utils liblz4-tool zstd
 # network utilities
-getmail
 iproute2
-maildrop
-msmtp
-mutt
+# mails are now all imap4 via evolution
+#getmail
+#maildrop
+#msmtp
+#mutt
 # terminal multiplexer
 screen
 tmux
@@ -94,7 +101,7 @@ xxd
 # *** Desktop ***
 #############################################################################
 # basic GUI packages
-@GUI@ task-gnome-desktop task-english
+@GUI@ task-gnome-desktop
 @GUI@ chromium pepperflashplugin-nonfree # alt. browser
 @GUI@ gnote # desktop note
 @GUI@ psensor # temp. mon.

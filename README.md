@@ -291,17 +291,24 @@ so.  Somehow, automatically installed packages in early installation process
 lacks registration of the automatically installed flag used by `aptitude`.
 
 You can set the automatically installed flag properly by playing with
-`aptitude`.  For example, in `aptitude`, I press `l` and input `~n^lib` to
-pick up probable packages with automatically installed flag.  Then, I press
-`M` over `Installed Packages` line.  You now see many packages for dependency
-breakage and pending removal indicated by `B` or `d` under `Installed
-Packages`.  I press `m` over all `d` packages to false picks.  Press `+` once
-over `Installed Packages`.  If `B` remains, move to each `B` package and press
-`+` once. For `d` packages, move to each `d` package and press `+` twice mat
-resolve situation.  (Few more dances on such packages as `python3` not being
-automatically installed to mark it automatically installed until no more
-removal nor install happen and `hal install -c` becomes minimal.)  Then you
-are all set.
+`aptitude`.  With some luck, I now get a nice filtered list of all manually
+installed tasks and packages just with pressing `l` and entering `!~M` only.
+
+Here us how I did.  I first press `M` over `Installed Packages` line.  Then I
+select followings as manually installed packages (show up as `i` without `M`)
+by pressing `+` twice over them and `m` as needed:
+
+* `task-desktop`
+* `task-english`
+* `task-gnome-desktop`
+* `task-ssh-server`
+* `mc`
+* `vim`
+
+Then open `Installed Packages` with `[`.  You see many packages for dependency
+breakage indicated by `B` under red highlighted line.  I press `+` once or
+twice over them to keep them.  I also press `M` for packages installed by
+dependency.
 
 ## Clean up installed packages to get back to minimal system
 
@@ -367,7 +374,9 @@ To add a new ```<project>```:
  $ sudo aptitude -u
 ```
 
-Use `~i!~prequired!~pimportant!~pstandard!~M` as the filter.
+Use `~i!~prequired!~pimportant!~pstandard!~M` or `!~M` as the filter.
+
+
 
 ### Japanese
 
