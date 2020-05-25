@@ -153,6 +153,7 @@ grub2-splashimages
 @DEV@ vim-gtk3
 @DEV@ xdu
 @DEV@ xtrace ltrace strace
+@DEV@ hugo # for blog
 #vim-addon-manager # I use https://github.com/osamuaoki/dot-vim instead
 #git-annex
 #############################################################################

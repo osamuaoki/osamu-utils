@@ -388,6 +388,10 @@ wuth `+`.  Chose "Japanese" from menu and "Japanese (Anthy)" and "Japanese
     * latin_mode: Muhenkan
     * hiragana_mode: henkan
 
+See more at:
+https://osamuaoki.github.io/jp/2019/03/23/gnome-uskb-im-select/
+
+
 ### Mail
 
 Use `evolution` and forget all complicated mamual setups.
