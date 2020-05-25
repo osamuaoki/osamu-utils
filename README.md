@@ -144,12 +144,12 @@ Then use this to set system:
 
 ```
 $ hal initial-setup
-$ hal conf install
+$ hal conf install -3
 $ vim ~/.debrc
  ...
-$ hal install -c
+$ hal install -c -3
  ...
-$ hal install
+$ hal install -3
  ...
 ```
 
@@ -411,7 +411,7 @@ Use IMAP/SSL and SMTP/STARTTLS for Gmail.  (Use OAUTH)
 See https://github.com/osamuaoki/dot-vim
 
 ### GRUB
-
+q
 * `grub-theme-starfield`
 * `grub2-splashimages`
 
@@ -425,3 +425,5 @@ $ sudo -E bash
 # ^D
 ```
 Changing this is a good way to show boot disk ....
+
+

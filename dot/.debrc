@@ -56,7 +56,8 @@ e2fsprogs
 eject
 exfat-utils
 kpartx
-lvm2
+# Removed to avoid error
+#lvm2
 ntfs-3g
 usbutils
 xfsprogs
@@ -97,6 +98,8 @@ time
 w3m
 wget
 xxd
+# Nice boot screen
+grub2-splashimages
 #############################################################################
 # *** Desktop ***
 #############################################################################
@@ -107,6 +110,7 @@ xxd
 @GUI@ gnote # desktop note
 @GUI@ psensor # temp. mon.
 @GUI@ rxvt-unicode # alt. console
+@GUI@ fonts-hack # Nice terminal fonts
 #emacs
 # security related (gnupg friends)
 @GUI@ scdaemon

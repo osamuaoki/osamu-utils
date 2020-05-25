@@ -199,7 +199,7 @@ else
   echo "-----------------------------------------------------------------------"
   echo $PACKAGES
   echo "-----------------------------------------------------------------------"
-  read -p "Type 'RETURN'-key to instell above packages (otherwise ^C to stop here)." FOO
+  read -p "Type 'RETURN'-key to install above packages (otherwise ^C to stop here)." FOO
   # use aptitude instead if apt to track auto/manual install
   sudo aptitude update
   sudo aptitude install $OPTS $PACKAGES
