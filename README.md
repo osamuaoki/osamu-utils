@@ -367,47 +367,52 @@ To add a new ```<project>```:
  $ sudo aptitude -u
 ```
 
-### EXT4 optimize ideas for note PC
+Use `~i!~prequired!~pimportant!~pstandard!~M` as the filter.
 
-* `sudo tune2fs -o journal_data_writeback /dev/sda2` from other boot media.
-* `/etc/fstab option field`:
- 	* `noatime,discard,data=writeback,barrier=0,commit=60,errors=remount-ro`
+### Japanese
+
+From GNOME "Settings", select "Regions & Language" and add "Input sources"
+wuth `+`.  Chose "Japanese" from menu and "Japanese (Anthy)" and "Japanese
+(Mozc)" from sub-menu to activate the Japanese Input method.
+
+* configure Keybinding to be like Mac
+    * latin_mode: Muhenkan
+    * hiragana_mode: henkan
+
+### Mail
+
+Use `evolution` and forget all complicated mamual setups.
+
+#### Evolution
+
+Firstm set up with your primary Google account and add other mails.  You can
+add send-only ssh-sendmail too.
+
+Use IMAP/SSL and SMTP/STARTTLS for Gmail.  (Use OAUTH)
+
+#### exim4
+
+```
+ $ sudo dpkg-reconfigure -plow exim4-config
+```
+* local delivery only; not on a network (everthing in default)
+
+### vim
+
+See https://github.com/osamuaoki/dot-vim
 
 ### GRUB
 
 * `grub-theme-starfield`
 * `grub2-splashimages`
 
+For example, to use Lake_mapourika theme from `grub2-splashimages`:
+
 ```
- echo 'GRUB_BACKGROUND="/usr/share/images/grub/Lake_mapourika_NZ.tga"' \
+$ sudo -E bash
+# echo 'GRUB_BACKGROUND="/usr/share/images/grub/Lake_mapourika_NZ.tga"' \
    >> /etc/default/grub
- sudo update-grub
+# update-grub
+# ^D
 ```
-
-### Evolution
-
-Firstm set up with your primary Google accounr and add other mails.  You can
-ass send-only ssh-sendmail too.
-
-Use IMAP/SSL and SMTP/STARTTLS for Gmail.
-
-### Japanese
-
-* configure Keybinding to be like Mac
-    * latin_mode: Muhenkan
-    * hiragana_mode: henkan
-
-### exim4
-
-```
- $ sudo dpkg-reconfigure -plow exim4-conf
-```
-
-* mail sent by smarthost; received via SMTP or fetchmail
-* System mail name: goofy.osamu.debian.net (for hostname=goofy,
-  domainname=osamu.debian.net, should be default presented.)
-
-### vim
-
-See https://github.com/osamuaoki/dot-vim
-
+Changing this is a good way to show boot disk ....

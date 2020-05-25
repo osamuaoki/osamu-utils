@@ -1,25 +1,100 @@
 #!/bin/bash -e
-# install packages with equivs
-# Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
+# install or check packages using ~/.debrc
+# Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 sw=2 ai et:
 #############################################################################
-if [ "$1" = "-s" ]; then
+PACKAGE_LEVEL=0
+MODE="install"
+OPTS=""
+fn_help() {
+  echo "install or check packages using ~/.debrc"
+  echo "${0##/} [-s|--simulate] [-c|--check] [-1|-2|-3|-4|-5|-6]"
   echo
-  echo "... Simulation ... no actual install"
-  echo
-  OPTS="-s"
-  shift
-elif [ "$1" = "-c" ]; then
-  echo
-  echo "... Check ... no actual install"
-  echo
-  OPTS="-c"
-  shift
-else
-  OPTS=""
+  echo "    -s|--simulate      simulate install packages"
+  echo "    -c|--check         check installed packages against ~/.debrc"
+  echo "    -1|-2|-3|-4|-5|-6  install packages to the specified lavel"
+}
+# The quotes around "$@" are essential!
+# We need TEMP as the 'eval set --' would nuke the return value of getopt.
+TEMP=$(getopt -o 'sch123456' --long 'simulate,check,help' -n 'install' -- "$@")
+
+if [ $? -ne 0 ]; then
+	echo 'Terminating...' >&2
+  fn_help
+	exit 1
 fi
+
+# Note the quotes around "$TEMP": they are essential!
+eval set -- "$TEMP"
+unset TEMP
+
+while [ -n "$1" ]; do
+	case "$1" in
+		'-s'|'--simulate')
+      echo "... Simulation ... no actual install"
+      OPTS="-s"
+			shift
+			continue
+		;;
+		'-c'|'--check')
+      echo "... Check ... no actual install"
+      MODE="check"
+			shift
+			continue
+		;;
+		'-1')
+      echo 'Package level 1'
+      PACKAGE_LEVEL=1
+			shift
+			continue
+    ;;
+		'-2')
+      echo 'Package level 2'
+      PACKAGE_LEVEL=2
+			shift
+			continue
+    ;;
+		'-3')
+      echo 'Package level 3'
+      PACKAGE_LEVEL=3
+			shift
+			continue
+    ;;
+		'-4')
+      echo 'Package level 4'
+      PACKAGE_LEVEL=4
+			shift
+			continue
+    ;;
+		'-5')
+      echo 'Package level 5'
+      PACKAGE_LEVEL=5
+			shift
+			continue
+    ;;
+		'-6')
+      echo 'Package level 6'
+      PACKAGE_LEVEL=6
+			shift
+			continue
+    ;;
+		'-h'|'--help')
+      fn_help
+			exit 0
+		;;
+		'--')
+      break
+		;;
+		*)
+			echo "Internal error! with '$1'" >&2
+      help
+			exit 1
+		;;
+	esac
+done
+
 #############################################################################
-if [ "$OPTS" != "-c" ]; then
+if [ "$MODE" = "install" ]; then
   cat /etc/os-release
 fi
 # VERSION_ID
@@ -30,84 +105,102 @@ fi
 # 11: bullseye
 # 12: Bookworm
 #############################################################################
-if [ -z "$1" ]; then
-  echo "1) Console only Desktop"
-  echo "2) GUI Desktop (GNOME) 5 GB"
-  echo "3) Developer Desktop (C, Python3, ...) 7 GB"
-  echo "4) ... + Documentation"
-  echo "5) ... + TeX tools 13 GB"
-  echo "6) ... + All extras"
-  read -p "Enter your choice (1-6): " CHOICE
-else
-  CHOICE="$1"
+if [ "$PACKAGE_LEVEL" = 0 ]; then
+  echo " 1) Console only Desktop"
+  echo " 2) GUI Desktop (GNOME) 5 GB"
+  echo " 3) Developer Desktop (C, Python3, ...) 7 GB"
+  echo " 4) ... + Documentation"
+  echo " 5) ... + TeX tools 13 GB"
+  echo " 6) ... + All extras"
+  read -p "Enter your choice (1-6): " PACKAGE_LEVEL
 fi
 echo
-case $CHOICE in
-  "2") echo "Install 'GUI Desktop (GNOME)'"
+case $PACKAGE_LEVEL in
+  "2")
+    echo "Install 'GUI Desktop (GNOME)'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@//' |\
       sed -e 's/@DEV@/#/' |\
       sed -e 's/@DOC@/#/' |\
       sed -e 's/@TEX@/#/' |\
       sed -e 's/@ALL@/#/' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
           ;;
-  "3") echo "Install 'Developer Desktop (C, Python3, ...)'"
+  "3")
+    echo "Install 'Developer Desktop (C, Python3, ...)'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@//' |\
       sed -e 's/@DEV@//' |\
       sed -e 's/@DOC@/#/' |\
       sed -e 's/@TEX@/#/' |\
       sed -e 's/@ALL@/#/' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
           ;;
-  "4")  echo "Install 'Developer Desktop (C, Python3, ...) + Documentation'"
+  "4")
+    echo "Install 'Developer Desktop (C, Python3, ...) + Documentation'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@//' |\
       sed -e 's/@DEV@//' |\
       sed -e 's/@DOC@//' |\
       sed -e 's/@TEX@/#/' |\
       sed -e 's/@ALL@/#/' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
           ;;
-  "5")  echo "Install 'Developer Desktop (C, Python3, TeX, ...) + Documentation'"
+  "5")
+    echo "Install 'Developer Desktop (C, Python3, TeX, ...) + Documentation'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@//' |\
       sed -e 's/@DEV@//' |\
       sed -e 's/@DOC@//' |\
       sed -e 's/@TEX@//' |\
       sed -e 's/@ALL@/#/' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
           ;;
-  "6") echo "Install 'Developer Desktop (All)'"
+  "6")
+    echo "Install 'Developer Desktop (All)'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@//' |\
       sed -e 's/@DEV@//' |\
       sed -e 's/@DOC@//' |\
       sed -e 's/@TEX@//' |\
       sed -e 's/@ALL@//' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
           ;;
-  *) echo "Install 'Console only Desktop'"
+  *)
+    echo "Install 'Console only Desktop'"
     PACKAGES="$(cat ~/.debrc |\
       sed -e 's/@GUI@/#/' |\
       sed -e 's/@DEV@/#/' |\
       sed -e 's/@DOC@/#/' |\
       sed -e 's/@TEX@/#/' |\
       sed -e 's/@ALL@/#/' |\
-      sed -e 's/#.*$//' |xargs -n1)"
+      sed -e 's/#.*$//' |\
+      sed -e 's/^.*-$//' |\
+      xargs -n1)"
 esac
-if [ "$OPTS" = "-c" ]; then
+if [ "$MODE" = "check" ]; then
   echo "-----------------------------------------------------------------------"
-  aptitude search '~i!~prequired!~pimportant!~pstandard!~M' | \
-  grep -v "$(echo -n '\(';echo -n "$PACKAGES" | sed -e 's/^/^i  /g' | sed -e 's/$/ - \\|/g' | tr -d '\n';echo -n 'XXX_NON_EXISTING_PACKAGE_XXX\)')"
+  aptitude search '~i!~prequired!~pimportant!~pstandard!~M' | sed -e 's/^i  //g' |\
+  grep -v "$(echo -n '^\(';echo -n "$PACKAGES" | sed -e 's/$/ - \\|/g' | tr -d '\n';echo -n 'XXX_NON_EXISTING_PACKAGE_XXX\)')"|\
+  sort
   echo "-----------------------------------------------------------------------"
   exit 0
+else
+  echo "-----------------------------------------------------------------------"
+  echo $PACKAGES
+  echo "-----------------------------------------------------------------------"
+  read -p "Type 'RETURN'-key to instell above packages (otherwise ^C to stop here)." FOO
+  # use aptitude instead if apt to track auto/manual install
+  sudo aptitude update
+  sudo aptitude install $OPTS $PACKAGES
 fi
-
-echo "-----------------------------------------------------------------------"
-echo $PACKAGES
-echo "-----------------------------------------------------------------------"
-read -p "Type 'RETURN'-key to instell above packages (otherwise ^C to stop here)." FOO
-sudo apt update
-sudo apt install $OPTS $PACKAGES

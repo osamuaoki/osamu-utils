@@ -22,11 +22,13 @@ echo "Executing 'hal ${0##*/}' as root" >&2
 #############################################################################
 echo "add bare minimum packages"
 #############################################################################
-
-apt install aptitude mc vim sudo locales-all git wget gnupg openssh-client nano-
+# initially we only have apt
+apt install aptitude nano-
+# aptitude helps to track auto/manual install status
+aptitude install mc vim sudo locales-all git wget gnupg openssh-client
 
 #############################################################################
-echo "set apt with non-free"
+echo "set apt/aptitude with non-free"
 #############################################################################
 # Basic apt set up after the install: Enable contrib + non-free
 if grep -q non-free /etc/apt/sources.list || \
@@ -47,8 +49,8 @@ else
     /etc/apt/sources.list.orig >> /etc/apt/sources.list
 fi
 
-apt update
-apt full-upgrade
+aptitude update
+aptitude full-upgrade
 #############################################################################
 echo "set the primary user privileges"
 #############################################################################
