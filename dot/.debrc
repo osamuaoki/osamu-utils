@@ -101,6 +101,7 @@ xxd
 # *** Desktop ***
 #############################################################################
 # basic GUI packages
+@GUI@ task-desktop
 @GUI@ task-gnome-desktop
 @GUI@ chromium pepperflashplugin-nonfree # alt. browser
 @GUI@ gnote # desktop note
