@@ -98,8 +98,9 @@ time
 w3m
 wget
 xxd
-# Nice boot screen
-grub2-splashimages
+# rescue
+grml-rescueboot # set up /boot/grml for live DVDs (not all iso)
+grub2-splashimages # Nice boot screen
 #############################################################################
 # *** Desktop ***
 #############################################################################
@@ -153,7 +154,11 @@ grub2-splashimages
 @DEV@ vim-gtk3
 @DEV@ xdu
 @DEV@ xtrace ltrace strace
+# web
 @DEV@ hugo # for blog
+# rescue
+@DEV@ grub-rescue-pc # copy images from here to USB (not for grml)
+@DEV@ grml2usb # grml based usb multi-iso-live
 #vim-addon-manager # I use https://github.com/osamuaoki/dot-vim instead
 #git-annex
 #############################################################################

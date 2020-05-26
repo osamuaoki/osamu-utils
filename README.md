@@ -415,8 +415,9 @@ Use IMAP/SSL and SMTP/STARTTLS for Gmail.  (Use OAUTH)
 See https://github.com/osamuaoki/dot-vim
 
 ### GRUB
-q
-* `grub-theme-starfield`
+
+#### Background
+
 * `grub2-splashimages`
 
 For example, to use Lake_mapourika theme from `grub2-splashimages`:
@@ -429,5 +430,12 @@ $ sudo -E bash
 # ^D
 ```
 Changing this is a good way to show boot disk ....
+
+#### Multi-boot ISOs
+
+GRML (`grml-rescueboot`) set up `/boot/grml` for live ISO imahge files too
+boot them up fro, installed system.
+
+`grml2usb` does similar for USB sticks.
 
 
