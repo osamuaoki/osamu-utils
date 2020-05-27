@@ -1,9 +1,9 @@
 #!/bin/bash -e
 # vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
 #
-# configutration
+# configuration
 #
-pre=$(echo ~)
+#HOME=$(echo ~)
 
 # functions
 f_help () {
@@ -18,28 +18,28 @@ f_help () {
 f_diff () {
 # install the latest system skel files
   for p in /etc/skel/.* ; do
-    f=$(basename $p)
+    f=$(basename "$p")
     if [ -f "$p" ]; then
-      echo " $ diff -u ~$p  ~/$f"
-      diff -u "$p" ~/"$f" || true
+      echo " $ diff -u $p  ${HOME}/$f"
+      diff -u "$p" ${HOME}/"$f" || true
     else
       :
     fi
   done
 # install the latest dot files
-  for p in ~/bin/dot/.* ; do
+  for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
-      echo " $ diff -u ~${p#${pre}}  ~/$f"
-      diff -u "$p" ~/"$f" || true
+      echo " $ diff -u ~/bin/dot/$f  $f"
+      diff -u "$p" "${HOME}/$f" || true
     fi
   done
 # install the latest pbuilder hooks
   sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in ~/bin/pbuilder/* ; do
+  for p in ${HOME}/bin/pbuilder/* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
-      echo " $ diff -u ~${p#${pre}}  .../hooks/$f"
+      echo " $ diff -u  ~/bin/pbuilder/$f  .../hooks/$f"
       sudo diff -u "$p" "/var/cache/pbuilder/hooks/$f" || true
     fi
   done
@@ -51,153 +51,119 @@ f_install () {
   echo "============================================================================"
 # install the latest system skel files
   for p in /etc/skel/.* ; do
-    f=$(basename $p)
-    if [ -f $p ]; then
-      echo " $ cp -f $p ~/$f"
-      cp -f $p ~/$f
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f $p ${HOME}/$f"
+      cp -f "$p" "${HOME}/$f"
     fi
   done
 # install the latest dot files
-  for p in ~/bin/dot/.* ; do
-    f=$(basename $p)
-    if [ -f $p ]; then
-      echo " $ cp -f ~${p#${pre}}  ~/$f"
-      cp -f $p ~/$f
+  for p in ${HOME}/bin/dot/.* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/bin/dot/$f  ~/$f"
+      cp -f "$p" "${HOME}/$f"
     fi
   done
 # install the latest pbuilder hooks
   sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in ~/bin/pbuilder/* ; do
-    f=$(basename $p)
-    if [ -f $p ]; then
-      echo " $ sudo cp -f ~${p#${pre}}  .../hooks/$f"
-      sudo cp -p $p /var/cache/pbuilder/hooks/$f
+  for p in ${HOME}/bin/pbuilder/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f ~/bin/pbuilder/$f  .../hooks/$f"
+      sudo cp -p "$p" "/var/cache/pbuilder/hooks/$f"
     fi
   done
 }
 
 f_backup () {
-  BUPATH="backup/BU$(date -u +'%Y%m%d%H%M')"
-  echo "Back up to ~/$BUPATH"
-  mkdir -p ~/$BUPATH/dot
-  mkdir -p ~/$BUPATH/pbuilder/hooks
-  mkdir -p ~/$BUPATH/.config/
-  mkdir -p ~/$BUPATH/.local/share/
-  mkdir -p ~/$BUPATH/.getmail/
-  mkdir -p ~/$BUPATH/etc
-  mkdir -p ~/$BUPATH/etc/ssh
-  mkdir -p ~/$BUPATH/etc/sudoers.d
-  mkdir -p ~/$BUPATH/etc/exim4
-  mkdir -p ~/$BUPATH/backup
-# backup the latest system skel files
+  BTIME="$(date -u +'%Y%m%d%H%M')"
+  BUSR="backup/USR$BTIME"
+  BSYS="backup/SYS$BTIME"
+  mkdir -p "${HOME}/$BUSR" >/dev/null
+  echo "======================================================================"
+  echo "I: Back up user config to ${HOME}/$BUSR"
+  # tailing / of rsync source is important
+  rsync -av "${HOME}/bin"       "${HOME}/$BUSR/"
+  rsync -av "${HOME}/.gnupg"    "${HOME}/$BUSR/"
+  rsync -av "${HOME}/.ssh"      "${HOME}/$BUSR/"
+  rsync -av "${HOME}/.config"   "${HOME}/$BUSR/"
+  rsync -av "${HOME}/.local"    "${HOME}/$BUSR/"
+  #rsync -av "${HOME}//"          "${HOME}/$BUSR/"
   for p in /etc/skel/.* ; do
-    f=$(basename $p)
-    if [ -f "$p" ]; then
-      echo " $ cp -f ~/$f  ~/$BUPATH/dot/$f"
-      cp -f ~/"$f" ~/"$BUPATH/dot/$f"
-    fi
-  done
-# backup the latest dot files
-  for p in ~/bin/dot/.* ; do
     f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ cp -f ~/$f  ~/$BUPATH/dot/$f"
-      cp -f ~/"$f" ~/"$BUPATH/dot/$f"
+    if [ -f "${HOME}/$f" ]; then
+      rsync -av "${HOME}/$f" "${HOME}/$BUSR"
     fi
   done
-# backup the latest pbuilder hooks
-  for p in ~/bin/pbuilder/* ; do
+  for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f .../hooks/$f  ~/$BUPATH/pbuilder/hooks/$f"
-      sudo cp -f "/var/cache/pbuilder/hooks/$f" ~/"$BUPATH/pbuilder/hooks/$f"
+    if [ -f "${HOME}/$f" ]; then
+      rsync -av "${HOME}/$f" "${HOME}/$BUSR"
     fi
   done
+  echo "======================================================================"
+  mkdir -p "${HOME}/$BSYS/etc" >/dev/null
+  echo "I: Back up system config to ${HOME}/$BSYS"
+  # backup the key /etc contents
+  sudo rsync -av \
+    /etc/aliases \
+    /etc/alternatives \
+    /etc/apt \
+    /etc/chromium \
+    /etc/chromium.d \
+    /etc/debian_version \
+    /etc/default \
+    /etc/email-addresses \
+    /etc/exim4 \
+    /etc/fstab \
+    /etc/group \
+    /etc/gshadow \
+    /etc/hostname \
+    /etc/hosts \
+    /etc/passwd \
+    /etc/shadow \
+    /etc/ssh \
+    /etc/sudoers \
+    /etc/sudoers.d \
+    /etc/sysctl.conf \
+    /etc/sysctl.d \
+    "${HOME}/$BSYS/etc"
+  # backup the latest package states
+  mkdir -p "${HOME}/$BSYS/apt" >/dev/null
+  sudo rsync -av /var/lib/apt/extended_states "${HOME}/$BSYS/apt"
+  mkdir -p "${HOME}/$BSYS/dpkg" >/dev/null
+  sudo rsync -av \
+    /var/lib/dpkg/diversions \
+    /var/lib/dpkg/statoverride \
+    /var/lib/dpkg/status \
+    "${HOME}/$BSYS/dpkg"
+  # backup the latest pbuilder hooks
+  mkdir -p "${HOME}/$BSYS/pbuilder/hooks" >/dev/null
+  sudo rsync -av /var/cache/pbuilder/hooks "${HOME}/$BSYS/pbuilder"
+  sudo chown -R 1000:1000 "${HOME}/$BSYS"
   echo "===================================================================="
-# Non-public data
-# backup the latest ~/bin directory
-  echo "backup from ~/bin directory"
-  cp -a ~/bin/ ~/$BUPATH/
-# backup the latest ~/.gnupg directory
-  echo "backup from ~/.gnupg directory"
-  cp -a ~/.gnupg/ ~/$BUPATH/
-# backup the latest ~/.ssh directory
-  echo "backup from ~/.ssh directory"
-  cp -a ~/.ssh/ ~/$BUPATH/
-# backup the latest ~/.config/evolution directory
-  echo "backup from ~/.config/evolution directory"
-  cp -a ~/.config/evolution/ ~/$BUPATH/.config/
-# backup the latest ~/.local/evolution directory
-  echo "backup from ~/.local/evolution directory"
-  cp -a ~/.local/share/evolution/ ~/$BUPATH/.local/share/
-# backup the latest ~/.getmail directory
-  echo "backup from ~/.getmail directory"
-  cp -a ~/.getmail/ ~/$BUPATH/
-# backup the latest ~/.msmtprc file
-  echo "backup from ~/.msmtprc file"
-  cp -a ~/.msmtprc ~/$BUPATH/
-# backup the latest /etc directory
-  echo "backup from /etc directory"
-  for f in aliases email-addresses debian_version fstab hostname hosts \
-	  sysctl.conf sudoers group gshadow passwd shadow; do
-    p="/etc/$f"
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f /etc/$f  ~/$BUPATH/etc/$f"
-      sudo cp -f "/etc/$f" ~/"$BUPATH/etc/$f"
-    fi
-  done
-  for p in /etc/sudoers.d/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f /etc/sudoers.d/$f  ~/$BUPATH/etc/sudoers.d/$f"
-      sudo cp -f "/etc/sudoers.d/$f" ~/"$BUPATH/etc/sudoers.d/$f"
-    fi
-  done
-  for p in /etc/ssh/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f /etc/ssh/$f  ~/$BUPATH/etc/ssh/$f"
-      sudo cp -f "/etc/ssh/$f" ~/"$BUPATH/etc/ssh/$f"
-    fi
-  done
-  for p in /etc/exim4/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f /etc/exim4/$f  ~/$BUPATH/etc/exim4/$f"
-      sudo cp -f "/etc/exim4/$f" ~/"$BUPATH/etc/exim4/$f"
-    fi
-  done
-  echo " $ sudo tar --create -v -f ~/$BUPATH/backup/alternatives.tar -C /etc alternatives"
-  sudo tar --create -v -f ~/"$BUPATH/backup/alternatives.tar" -C /etc alternatives
-# backup the latest /var/lib directory
-  for p in apt/extended_states aptitude/pkgstates dpkg/diversions \
-	  dpkg/statoverride dpkg/status;  do
-    f=$(basename "$p")
-    d=$(dirname "$p")
-    echo " $ sudo cp -f /var/lib/$d/$f  ~/$BUPATH/backup/$d.$f"
-    sudo cp -f "/var/lib/$d/$f" ~/"$BUPATH/backup/$d.$f"
-  done
+  echo "For exim:       'dpkg-reconfigure -plow exim4-config' change"
+  echo "For cowbuilder: 'sudo cowbuilder create' (new)"
   echo "===================================================================="
-  echo "You need to do 'dpkg-reconfigure -plow exim4-config' later"
-  echo "to update exim server"
 }
 
 f_update () {
 # update the template files by the latest installed dot files
-  for p in ~/bin/dot/.* ; do
-    f=$(basename $p)
-    if [ -f $p ]; then
-      echo " $ cp -f ~/$f  ~${p#${pre}}"
-      cp -f ~/$f $p
+  for p in ${HOME}/bin/dot/.* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/$f $p"
+      cp -f "${HOME}/$f" "$p"
     fi
   done
 # update the template files by the latest installed pbuilder hooks
   sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in ~/bin/pbuilder/* ; do
-    f=$(basename $p)
-    if [ -f $p ]; then
-      echo " $ sudo cp -f .../hooks/$f ~${p#${pre}}"
-      sudo cp -p /var/cache/pbuilder/hooks/$f $p
+  for p in /var/cache/pbuilder/hooks/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ sudo cp -f .../hooks/$f ~/bin/pbuilder/$f"
+      sudo cp -p "/var/cache/pbuilder/hooks/$f" "$p"
     fi
   done
 }

@@ -398,10 +398,15 @@ Use `evolution` and forget all complicated mamual setups.
 
 #### Evolution
 
-Firstm set up with your primary Google account and add other mails.  You can
+First, set up with your primary Google account and add other mails.  You can
 add send-only ssh-sendmail too.
 
 Use IMAP/SSL and SMTP/STARTTLS for Gmail.  (Use OAUTH)
+
+Manually copying filter setups across multiple installs can become non-trivial
+tasks.
+
+See https://wiki.debian.org/EvolutionBackup for easier way.
 
 #### exim4
 
@@ -433,7 +438,7 @@ Changing this is a good way to show boot disk ....
 
 #### Multi-boot ISOs
 
-GRML (`grml-rescueboot`) set up `/boot/grml` for live ISO imahge files too
+GRML (`grml-rescueboot`) set up `/boot/grml` for live ISO image files too
 boot them up fro, installed system.
 
 `grml2usb` does similar for USB sticks.
