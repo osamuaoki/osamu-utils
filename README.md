@@ -388,6 +388,23 @@ wuth `+`.  Chose "Japanese" from menu and "Japanese (Anthy)" and "Japanese
     * latin_mode: Muhenkan
     * hiragana_mode: henkan
 
+* Region & Language -> add input methods
+   * anthy: Key Bindings (same page as Preference)
+       * latin mode: Ctrl+space
+       * hiragana mode: Shift+space
+   * MOZC: from inside of MOZC/Tools/Properties/General/Keymap/Customize
+       * Precomposition: Ctrl Space
+       * Direct input: Shift Space
+* Devices -> Keyboard (+ at bottom of Keyboard)
+       * Super Return -- return to English
+       * Super F      -- MOZC
+       * Super J      -- anthy
+
+Use one of:
+* `gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval  "imports.ui.status.keyboard.getInputSourceManager().inputSources[0].activate()"`
+* `gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval  "imports.ui.status.keyboard.getInputSourceManager().inputSources[1].activate()"`
+* `gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval  "imports.ui.status.keyboard.getInputSourceManager().inputSources[2].activate()"`
+
 See more at:
 https://osamuaoki.github.io/jp/2019/03/23/gnome-uskb-im-select/
 
