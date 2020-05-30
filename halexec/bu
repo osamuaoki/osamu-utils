@@ -1,25 +1,21 @@
-#!/bin/bash -e
+#!/bin/sh -e
 # vim:se tw=78 ai ts=2 sts=2 sw=2 et:
 ##############################################################################
 # Copyright (C) Osamu Aoki <osamu@debian.org>
 # License: GPL 2+
-# This is not a POSIX script since we need array feature
-# This requires bash version 4.1+
 ##############################################################################
-# fd=999 not used elsewhere in this script.
-exec 999< "$0"
-if ! flock --nonblock 999 ; then
+# fd=9 not used elsewhere in this script.
+exec 9< "$0"
+if ! flock --nonblock 9 ; then
   echo "${0##*/} already running.  Try later" >&2
   exit 2
 fi
-SIM=""
-# Verbose level, 1 through 5.
-declare -i VERBOSE_LEVEL=2
-# 1     Quiet           Print fatal errors only
-# 2     Default         Print errors and warnings only
-# 3     Verbose         Show equivalent shell commands being executed
-# 4     Extra Verbose   Show extra verbose information
-# 5     Debug mode      Everything
+# Verbose level, 0 through 3
+VERBOSE_LEVEL="1"
+# 0     Quiet           Print fatal errors only
+# 1     Default         Print errors and warnings only
+# 2     Verbose         Show equivalent shell commands being executed
+# 3     Debug mode      Everything
 #############################################################################
 # BACKUP ROOT DIRECTORY
 #############################################################################
@@ -29,43 +25,17 @@ BTRFS_SRC="/home"
 # SNAPSHOT BTRFS path (RO)
 BTRFS_SNAP="$HOME/snap"
 
-#############################################################################
-#   PRUNING TIME SPAN AND TIME STEP INTERVALS
-#############################################################################
-
-# CONSTANTS
-MIN=$((60))
-MIN5=$((300))
-HR=$((60*MIN))
-QHR=$((HR/4))
-DAY=$((24*HR))
-QDAY=$((DAY/4))
-WEEK=$((7*DAY))
-MONTH=$((31*DAY))
-YEAR=$((365*DAY))
-QYEAR=$((YEAR/4))
-YEAR4=$((YEAR*4))
-
-# time range border and time step interval for each range in second
-RANGE=(0 $MIN     $HR  $DAY  $WEEK $MONTH $QYEAR $YEAR  $YEAR4)
-INTVL=(1 $MIN5 $QHR $QDAY $DAY  $WEEK  $MONTH $QYEAR $YEAR)
-
-# prevent pruning for initial age (>=0)
-INITIAL_AGE=2
+mkdir -p $BTRFS_SNAP >/dev/null
 
 while [ -n "$1" ] ; do
   case $1 in
     -x) set -x
       ;;
-    -s) SIM="echo"
+    -q) VERBOSE_LEVEL=0
       ;;
-    -q) VERBOSE_LEVEL-=1
+    -vv) VERBOSE_LEVEL=3
       ;;
-    -vvv) VERBOSE_LEVEL+=3
-      ;;
-    -vv) VERBOSE_LEVEL+=2
-      ;;
-    -v) VERBOSE_LEVEL+=1
+    -v) VERBOSE_LEVEL=2
       ;;
     *) break
       ;;
@@ -76,186 +46,111 @@ done
 # internal functions
 ##############################################################################
 vecho () {
-if [ $VERBOSE_LEVEL -ge "$1" ]; then
+if [ "$1" -le $VERBOSE_LEVEL ]; then
   shift
   echo "$*" >&2
 fi
 }
-
-now_string () {
-  date -u -Iseconds
-}
-
-now_epoch () {
-  date +%s
-}
-
-string_epoch () {
-  date +%s -d"$1"
-}
-
-epoch_string () {
-  date -u -Iseconds -d@"$1"
-}
-
-btrfs_snap_age () {
-local -i x=$1
-local -i i
-local -i j
-local -i y
-for i in ${!RANGE[*]}; do
-  if [ "$x" -le 0 ]; then
-    echo 0
-  elif [ "$i" != 0 ] && [ "$x" -le "${RANGE[$i]}" ]; then
-    j=$i-1
-    y=$(( (x-${RANGE[$j]})/${INTVL[$j]}+${OFFSET[$j]} ))
-    vecho 5 "    RANGE=$i(${RANGE[$j]} - ${RANGE[$i]}), INTVL=${INTVL[$j]}, OFFSET=${OFFSET[$j]}: $x ==> $y "
-    echo $y
-    return
+report () {
+  if [ "$1" = "delete" ]; then
+    if [ "$P_MODE" = "delete" ]; then
+      echo "$2"
+    elif [ "$P_MODE" = "both" ]; then
+      echo "-  $2 --- delete --- $3"
+    fi
+  else
+    if [ "$P_MODE" = "keep" ]; then
+      echo "$2"
+    elif [ "$P_MODE" = "both" ]; then
+      echo "+  $2 +++  keep  +++ $3"
+    fi
   fi
-done
-y=$(( (x-${RANGE[$i]})/${INTVL[$i]}+${OFFSET[$i]} ))
-vecho 5 "    RANGE=$i(${RANGE[$j]} - ${RANGE[$i]}), INTVL=${INTVL[$j]}, OFFSET=${OFFSET[$j]}: $x ==> $y "
-echo $y
-return
+}
+prune () {
+# @ $NOW_EPOCH          EPOCH for current time
+# @ $@                  array of ISO time of each backup (oldest first)
+# @ $INDEX_NEW          Number of new timestamp index (last in list) to keep
+# @ $P_AGE_HI           Use P_AGE_DEL to prune if >> P_AGE_HI
+# @ $P_AGE_LO           Keep always if <<  P_AGE_LO
+# @ $P_AGE_DEL          Prune delta criteria
+# @ $P_AGE_FRC          Prune ratio criteria (7 means 70%)
+# @ $P_MODE             output mode (delete,keep,both)
+  if [ "${#}" -le "0" ]; then
+    vecho 1 "W: No snapshot available"
+    exit 1
+  fi
+  AGE_LAST=$(($NOW_EPOCH-$(date +%s -d$1)))
+  local FLAG=1 # update rule with AGE_LAST
+  report "keep" "$1" "AGE=$AGE_LAST the oldest (0)"
+  shift
+  local INDEX="0"
+  local INDEX_OLD=$((${#}-$INDEX_NEW))
+  for TIMESTAMP in "${@}"; do
+    local AGE=$(($NOW_EPOCH-$(date +%s -d"$TIMESTAMP")))
+    local INDEX=$(($INDEX+1))
+    if [ "$FLAG" = "1" ]; then
+      P_AGE_REF1=$(($AGE_LAST-$P_AGE_DEL))
+      P_AGE_REF2=$(($AGE_LAST*$P_AGE_FRC/10))
+      vecho 3 "D: update check rule"
+    fi
+    if [ "$INDEX" -gt "$INDEX_OLD" ]; then
+      report "keep" "$TIMESTAMP" "AGE=$AGE, $((${#}-${INDEX}))/${INDEX_NEW}-th newest (6)"
+      FLAG=0 # don't bother
+    elif [ "$AGE" -gt "$P_AGE_HI" ] && [ "$AGE" -gt "$P_AGE_REF1" ]; then
+      report "delete" "$TIMESTAMP" "$AGE !< HI=$P_AGE_HI, DEL=$P_AGE_REF1, FRC=$P_AGE_REF2 (1)"
+      FLAG=0
+    elif [ "$AGE" -gt "$P_AGE_HI" ]; then
+      report "keep" "$TIMESTAMP" "AGE=$AGE << HI=$P_AGE_HI, DEL=$P_AGE_REF1, FRC=$P_AGE_REF2 (2)"
+      FLAG=1
+    elif [ "$AGE" -lt "$P_AGE_LO" ]; then
+      report "keep" "$TIMESTAMP" "AGE=$AGE << LO=$P_AGE_LO young (5)"
+      FLAG=0 # don't bother
+    elif [ "$AGE" -gt "$P_AGE_REF2" ]; then
+      report "delete" "$TIMESTAMP" "AGE=$AGE !< FRC=$P_AGE_REF2 (3)"
+      FLAG=0
+    else
+      report "keep" "$TIMESTAMP" "AGE=$AGE << FRC=$P_AGE_REF2 (4)"
+      FLAG=1
+    fi
+    AGE_LAST="$AGE"
+  done
+  return
 }
 
-sanity () {
-# sanity check and derivative constants
-local -i i
-if [ ${#RANGE[*]} -lt 2 ] || \
-   [ ${#INTVL[*]} -lt 2 ] || \
-   [ ${#RANGE[*]} != ${#INTVL[*]} ]; then
-  vecho 1 "Wrong number of #RANGE, #INTVL: ${#RANGE[*]}, ${#INTVL[*]}"
-  exit
-fi
-if [ -z "$BTRFS_SNAP" ]; then
-  vecho 1 "BTRFS_SNAP undefined"
-  exit
-fi
-if [ -z "$INITIAL_AGE" ]; then
-  vecho 1 "INITIAL_AGE undefined"
-  exit
-fi
-if [ "$INITIAL_AGE" -lt 0 ]; then
-  vecho 1 "INITIAL_AGE must be >=0 but INITIAL_AGE='$INITIAL_AGE'"
-  exit
-fi
-if [ ! -d "$BTRFS_SNAP" ]; then
-  mkdir -p "$BTRFS_SNAP"
-fi
+NOW_EPOCH=$(date -u +%s)
+INDEX_NEW=5                  # Number of new timestamp index (last in list) to keep
+P_AGE_HI=$((200*24*60*60))   # Use P_AGE_DEL to prune if old:   >> P_AGE_HI
+P_AGE_LO=$((60*60))          # Keep always young ones if young: << P_AGE_LO
+P_AGE_DEL=$((100*24*60*60))  # Prune delta criteria for old ones
+P_AGE_FRC=7                  # Prune ratio criteria for typical ones (7 means 70%)
 
-vecho 3 "rsbu: BTRFS_SNAP=$BTRFS_SNAP"
-if [ "$SIM" = "echo" ]; then
-  vecho 4 "Simulation: ON"
-elif [ -z "$SIM" ]; then
-  vecho 4 "Simulation: OFF"
-else
-  vecho 1 "Unthinkable: \$SIM='$SIM'"
-fi
-vecho 4 "User: $UID"
-vecho 4 "VERBOSE_LEVEL; $VERBOSE_LEVEL"
+btrfs_snap_list () {
+  P_MODE="both"
+  # shellcheck disable=SC2046,SC2010
+  prune $(cd "$BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
+    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$')
+}
+
+btrfs_snap_simulate () {
+  P_MODE="delete"
+  # shellcheck disable=SC2046,SC2010
+  LIST=$(prune $(cd "$BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
+    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
+    sed -e "s:^:$HOME/snap/:")
+  for D in $LIST; do
+    echo " $ sudo btrfs subvolume delete  $D"
+  done
 }
 
 btrfs_snap_prune () {
-ARG1="$1" # if set, no actual prune and list only
-now=$(now_epoch) # epoch for now
-declare -a LS=( $(cd "$BTRFS_SNAP"; ls -1rd *) )
-vecho 3 "   $(epoch_string "$now") <== current time"
-vecho 3 "======================================================"
-if [ ${#LS[*]} = 0 ]; then
-  vecho 2 "No backup data found"
-  exit 1
-fi
-
-declare -a good
-declare -a state
-t="*error*"
-jmax=$((${#LS[*]} - 1))
-p=${LS[$jmax]}
-del=$(( now - $(string_epoch "${p}") ))
-age=$(btrfs_snap_age $del)
-agex=$((age +1)) # start from infinity
-
-# 1st pass (backward!)
-for i in "${!LS[@]}"; do
-  j=$((jmax - i)) # reverse index
-  p=${LS[$j]}
-  del=$(( now - $(string_epoch "${p}") ))
-  age=$(btrfs_snap_age $del)
-  if [ $agex -gt "$age" ];then
-    state[$j]="oldest"
-    agex="$age"
-  else
-    # age is same
-    state[$j]=""
-  fi
-  good[$j]="success"
-done
-
-# 2nd pass (forward)
-for i in "${!LS[@]}"; do
-  if [ "${good[$i]}" = "success" ]; then
-    if [ -z "${state[$i]}" ]; then
-      state[$i]="first success"
-    else
-      state[$i]+=", first success"
-    fi
-    break
-  else
-    if [ -z "${state[$i]}" ]; then
-      state[$i]="inital error"
-    else
-      state[$i]+=", inital error"
-    fi
-  fi
-done
-
-# 3rd pass (forward)
-for i in "${!LS[@]}"; do
-  p=${LS[$i]}
-  del=$(( now - $(string_epoch "${p}") ))
-  age=$(btrfs_snap_age $del)
-  if [ "$age" -le "$INITIAL_AGE" ]; then
-    if [ -z "${state[$i]}" ]; then
-      state[$i]="inital age"
-    else
-      state[$i]+=", inital age"
-    fi
-  else
-    break
-  fi
-done
-
-# 4th pass (backward)
-for i in "${!LS[@]}"; do
-  j=$((jmax - i)) # reverse index
-  if [ "${good[$j]}" = "success" ]; then
-    break
-  else
-    if [ -z "${state[$j]}" ]; then
-      state[$j]="tail error"
-    else
-      state[$j]+=", tail error"
-    fi
-  fi
-done
-
-# 5th pass (forward)
-for i in "${!LS[@]}"; do
-  p=${LS[$i]}
-  del=$(( now - $(string_epoch "${p}") ))
-  age=$(btrfs_snap_age $del)
-  if [ -n "${state[$i]}" ]; then
-    echo "$p del=$del age=$age backup=${good[$i]} (${state[$i]})"
-  elif [ -n "$1" ]; then # "list"
-    echo "$p del=$del age=$age backup=${good[$i]} (*** ******* ***)"
-  else
-    vecho  4 "  removing whole directory tree: $BTRFS_SNAP/$p"
-    echo "$p del=$del age=$age backup=${good[$i]} (*** removed ***)"
-    $SIM sudo btrfs subvol delete "$BTRFS_SNAP/$p"
-  fi
-done
+  P_MODE="delete"
+  # shellcheck disable=SC2046,SC2010
+  LIST=$(prune $(cd "$BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
+    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
+    sed -e "s:^:$HOME/snap/:")
+  for D in $LIST; do
+    sudo btrfs subvolume delete  "$D"
+  done
 }
 
 btrfs_snap_help () {
@@ -263,39 +158,23 @@ echo "NAME"
 echo "    ${0##*/} -- btrfs backup helper"
 echo
 echo "SYNOPSIS"
-echo "    ${0##*/} [-s|-x|-q|-v] [backup|list|prune|help]"
+echo "    ${0##*/} [-s|-x|-q|-v] [backup|list|prune|simu|help]"
 echo
 echo "DESCRIPTION"
-echo "    -s      simulated backup/prune without actual backup/prune"
-echo "    -x      trace shell command for debug"
-echo "    -q      quiet"
-echo "    -v      verbose"
-echo "    -vv     very verbose"
-echo "    -vvv    extremely verbose"
-echo "    backup: backup data in $BTRFS_SRC"
-echo "    list:   list backed up data in $BTRFS_SNAP"
-echo "    prune:  prune old backed up data in $BTRFS_SNAP"
+echo "    -x        trace shell command for debug"
+echo "    -q        quiet"
+echo "    -v        verbose"
+echo "    -vv       very verbose"
+echo "    backup:   backup data in $BTRFS_SRC"
+echo "    list:     list backed up data in $BTRFS_SNAP"
+echo "    simu:     prune old backed up data in $BTRFS_SNAP (simulation)"
+echo "    prune:    prune old backed up data in $BTRFS_SNAP"
 echo
-echo "Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL 2+"
+echo "Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
 }
 
 ##############################################################################
 # constants
-TIMESTAMP="$(now_string)"
-sanity
-##############################################################################
-# offset for age
-declare -i i
-declare -i j
-declare -a OFFSET
-for i in ${!RANGE[*]}; do
-  if [ "$i" = 0 ]; then
-    OFFSET[$i]=0
-  else
-    j=$i-1
-    OFFSET[$i]=$(( (${RANGE[$i]}-${RANGE[$j]})/${INTVL[$j]}+${OFFSET[$j]} ))
-  fi
-done
 ##############################################################################
 if [ -z "$*" ]; then
   btrfs_snap_help
@@ -306,11 +185,19 @@ for x in "$@" ; do
     h*) btrfs_snap_help
       ;;
     b*)
-      sudo btrfs subvolume snapshot -r $BTRFS_SRC $HOME/snap/$TIMESTAMP
+      TIMESTAMP=$(date -u --iso=second)
+      if [ -d $HOME/snap/$TIMESTAMP ]; then
+        echo "Try this later"
+        exit 0
+      else
+        sudo btrfs subvolume snapshot -r "$BTRFS_SRC" "$HOME/snap/$TIMESTAMP"
+      fi
       ;;
     p*) btrfs_snap_prune
       ;;
-    l*) btrfs_snap_prune simulate # list
+    l*) btrfs_snap_list
+      ;;
+    s*) btrfs_snap_simulate
       ;;
     *) echo "Unknown command: '$x'"
       btrfs_snap_help
