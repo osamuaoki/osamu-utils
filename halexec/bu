@@ -23,14 +23,16 @@ BTRFS_SNAP="$HOME/snap"
 # RSYNC CONFIGURATION
 ##############################################################################
 # rsync command and options
-#     -a --archive
+#     -a --archive     == -rlptgoD
 #     -H --hard-links
 #     -A --acls
 #     -X --xattrs
 #     -S --sparse
 #     -x --one-file-system
+#     --delete-during
+#     --delete-excluded
 #     -v --verbose
-RSYNC="rsync -aHAXSxv"
+RSYNC="rsync -aHAXSxv --delete-during --delete-excluded"
 # SOURCE RSYNC path (Don't add / at the end)
 RSYNC_SRC="/home"
 # DEST RSYNC path
