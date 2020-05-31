@@ -175,6 +175,7 @@ Then refine GUI desktop as needed:
     * hal install           -- install predefined packages (based on ~/.debrc)
     * hal install -c        -- check extra packages (based on ~/.debrc)
     * hal update            -- update this `~/bin/*` repository
+    * hal bu                -- backup scrips (btrfs/rsync)
 * ...
 
 ## public dot files

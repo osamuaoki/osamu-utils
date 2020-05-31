@@ -10,47 +10,74 @@ if ! flock --nonblock 9 ; then
   echo "${0##*/} already running.  Try later" >&2
   exit 2
 fi
+SIM=""
+#############################################################################
+# SNAPSHOT CONFIGURATION
+#############################################################################
+# SOURCE BTRFS path
+BTRFS_SRC="/home"
+# SNAPSHOT BTRFS path (RO)
+BTRFS_SNAP="$HOME/snap"
+
+#############################################################################
+# RSYNC CONFIGURATION
+##############################################################################
+# rsync command and options
+#     -a --archive
+#     -H --hard-links
+#     -A --acls
+#     -X --xattrs
+#     -S --sparse
+#     -v --verbose
+RSYNC="rsync -aHAXSv"
+# SOURCE RSYNC path (Don't add / at the end)
+RSYNC_SRC="/home"
+# DEST RSYNC path
+RSYNC_DEST="/mnt/backup/dest"
+# SNAPSHOT RSYNC path
+RSYNC_SNAP="/mnt/backup/snap"
+# To add further refined filtering rules, please read rsync(1) manpage for
+# --exclude, --include, --filter, and 'FILTER RULES':
+#  * Skip directory name containing /Downloads/
+#  * Skip directory name containing /tmp/
+#  * Skip file name ending .swp (vim artifacts)
+#  * Skip file name ending .iso (CD image files)
+RSYNC_FILTER="--exclude=/Downloads/ \
+  --exclude=/.cache/ \
+  --exclude=/tmp/ \
+  --exclude=unidic-cwj-2.3.0.zip \
+  --exclude=BCCWJ_*.tsv \
+  --exclude=BCCWJ_*.zip \
+  --exclude=*.swp \
+  --exclude=*.iso"
+
+#############################################################################
+# TIME/AGING CONFIGURATION
+##############################################################################
+TIMESTAMP=$(date -u --iso=second)
+NOW_EPOCH=$(date +%s -d"$TIMESTAMP")
+INDEX_NEW=5                  # Number of new timestamp index (last in list) to keep
+P_AGE_HI=$((200*24*60*60))   # Use P_AGE_DEL to prune if old:   >> P_AGE_HI
+P_AGE_LO=$((60*60))          # Keep always young ones if young: << P_AGE_LO
+P_AGE_DEL=$((100*24*60*60))  # Prune delta criteria for old ones
+P_AGE_FRC=7                  # Prune ratio criteria for typical ones (7 means 70%)
+
+##############################################################################
+# internal functions
+##############################################################################
 # Verbose level, 0 through 3
 VERBOSE_LEVEL="1"
 # 0     Quiet           Print fatal errors only
 # 1     Default         Print errors and warnings only
 # 2     Verbose         Show equivalent shell commands being executed
 # 3     Debug mode      Everything
-#############################################################################
-# BACKUP ROOT DIRECTORY
-#############################################################################
-
-# SOURCE BTRFS path
-BTRFS_SRC="/home"
-# SNAPSHOT BTRFS path (RO)
-BTRFS_SNAP="$HOME/snap"
-
-mkdir -p "$BTRFS_SNAP" >/dev/null
-
-while [ -n "$1" ] ; do
-  case $1 in
-    -x) set -x
-      ;;
-    -q) VERBOSE_LEVEL=0
-      ;;
-    -vv) VERBOSE_LEVEL=3
-      ;;
-    -v) VERBOSE_LEVEL=2
-      ;;
-    *) break
-      ;;
-  esac
-  shift
-done
-##############################################################################
-# internal functions
-##############################################################################
 vecho () {
 if [ "$1" -le $VERBOSE_LEVEL ]; then
   shift
   echo "$*" >&2
 fi
 }
+
 report () {
   if [ "$1" = "delete" ]; then
     if [ "$P_MODE" = "delete" ]; then
@@ -66,6 +93,7 @@ report () {
     fi
   fi
 }
+
 prune () {
 # @ $NOW_EPOCH          EPOCH for current time
 # @ $@                  array of ISO time of each backup (oldest first)
@@ -117,12 +145,20 @@ prune () {
   return
 }
 
-NOW_EPOCH=$(date -u +%s)
-INDEX_NEW=5                  # Number of new timestamp index (last in list) to keep
-P_AGE_HI=$((200*24*60*60))   # Use P_AGE_DEL to prune if old:   >> P_AGE_HI
-P_AGE_LO=$((60*60))          # Keep always young ones if young: << P_AGE_LO
-P_AGE_DEL=$((100*24*60*60))  # Prune delta criteria for old ones
-P_AGE_FRC=7                  # Prune ratio criteria for typical ones (7 means 70%)
+btrfs_snap () {
+  mkdir -p "$BTRFS_SNAP" >/dev/null
+  if [ -d "$BTRFS_SNAP/$TIMESTAMP" ]; then
+    sleep "2s"
+    TIMESTAMP=$(date -u --iso=second)
+    NOW_EPOCH=$(date +%s -d"$TIMESTAMP")
+  fi
+  if [ -d "$BTRFS_SNAP/$TIMESTAMP" ]; then
+    echo "Broken time situation"
+    exit 1
+  fi
+  # shellcheck disable=SC2086
+  $SIM sudo btrfs subvolume snapshot -r "$BTRFS_SRC" "$BTRFS_SNAP/$TIMESTAMP"
+}
 
 btrfs_snap_list () {
   P_MODE="both"
@@ -131,44 +167,75 @@ btrfs_snap_list () {
     grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$')
 }
 
-btrfs_snap_simulate () {
-  P_MODE="delete"
-  # shellcheck disable=SC2046,SC2010
-  LIST=$(prune $(cd "$BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
-    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
-    sed -e "s:^:$HOME/snap/:")
-  for D in $LIST; do
-    echo " $ sudo btrfs subvolume delete  $D"
-  done
-}
-
 btrfs_snap_prune () {
   P_MODE="delete"
   # shellcheck disable=SC2046,SC2010
   LIST=$(prune $(cd "$BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
     grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
-    sed -e "s:^:$HOME/snap/:")
+    sed -e "s:^:$BTRFS_SNAP/:")
   for D in $LIST; do
-    sudo btrfs subvolume delete  "$D"
+  # shellcheck disable=SC2086
+    $SIM sudo btrfs subvolume delete "$D"
   done
 }
 
-btrfs_snap_help () {
+rsync_snap () {
+  mkdir -p "$RSYNC_DEST" >/dev/null
+  # shellcheck disable=SC2086
+  $SIM sudo $RSYNC $RSYNC_FILTER $RSYNC_SRC "$RSYNC_DEST/"
+
+  if [ -d "$RSYNC_SNAP/$TIMESTAMP" ]; then
+    sleep "2s"
+    TIMESTAMP=$(date -u --iso=second)
+    NOW_EPOCH=$(date +%s -d"$TIMESTAMP")
+  fi
+  if [ -d "$RSYNC_SNAP/$TIMESTAMP" ]; then
+    echo "Broken time situation"
+    exit 1
+  fi
+  mkdir -p "$RSYNC_SNAP" >/dev/null
+  # shellcheck disable=SC2086
+  $SIM sudo btrfs subvolume snapshot -r "$RSYNC_DEST" "$RSYNC_SNAP/$TIMESTAMP"
+}
+
+rsync_snap_list () {
+  P_MODE="both"
+  # shellcheck disable=SC2046,SC2010
+  prune $(cd "$RSYNC_SNAP" >/dev/null ; ls -1d -- * | \
+    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$')
+}
+
+rsync_snap_prune () {
+  P_MODE="delete"
+  # shellcheck disable=SC2046,SC2010
+  LIST=$(prune $(cd "$RSYNC_SNAP" >/dev/null ; ls -1d -- * | \
+    grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
+    sed -e "s:^:$RSYNC_SNAP/:")
+  for D in $LIST; do
+  # shellcheck disable=SC2086
+    $SIM sudo btrfs subvolume delete "$D"
+  done
+}
+
+__help () {
 echo "NAME"
 echo "    ${0##*/} -- btrfs backup helper"
 echo
 echo "SYNOPSIS"
-echo "    ${0##*/} [-s|-x|-q|-v] [backup|list|prune|simu|help]"
+echo "    ${0##*/} [-s|-x|-q|-v[v]] [snap|list|prune|rsnap|rlist|rprune]"
 echo
 echo "DESCRIPTION"
+echo "    -s        simulate (No sudo)"
 echo "    -x        trace shell command for debug"
 echo "    -q        quiet"
 echo "    -v        verbose"
 echo "    -vv       very verbose"
-echo "    backup:   backup data in $BTRFS_SRC"
-echo "    list:     list backed up data in $BTRFS_SNAP"
-echo "    simu:     prune old backed up data in $BTRFS_SNAP (simulation)"
-echo "    prune:    prune old backed up data in $BTRFS_SNAP"
+echo "    snap      snap data in $BTRFS_SRC"
+echo "    list      list snapshots in $BTRFS_SNAP"
+echo "    prune     prune snapshots in $BTRFS_SNAP"
+echo "    rsnap     rsync and snap data in $RSYNC_DEST and $RSYNC_SRC"
+echo "    rlist     list rsynced snapshots in $RSYNC_SNAP"
+echo "    rprune    prune rsynced snapshots in $RSYNC_SNAP"
 echo
 echo "Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
 }
@@ -176,34 +243,51 @@ echo "Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
 ##############################################################################
 # constants
 ##############################################################################
-if [ -z "$*" ]; then
-  btrfs_snap_help
-  exit
-fi
-for x in "$@" ; do
-  case $x in
-    h*) btrfs_snap_help
+while [ -n "$1" ] ; do
+  case $1 in
+    -x) set -x
       ;;
-    b*)
-      TIMESTAMP=$(date -u --iso=second)
-      if [ -d "$HOME/snap/$TIMESTAMP" ]; then
-        echo "Try this later"
-        exit 0
-      else
-        sudo btrfs subvolume snapshot -r "$BTRFS_SRC" "$HOME/snap/$TIMESTAMP"
-      fi
+    -s) SIM="echo"
       ;;
-    p*) btrfs_snap_prune
+    -q) VERBOSE_LEVEL=0
+      ;;
+    -vv) VERBOSE_LEVEL=3
+      ;;
+    -v) VERBOSE_LEVEL=2
+      ;;
+    *) break
+      ;;
+  esac
+  shift
+done
+while [ -n "$1" ] ; do
+  case $1 in
+    h*) __help
+      exit
+      ;;
+    s*) btrfs_snap
+      exit
       ;;
     l*) btrfs_snap_list
+      exit
       ;;
-    s*) btrfs_snap_simulate
+    p*) btrfs_snap_prune
+      exit
       ;;
-    *) echo "Unknown command: '$x'"
-      btrfs_snap_help
+    rs*) rsync_snap
+      exit
+      ;;
+    rl*) rsync_snap_list
+      exit
+      ;;
+    rp*) rsync_snap_prune
+      exit
+      ;;
+    *) echo "Unknown command: '$1'"
+      __help
       exit
       ;;
   esac
   shift
 done
-
+__help
