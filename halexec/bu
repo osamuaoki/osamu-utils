@@ -28,23 +28,26 @@ BTRFS_SNAP="$HOME/snap"
 #     -A --acls
 #     -X --xattrs
 #     -S --sparse
+#     -x --one-file-system
 #     -v --verbose
-RSYNC="rsync -aHAXSv"
+RSYNC="rsync -aHAXSxv"
 # SOURCE RSYNC path (Don't add / at the end)
 RSYNC_SRC="/home"
 # DEST RSYNC path
 RSYNC_DEST="/mnt/backup/dest"
+# SOURCE BTRFS path
+RSYNC_BTRFS_SRC="/mnt/backup"
 # SNAPSHOT RSYNC path
-RSYNC_SNAP="/mnt/backup/snap"
+RSYNC_BTRFS_SNAP="/mnt/backup/snap"
 # To add further refined filtering rules, please read rsync(1) manpage for
 # --exclude, --include, --filter, and 'FILTER RULES':
 #  * Skip directory name containing /Downloads/
 #  * Skip directory name containing /tmp/
 #  * Skip file name ending .swp (vim artifacts)
 #  * Skip file name ending .iso (CD image files)
-RSYNC_FILTER="--exclude=/Downloads/ \
-  --exclude=/.cache/ \
-  --exclude=/tmp/ \
+RSYNC_FILTER="--exclude=Downloads/ \
+  --exclude=.cache/ \
+  --exclude=tmp/ \
   --exclude=unidic-cwj-2.3.0.zip \
   --exclude=BCCWJ_*.tsv \
   --exclude=BCCWJ_*.zip \
@@ -184,33 +187,33 @@ rsync_snap () {
   # shellcheck disable=SC2086
   $SIM sudo $RSYNC $RSYNC_FILTER $RSYNC_SRC "$RSYNC_DEST/"
 
-  if [ -d "$RSYNC_SNAP/$TIMESTAMP" ]; then
+  if [ -d "$RSYNC_BTRFS_SNAP/$TIMESTAMP" ]; then
     sleep "2s"
     TIMESTAMP=$(date -u --iso=second)
     NOW_EPOCH=$(date +%s -d"$TIMESTAMP")
   fi
-  if [ -d "$RSYNC_SNAP/$TIMESTAMP" ]; then
+  if [ -d "$RSYNC_BTRFS_SNAP/$TIMESTAMP" ]; then
     echo "Broken time situation"
     exit 1
   fi
-  mkdir -p "$RSYNC_SNAP" >/dev/null
+  mkdir -p "$RSYNC_BTRFS_SNAP" >/dev/null
   # shellcheck disable=SC2086
-  $SIM sudo btrfs subvolume snapshot -r "$RSYNC_DEST" "$RSYNC_SNAP/$TIMESTAMP"
+  $SIM sudo btrfs subvolume snapshot -r "$RSYNC_BTRFS_SRC" "$RSYNC_BTRFS_SNAP/$TIMESTAMP"
 }
 
 rsync_snap_list () {
   P_MODE="both"
   # shellcheck disable=SC2046,SC2010
-  prune $(cd "$RSYNC_SNAP" >/dev/null ; ls -1d -- * | \
+  prune $(cd "$RSYNC_BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
     grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$')
 }
 
 rsync_snap_prune () {
   P_MODE="delete"
   # shellcheck disable=SC2046,SC2010
-  LIST=$(prune $(cd "$RSYNC_SNAP" >/dev/null ; ls -1d -- * | \
+  LIST=$(prune $(cd "$RSYNC_BTRFS_SNAP" >/dev/null ; ls -1d -- * | \
     grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$') |\
-    sed -e "s:^:$RSYNC_SNAP/:")
+    sed -e "s:^:$RSYNC_BTRFS_SNAP/:")
   for D in $LIST; do
   # shellcheck disable=SC2086
     $SIM sudo btrfs subvolume delete "$D"
@@ -233,9 +236,9 @@ echo "    -vv       very verbose"
 echo "    snap      snap data in $BTRFS_SRC"
 echo "    list      list snapshots in $BTRFS_SNAP"
 echo "    prune     prune snapshots in $BTRFS_SNAP"
-echo "    rsnap     rsync and snap data in $RSYNC_DEST and $RSYNC_SRC"
-echo "    rlist     list rsynced snapshots in $RSYNC_SNAP"
-echo "    rprune    prune rsynced snapshots in $RSYNC_SNAP"
+echo "    rsnap     rsyncin $RSYNC_DEST and snap data in $RSYNC_BTRFS_SNAP"
+echo "    rlist     list rsynced snapshots in $RSYNC_BTRFS_SNAP"
+echo "    rprune    prune rsynced snapshots in $RSYNC_BTRFS_SNAP"
 echo
 echo "Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
 }
