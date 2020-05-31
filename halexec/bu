@@ -48,6 +48,11 @@ RSYNC_BTRFS_SNAP="/mnt/backup/snap"
 #  * Skip file name ending .swp (vim artifacts)
 #  * Skip file name ending .iso (CD image files)
 RSYNC_FILTER="--exclude=Downloads/ \
+  --exclude=.bash_history \
+  --exclude=.config/git/gitk \
+  --exclude=.config/mc/ini \
+  --exclude=.local/share/gnome-shell/application_state \
+  --exclude=.local/share/mc/history \
   --exclude=.cache/ \
   --exclude=tmp/ \
   --exclude=unidic-cwj-2.3.0.zip \

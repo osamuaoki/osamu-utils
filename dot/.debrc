@@ -142,7 +142,9 @@ grub2-splashimages # Nice boot screen
 @DEV@ grip # for github README.md
 @DEV@ imediff
 @DEV@ lsof
-@DEV@ meld nautilus-compare
+@DEV@ meld
+@DEV@ nautilus-compare # diff-gui (2 panel) also use "mc ^xd"
+@DEV@ fslint # search-gui (1 panel)
 @DEV@ perl libreply-perl libterm-readline-gnu-perl # perl REPL and readline
 @DEV@ python3
 @DEV@ quilt
