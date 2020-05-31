@@ -25,7 +25,7 @@ BTRFS_SRC="/home"
 # SNAPSHOT BTRFS path (RO)
 BTRFS_SNAP="$HOME/snap"
 
-mkdir -p $BTRFS_SNAP >/dev/null
+mkdir -p "$BTRFS_SNAP" >/dev/null
 
 while [ -n "$1" ] ; do
   case $1 in
@@ -56,13 +56,13 @@ report () {
     if [ "$P_MODE" = "delete" ]; then
       echo "$2"
     elif [ "$P_MODE" = "both" ]; then
-      echo "-  $2 --- delete --- $3"
+      echo "$2 --- delete --- $3"
     fi
   else
     if [ "$P_MODE" = "keep" ]; then
       echo "$2"
     elif [ "$P_MODE" = "both" ]; then
-      echo "+  $2 +++  keep  +++ $3"
+      echo "$2 +++  keep  +++ $3"
     fi
   fi
 }
@@ -79,22 +79,22 @@ prune () {
     vecho 1 "W: No snapshot available"
     exit 1
   fi
-  AGE_LAST=$(($NOW_EPOCH-$(date +%s -d$1)))
-  local FLAG=1 # update rule with AGE_LAST
+  AGE_LAST=$((NOW_EPOCH-$(date +%s -d"$1")))
+  FLAG=1 # update rule with AGE_LAST
   report "keep" "$1" "AGE=$AGE_LAST the oldest (0)"
   shift
-  local INDEX="0"
-  local INDEX_OLD=$((${#}-$INDEX_NEW))
+  INDEX="0"
+  INDEX_OLD=$((${#}-INDEX_NEW))
   for TIMESTAMP in "${@}"; do
-    local AGE=$(($NOW_EPOCH-$(date +%s -d"$TIMESTAMP")))
-    local INDEX=$(($INDEX+1))
+    AGE=$((NOW_EPOCH-$(date +%s -d"$TIMESTAMP")))
+    INDEX=$((INDEX+1))
     if [ "$FLAG" = "1" ]; then
-      P_AGE_REF1=$(($AGE_LAST-$P_AGE_DEL))
-      P_AGE_REF2=$(($AGE_LAST*$P_AGE_FRC/10))
+      P_AGE_REF1=$((AGE_LAST-P_AGE_DEL))
+      P_AGE_REF2=$((AGE_LAST*P_AGE_FRC/10))
       vecho 3 "D: update check rule"
     fi
     if [ "$INDEX" -gt "$INDEX_OLD" ]; then
-      report "keep" "$TIMESTAMP" "AGE=$AGE, $((${#}-${INDEX}))/${INDEX_NEW}-th newest (6)"
+      report "keep" "$TIMESTAMP" "AGE=$AGE, $(($#-INDEX))/${INDEX_NEW}-th newest (6)"
       FLAG=0 # don't bother
     elif [ "$AGE" -gt "$P_AGE_HI" ] && [ "$AGE" -gt "$P_AGE_REF1" ]; then
       report "delete" "$TIMESTAMP" "$AGE !< HI=$P_AGE_HI, DEL=$P_AGE_REF1, FRC=$P_AGE_REF2 (1)"
@@ -186,7 +186,7 @@ for x in "$@" ; do
       ;;
     b*)
       TIMESTAMP=$(date -u --iso=second)
-      if [ -d $HOME/snap/$TIMESTAMP ]; then
+      if [ -d "$HOME/snap/$TIMESTAMP" ]; then
         echo "Try this later"
         exit 0
       else
