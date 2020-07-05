@@ -1,0 +1,144 @@
+#!/bin/sh -e
+#
+# Execute jhead command for all files and organize them
+# into dayly folder and within day serial number (001-999)
+# The daily folder are organized as a part of month and 
+# year folder.
+# 
+# I wrote this to accomodate easy ISO image conversion
+#
+# I use this with imageindex
+# $ imageindex
+# while having ~/. imageindexrc with:
+# $do_recurse = 0;
+# 1;
+#
+# chown/chmod/clean data for use with jhead
+du -sh .
+echo -n "You will be cleaning data in $(pwd).  Are you sure (y/n)?"
+read YN
+if [ "x$YN" = "xY" -o "x$YN" = "xy" ]; then
+  echo "OK, cleaning..."
+else
+  exit 1
+fi
+
+# chown/chmod data (they may be copied from CDROM/samba/...)
+sudo chown -R $UID .
+chmod -R ugo+rwX .
+
+# remove generated reduced size data in particular directories
+find ./ -depth -type d \
+            \( \
+	    -regex '.*\/medium' \
+	    -o -regex '.*\/thumbnail' \
+	    -o -regex '.*\/slides' \
+            \) \
+	    -exec rm -rf '{}' \;
+
+# remove generated index files created by many programs
+find ./ -type f \
+            \( \
+	       -iname 'ZbThumbnail.info' \
+	    -o -iname 'Thumbs.db' \
+	    -o -iname 'TRANS.TBL' \
+	    -o -iname '*.TMP' \
+	    -o -iname '._*.jpg' \
+	    -o -iname '*.css' \
+	    -o -iname '*.html' \
+	    -o -iname '*.xml' \
+	    -o -iname '.DS_Store' \
+	    -o -iname '._.DS_Store' \
+            \) \
+	    -exec rm -f '{}' \;
+
+mkdir -p BAG || true
+
+echo "Checking directory contents ...."
+find ./ -type f ! -iname '*.jpg' -print 
+echo -n "Do you find non-jpeg data in the above?  Can we continue?  (y/n)?"
+read YN
+if [ "x$YN" = "xY" -o "x$YN" = "xy" ]; then
+  echo "OK, continuing..."
+else
+  exit 1
+fi
+find ./ -type f ! -iname '*.jpg' -exec rm -f '{}' \;
+
+# Rename and put all to BAG
+echo "Renaming ..."
+find ./ -type f -iname '*.jpg'    -exec jhead "$@" -autorot -nf%Y-%m-%d-%H%M%S -ft "{}" \;
+echo "Moving to BAG..."
+find ./ -path ./BAG -prune -o -type f -iname '*.jpg' -exec mv '{}' ./BAG/ \;
+echo "Removing ones not in BAG and top dir ..."
+find ./ -depth -type d -path ./BAG -prune -o -type d ! -path ./ -exec rmdir --ignore-fail-on-non-empty '{}' \; || true
+# I needed to escape error
+
+# Now all files are in BAG as "%Y-%m-%d-%H%M%S"
+
+echo 'For all *.jpg move to daily directory...'
+# For all *.jpg move to daily directory
+for i in ./BAG/*.jpg; do 
+        if [ -f $i ]; then
+        yymmddx=${i#./BAG/}
+        yy=${yymmddx%%-*}
+        yymmdd=${yymmddx%-*}
+        dd=${yymmdd##*-}
+	mmdd=${yymmdd#*-}
+        mm=${mmdd%-*}
+	echo "YY $yy MM $mm DD $dd : $i moved"
+        mkdir -p ${yy}/${mm}/${dd} || true
+        mv $i ${yy}/${mm}/${dd}/
+        else
+	  echo "!!! Funny $i found !!!"
+	fi
+done
+
+echo "Zap BAG..."
+rmdir --ignore-fail-on-non-empty BAG || true
+
+echo 'Index within day as MMDD-???.jpg ...'
+# Index within day as MMDD-???.jpg
+for yy in * ; do
+	if [ $yy != '*' ]; then
+	cd $yy
+	for mm in * ; do
+		if [ $mm != '*' ]; then
+		cd $mm
+		for dd in * ; do
+			if [ $dd != '*' ]; then
+			cd $dd
+			k=1
+			# Assume max 999 photos
+                	for j in $(ls *.jpg) ; do
+                        	if [ $k -lt 10 ]; then
+                                	kk="00$k"
+                        	elif [ $k -lt 100 ]; then
+                                	kk="0$k"
+                        	else
+                                	kk="$k"
+                        	fi
+                        	mv $j ${mm}${dd}-$kk.jpg
+                		k=$(($k+1))
+                	done
+			cd ..
+			fi
+                done
+		cd ..
+		fi
+	done
+	cd ..
+	fi
+done
+du -sh *
+echo -n "Do ypu have enough space (y/n)?"
+read YN
+if [ "x$YN" = "xY" -o "x$YN" = "xy" ]; then
+  echo "OK, making index..."
+else
+  exit 1
+fi
+
+echo "Indexing images..."
+imageindex -dirs -recurse
+
