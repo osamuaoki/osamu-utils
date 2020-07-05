@@ -1,0 +1,355 @@
+#!/bin/sh -e
+# vim:se ts=4 sts=4 et ai sw=4:
+# Copyright (c) 2020 Osamu Aoki <osamu@debian.org>
+# This code is hereby licensed for public consumption under either the
+# GNU GPL v2 or greater.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+#============================================================================
+# Post-processing of *.m4a files ripped with "abcde -N -o m4a"
+#
+# * Add missing image by placing them in album directory as cover.jpg
+#   and run this with album directories as arguments
+#
+#   $ abcdef-m4a musicdir1 musicdir2 musicdir3 ...
+#
+#   If a jpeg file doesn't get embedded into *.m4a, fix JPEG by reading
+#   it into Gimp and export it as JPEG prior to running this.
+#
+# * Use "picard" to get tags updated and run this to rename file names
+#   accordingly.
+#
+# * Use search engine to find out cover.jpg and score list.  Usually
+#   sites such as the followings turn up.
+#   * https://musicbrainz.org/
+#   * https://www.discogs.com/
+#   * https://www.allmusic.com/
+#   * Amazon, wikipedia, ...
+#   These may save you some chore of typing score lists and taking pictures.
+#
+# * Copy albumart_backup/album_override.conf.template to album_override.conf
+#   and edit its content.  You need to activate data stanza by removing
+#   the leading "#" and setting values after '='.  You only need to set
+#   override values.  Then rin this with album directories as above.
+#
+# This code is shellcheck clean
+#============================================================================
+CONF="album_override.conf"
+COVER="cover.jpg"
+BUDIR="albumart_backup"
+BASEDATA="basedata"
+# Limit length to ~80 chars
+STRLEN80='s/^\(..............................................................................\).*/\1…/'
+# Limit length to ~40 chars
+#STRLEN40='s/^\(.......................................\).*/\1…/'
+#============================================================================
+# User re-definable filename munging functions:
+# Use the same one as abcde
+mungefilename ()
+{
+    # default for abcde: mp-leading ., no : > < | * / " ' ? and control
+    #echo "$1" | sed -e 's/^\.*//' -e 's/ /_/g' | tr -d ":><|*/\"'?[:cntrl:]"
+    # customized
+    echo "$1" | \
+    sed -e 's/[-=+~!@#$%^&*[{}|\:;",/<>? ]/_/g' -e 's/]/_/g'| \
+    tr -d "[:cntrl:]" | \
+    sed -e 's/^[._]*//' -e 's/__*/_/g' -e 's/[._]*$//' -e "$STRLEN80"
+}
+
+# Custom filename munging specific to artist names:
+mungeartistname ()
+{
+    echo "$1" | \
+    sed -e 's/[-=+~!@#$%^&*[{}|\:;",/<>? ]/_/g' -e 's/]/_/g'| \
+    tr -d "[:cntrl:]" | \
+    sed -e 's/^[._]*//' -e 's/__*/_/g' -e 's/[._]*$//' -e "$STRLEN80"
+}
+
+# Custom filename munging specific to album names:
+mungealbumname ()
+{
+    echo "$1" | \
+    sed -e 's/[-=+~!@#$%^&*[{}|\:;",/<>? ]/_/g' -e 's/]/_/g'| \
+    tr -d "[:cntrl:]" | \
+    sed -e 's/^[._]*//' -e 's/__*/_/g' -e 's/[._]*$//' -e "$STRLEN80"
+}
+
+#============================================================================
+backup ()
+{
+    BAK="$1"
+    if [ -e "$BAK" ]; then
+        I=0
+        while [ -e "${BAK}$(printf "%02i" "$I")" ]; do
+            I=$((I+1))
+        done
+        mv "$BAK" "${BAK}$(printf "%02i" "$I")"
+    fi
+}
+
+get_override ()
+{
+    grep "^$1=" "$CONF" | cut -d '=' -f 2
+}
+
+unknown_null ()
+{
+    echo "$1" | \
+    sed -e 's/^Unknown.*$//' -e 's/^\[unknown\]$//'
+}
+
+#============================================================================
+
+for d in "$@"; do
+    if [ ! -d "$d" ]; then
+        continue
+    fi
+    OLDIFS="$IFS"
+    # sh equivalent of $'\n'
+    IFS='
+'
+    (
+        cd "$d"
+        mkdir -p "$BUDIR"
+        mkdir -p "$BASEDATA"
+        # PASS #1: Album Art
+        if [ -e "$COVER" ]; then
+            echo "I: Updating embedded images by $COVER"
+            for f in $(ls -1 -- *.m4a 2>/dev/null|| true) ; do
+                AtomicParsley "$f" -W --artwork REMOVE_ALL
+                AtomicParsley "$f" -W --artwork "$COVER"
+            done
+            backup "$BUDIR/$COVER"
+            mv "$COVER" "$BUDIR/$COVER"
+            echo "I: Updated embedded images"
+        else
+            echo "I: Kept embedded images (no $COVER found)"
+        fi
+        # PASS #2: Update tags by override
+        if [ -e "$CONF" ]; then
+            echo "I: Updating embedded tags by $CONF"
+            OVERRIDE_ALBUM_NAME="$(get_override 'ALBUM_NAME')"
+            OVERRIDE_ALBUM_PERFORMER="$(get_override 'ALBUM_PERFORMER')"
+            for f in $(ls -1 -- *.m4a 2>/dev/null|| true) ; do
+                TRACK_INDEX=$(echo "$f" | cut -d '.' -f 1)
+                echo "I: track=$TRACK_INDEX"
+                OVERRIDE_TRACK_NAME="$(get_override "NAME$TRACK_INDEX")"
+                OVERRIDE_TRACK_PERFORMER="$(get_override "PERFORMER$TRACK_INDEX")"
+                APARGS=""
+                if [ -n "$OVERRIDE_ALBUM_NAME" ]; then
+                    echo "I: OVERRIDE_ALBUM_NAME='$OVERRIDE_ALBUM_NAME' for '$f'"
+                    ALBUM_NAME=$(mediainfo --Inform="General;%Album%" "$f")
+                    if [ "$ALBUM_NAME" != "$OVERRIDE_ALBUM_NAME" ]; then
+                        APARGS=" --album \"$OVERRIDE_ALBUM_NAME\""
+                        echo "I: $ALBUM_NAME --> $OVERRIDE_ALBUM_NAME (album name)"
+                    else
+                        echo "I: no-tag-change --- $ALBUM_NAME (same@$TRACK_INDEX) (album name)"
+                    fi
+                else
+                    echo "I: no-tag-change --- $ALBUM_NAME (no-request@$TRACK_INDEX) (album name)"
+                fi
+                ALBUM_PERFORMER=$(mediainfo --Inform="General;%Album/Performer%" "$f")
+                ALBUM_PERFORMER="$(unknown_null "$ALBUM_PERFORMER")"
+                TRACK_PERFORMER=$(mediainfo --inform="General;%Performer%" "$f")
+                TRACK_PERFORMER="$(unknown_null "$TRACK_PERFORMER")"
+                if [ -n "$OVERRIDE_ALBUM_PERFORMER" ]; then
+                    if [ "$ALBUM_PERFORMER" != "$OVERRIDE_ALBUM_PERFORMER" ]; then
+                        APARGS="$APARGS --albumArtist \"$OVERRIDE_ALBUM_PERFORMER\""
+                        echo "I: $ALBUM_PERFORMER --> $OVERRIDE_ALBUM_PERFORMER (album performer)"
+                    else
+                        echo "I: no-tag-change --- $ALBUM_PERFORMER (same@$TRACK_INDEX) (album performer)"
+                    fi
+                else
+                    echo "I: no-tag-change --- $ALBUM_PERFORMER (no-request@$TRACK_INDEX) (album performer)"
+                fi
+                if [ -n "$OVERRIDE_TRACK_NAME" ]; then
+                    TRACK_NAME=$(mediainfo --inform="General;%Track%" "$f")
+                    if [ "$TRACK_NAME" != "$OVERRIDE_TRACK_NAME" ]; then
+                        APARGS="$APARGS --title \"$OVERRIDE_TRACK_NAME\""
+                        echo "I: $TRACK_NAME --> $OVERRIDE_TRACK_NAME (track name)"
+                    else
+                        echo "I: no-tag-change --- $TRACK_NAME  (same@$TRACK_INDEX) (track name)"
+                    fi
+                else
+                    echo "I: no-tag-change --- $TRACK_NAME (no-request@$TRACK_INDEX) (track name)"
+                fi
+                if [ -n "$OVERRIDE_TRACK_PERFORMER" ]; then
+                    if [ "$TRACK_PERFORMER" != "$OVERRIDE_TRACK_PERFORMER" ]; then
+                        APARGS="$APARGS  --artist \"$OVERRIDE_TRACK_PERFORMER\""
+                        echo " $TRACK_PERFORMER --> $OVERRIDE_TRACK_PERFORMER (track performer)"
+                    else
+                        echo "I: no-tag-change --- $TRACK_PERFORMER (same@$TRACK_INDEX) (track performer)"
+                    fi
+                elif [ -n "$OVERRIDE_ALBUM_PERFORMER" ]; then
+                    if [ -z "$TRACK_PERFORMER" ]; then
+                        APARGS="$APARGS  --artist \"$OVERRIDE_ALBUM_PERFORMER\""
+                        echo "I: [null] --> $OVERRIDE_ALBUM_PERFORMER (track performer)"
+                    else
+                        echo "I: no-tag-change --- $TRACK_PERFORMER (same@$TRACK_INDEX) (track performer)"
+                    fi
+                else
+                    echo "I: no-tag-change --- $TRACK_PERFORMER (no-request@$TRACK_INDEX) (track performer)"
+                fi
+                if [ -n "$APARGS" ]; then
+                    eval "AtomicParsley \"$f\" -W $APARGS"
+                    echo "   ... done"
+                fi
+            done
+            backup "$BUDIR/$CONF"
+            mv "$CONF" "$BUDIR/$CONF"
+            echo "I: Updated embedded tags"
+        else
+            echo "I: Kept embedded tags (no $CONF found)"
+        fi
+        # PASS #3: Analyze data
+        echo "I: Analyze data"
+        COMMON_ALBUM_NAME=""
+        COMMON_ALBUM_PERFORMER=""
+        COMMON_TRACK_PERFORMER=""
+        ALBUM_NAME_ERROR=0
+        ALBUM_PERFORMER_ERROR=0
+        TRACK_PERFORMER_ERROR=0
+        for f in $(ls -1 -- *.m4a 2>/dev/null|| true) ; do
+            ALBUM_NAME=$(mediainfo --Inform="General;%Album%" "$f")
+            ALBUM_NAME="$(unknown_null "$ALBUM_NAME")"
+            if [ -z "$COMMON_ALBUM_NAME" ]; then
+                COMMON_ALBUM_NAME="$ALBUM_NAME"
+            elif [ "$ALBUM_NAME" != "$COMMON_ALBUM_NAME" ]; then
+                ALBUM_NAME_ERROR=1
+            fi
+            ALBUM_PERFORMER=$(mediainfo --Inform="General;%Album/Performer%" "$f")
+            ALBUM_PERFORMER="$(unknown_null "$ALBUM_PERFORMER")"
+            if [ -z "$COMMON_ALBUM_PERFORMER" ]; then
+                COMMON_ALBUM_PERFORMER="$ALBUM_PERFORMER"
+            elif [ "$ALBUM_PERFORMER" != "$COMMON_ALBUM_PERFORMER" ]; then
+                ALBUM_PERFORMER_ERROR=1
+            fi
+            TRACK_PERFORMER=$(mediainfo --Inform="General;%Performer%" "$f")
+            TRACK_PERFORMER="$(unknown_null "$TRACK_PERFORMER")"
+            if [ -z "$COMMON_TRACK_PERFORMER" ]; then
+                COMMON_TRACK_PERFORMER="$TRACK_PERFORMER"
+            elif [ "$TRACK_PERFORMER" != "$COMMON_TRACK_PERFORMER" ]; then
+                TRACK_PERFORMER_ERROR=1
+            fi
+        done
+        if [ "$ALBUM_NAME_ERROR" = "0" ]; then
+            REP_ALBUM_NAME="$COMMON_ALBUM_NAME"
+        else
+            REP_ALBUM_NAME="${d##*/}"
+            REP_ALBUM_NAME="${REP_ALBUM_NAME##*-}"
+            REP_ALBUM_NAME="${REP_ALBUM_NAME:-Unknown Album}"
+        fi
+        if [ "${COMMON_ALBUM_PERFORMER}" != "${COMMON_ALBUM_PERFORMER#Various}" ]; then
+            COMMON_ALBUM_PERFORMER="Various"
+        fi
+        if [ "$ALBUM_PERFORMER_ERROR" = "1" ]; then
+            REP_ALBUM_PERFORMER="Various"
+            COMMON_ALBUM_PERFORMER=""
+        elif [ -z "$COMMON_ALBUM_PERFORMER" ]; then
+            if [ "$TRACK_PERFORMER_ERROR" = "0" ] && [ -n "$COMMON_TRACK_PERFORMER" ]; then
+                REP_ALBUM_PERFORMER="$COMMON_TRACK_PERFORMER"
+            else
+                REP_ALBUM_PERFORMER="Various"
+                COMMON_TRACK_PERFORMER=""
+            fi
+        else
+            REP_ALBUM_PERFORMER="$COMMON_ALBUM_PERFORMER"
+        fi
+        # PASS #4: Record old tag states
+        echo "I: Record old tag states in $BUDIR/$CONF.template"
+        {
+            echo "# Activate tag override by:"
+            echo "#   * copy '$BUDIR/$CONF.template' to '$CONF'"
+            echo "#   * drop the leading '#' of the template line in '$CONF'"
+            echo "#   * set the right hand value after '=' in '$CONF'"
+            echo "#   * execute '${0##*/} $d'"
+            echo
+            echo "#   Don't use \" in this.  Use ″ instead."
+            echo
+            echo "# not-template COMMON TRACK PERFORMER='$COMMON_TRACK_PERFORMER' (used as backup for REP ALBUM PERFORMER)"
+            echo "# not-template REP ALBUM NAME='$REP_ALBUM_NAME' (used to generate directory name)"
+            echo "# not-template REP ALBUM PERFORMER='$REP_ALBUM_PERFORMER' (used to generate directory name)"
+            echo "#ALBUM_NAME=$COMMON_ALBUM_NAME"
+            echo "#ALBUM_PERFORMER=$COMMON_ALBUM_PERFORMER"
+            for f in $(ls -1 -- *.m4a 2>/dev/null|| true) ; do
+                TRACK_INDEX=$(echo "$f" | cut -d '.' -f 1)
+                ALBUM_NAME=$(mediainfo --Inform="General;%Album%" "$f")
+                if [ "${ALBUM_NAME}" != "${ALBUM_NAME#Unknown}" ]; then
+                    ALBUM_NAME=""
+                fi
+                ALBUM_PERFORMER=$(mediainfo --Inform="General;%Album/Performer%" "$f")
+                ALBUM_PERFORMER="$(unknown_null "$ALBUM_PERFORMER")"
+                TRACK_NAME=$(mediainfo --Inform="General;%Track%" "$f")
+                TRACK_PERFORMER=$(mediainfo --Inform="General;%Performer%" "$f")
+                TRACK_PERFORMER="$(unknown_null "$TRACK_PERFORMER")"
+                echo
+                echo "# not-template ALBUMN AME$TRACK_INDEX='$ALBUM_NAME' (FYI)"
+                echo "# not-template ALBUM PERFORMER$TRACK_INDEX='$ALBUM_PERFORMER' (FYI)"
+                echo "#NAME$TRACK_INDEX=$TRACK_NAME"
+                echo "#PERFORMER$TRACK_INDEX=$TRACK_PERFORMER"
+            done
+        } > "$BUDIR/$CONF.template"
+
+        # PASS #5: rename directory name based on tags
+        echo "I: Renaming directory ..."
+        if [ -n "$REP_ALBUM_NAME" ]; then
+            DIR_NEW="$(mungeartistname "${REP_ALBUM_PERFORMER}")-$(mungealbumname "${REP_ALBUM_NAME}")"
+            if [ "$d" = "$DIR_NEW" ]; then
+                echo "I: no-rename   --- $d"
+            elif [ -e "$DIR_NEW" ]; then
+                echo "W: File or directory exists: $DIR_NEW"
+                echo "I: skip-rename -!- $d"
+                DIR_NEW="$d"
+            else
+                echo "I: $d --> $DIR_NEW"
+                cd ..
+                mv "$d" "$DIR_NEW"
+                cd "$DIR_NEW"
+            fi
+        else
+            echo "I: no-rename since ALBUM_NAME is missing in tags"
+            echo "I: create $CONF and set ALBUM_NAME"
+            DIR_NEW="$d"
+        fi
+        if [ "$REP_ALBUM_PERFORMER" = "Various" ] && [ -n "$COMMON_ALBUM_PERFORMER" ] && [ "$COMMON_ALBUM_PERFORMER" != "Various" ]; then
+            echo "W: If ALBUM_PERFORMER=Various isn't be the best choice"
+            echo "W: create $CONF and set ALBUM_PERFORMER"
+        fi
+        echo "I:                    ... Finish renaming directory"
+
+        # PASS #6: rename file name based on tags
+        echo "I: Renaming files ..."
+        for f in $(ls -1 -- *.m4a 2>/dev/null|| true) ; do
+            TRACK_NAME=$(mediainfo --Inform="General;%Track%" "$f")
+            TRACK_INDEX=$(echo "$f" | cut -d '.' -f 1)
+            TRACK_PERFORMER=$(mediainfo --Inform="General;%Performer%" "$f")
+            TRACK_PERFORMER="$(unknown_null "$TRACK_PERFORMER")"
+            if [ "${TRACK_PERFORMER}" != "${TRACK_PERFORMER#Various}" ]; then
+                TRACK_PERFORMER="Various"
+            fi
+            if [ -z "$TRACK_PERFORMER" ] && [ "$REP_ALBUM_PERFORMER" != "Various" ]; then
+                TRACK_PERFORMER="$REP_ALBUM_PERFORMER"
+            fi
+            if [ "$REP_ALBUM_PERFORMER" = "Various" ] && [ -n "$TRACK_PERFORMER" ] && [ "$TRACK_PERFORMER" != "Various" ]; then
+                FILE_NAME="${TRACK_INDEX}.$(mungeartistname "${TRACK_PERFORMER}")-$(mungefilename "${TRACK_NAME}").m4a"
+            else
+                FILE_NAME="${TRACK_INDEX}.$(mungefilename "${TRACK_NAME}").m4a"
+            fi
+            if [ "$f" = "$FILE_NAME" ]; then
+                echo "I: no-rename   --- $f"
+                : # No action
+            elif [ -e "$FILE_NAME" ]; then
+                echo "E: Differ renaming $f since $FILE_NAME exists" >&2
+            else
+                echo "I: rename $f --> $FILE_NAME"
+                mv "$f" "$FILE_NAME"
+            fi
+        done
+        echo "I:                   ... Finish renaming files"
+        cd ..
+    )
+    IFS="$OLDIFS"
+done

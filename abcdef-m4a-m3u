@@ -1,0 +1,19 @@
+#!/bin/sh -e
+# vim:se ts=4 sts=4 et ai sw=4:
+# Copyright (c) 2020 Osamu Aoki <osamu@debian.org>
+# This code is hereby licensed for public consumption under either the
+# GNU GPL v2 or greater.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+#============================================================================
+# This code is shellcheck clean
+#============================================================================
+for d in "$@"; do
+    if [ ! -d "$d" ]; then
+        continue
+    fi
+    find "$d" -type f -name '*.m4a' | sort > "$d.m4a.m3u"
+done
