@@ -29,6 +29,8 @@ mutt
 # You can also use 'mua'; it takes an argument like that to --mua
 # mua 'mutt -H'
 
+mta /home/osamu/bin/sendmail-p.d.o
+
 # Additional headers to add:
 # header "X-Debbugs-CC: debian-qa@lists.debian.org"
 # header "X-Silly-Header: I haven't edited my /etc/reportbug.conf"

@@ -87,6 +87,7 @@ tmux
 fzf
 htop
 less
+tree
 lsb-base
 memtest86+
 moreutils
@@ -146,6 +147,7 @@ grub2-splashimages # Nice boot screen
 @DEV@ nautilus-compare # diff-gui (2 panel) also use "mc ^xd"
 @DEV@ fslint # search-gui (1 panel)
 @DEV@ perl libreply-perl libterm-readline-gnu-perl # perl REPL and readline
+@DEV@ btrfs-heatmap # see if fragmented
 @DEV@ python3
 @DEV@ quilt
 @DEV@ rpm2cpio

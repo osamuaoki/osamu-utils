@@ -8,10 +8,10 @@
 # functions
 f_help () {
   echo "Syntax:"
-  echo "  hal conf i[nstall]"
-  echo "  hal conf d[iff]"
-  echo "  hal conf b[ackup]"
-  echo "  hal conf u[pdate]"
+  echo "  hal conf i[nstall] # install public template "
+  echo "  hal conf d[iff]    # diff against public template"
+  echo "  hal conf u[pdate]  # update public template"
+  echo "  hal conf b[ackup]  # make private backup in ~/backup"
   exit
 }
 
@@ -21,7 +21,7 @@ f_diff () {
     f=$(basename "$p")
     if [ -f "$p" ]; then
       echo " $ diff -u $p  ${HOME}/$f"
-      diff -u "$p" ${HOME}/"$f" || true
+      diff -u "$p" "${HOME}/$f" || true
     else
       :
     fi
@@ -88,7 +88,7 @@ f_backup () {
   rsync -av "${HOME}/.gnupg"    "${HOME}/$BUSR/"
   rsync -av "${HOME}/.ssh"      "${HOME}/$BUSR/"
   rsync -av "${HOME}/.config"   "${HOME}/$BUSR/"
-  rsync -av "${HOME}/.local"    "${HOME}/$BUSR/"
+  rsync -av --exclude=".local/share/Trash" "${HOME}/.local"    "${HOME}/$BUSR/"
   #rsync -av "${HOME}//"          "${HOME}/$BUSR/"
   for p in /etc/skel/.* ; do
     f=$(basename "$p")
