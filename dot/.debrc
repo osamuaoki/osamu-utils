@@ -102,6 +102,7 @@ xxd
 # rescue
 grml-rescueboot # set up /boot/grml for live DVDs (not all iso)
 grub2-splashimages # Nice boot screen
+exim4-daemon-light
 #############################################################################
 # *** Desktop ***
 #############################################################################
@@ -123,6 +124,7 @@ grub2-splashimages # Nice boot screen
 @GUI@ nkf lv
 @GUI@ ibus-anthy ibus-gtk ibus-gtk3 libqt5gui5 ibus-wayland ibus-mozc
 @GUI@ fonts-vlgothic fonts-ipaexfont
+@GUI@ zim
 #############################################################################
 # Development tools
 #############################################################################
@@ -165,6 +167,14 @@ grub2-splashimages # Nice boot screen
 @DEV@ grml2usb # grml based usb multi-iso-live
 #vim-addon-manager # I use https://github.com/osamuaoki/dot-vim instead
 #git-annex
+@DEV@ gdebi
+@DEV@ gettext
+@DEV@ 2to3
+@DEV@ asciidoc
+@DEV@ debhelper
+@DEV@ po4a
+@DEV@ parallel
+@DEV@ zip
 #############################################################################
 # Off-line Documentation
 #############################################################################
@@ -194,9 +204,10 @@ grub2-splashimages # Nice boot screen
 # EXTRA
 @ALL@ adwaita-qt # Adwaita theme for Qt▒5 w/ QT_STYLE_OVERRIDE=Adwaita
 @ALL@ flatpak flatpak-xdg-utils # http://flatpak.org/
-@ALL@ nixnote2 # Evernote
-@ALL@ sound-juicer
-@ALL@ timeshift # snapshots
+@ALL@ abcde
+#@ALL@ nixnote2 # Evernote
+#@ALL@ sound-juicer
+#@ALL@ timeshift # snapshots
 # EXTRA EXTRA
 #@ALL@ etherape
 #@ALL@ avra avrp simavr simulavr # AVR
