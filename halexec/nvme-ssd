@@ -1,0 +1,12 @@
+#!/bin/sh -e
+## @brief print nvme ssd temperature
+# vim:set tw=78 sts=2 ts=2 sw=2 et ai si:
+
+for dev in /dev/nvme? ; do
+  sudo smartctl -a "$dev" | grep \
+    -e '^Model Number:' \
+    -e '^Firmware Version:' \
+    -e '^SMART overall-health self-assessment test result:'
+  sudo nvme smart-log "$dev"
+done
+
