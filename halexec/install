@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# install or check packages using ~/.debrc
+## @brief install or check packages using ~/.debrc
 # Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 sw=2 ai et:
 #############################################################################

@@ -1,4 +1,5 @@
 #!/bin/sh -e
+## @brief make and manage BTRFS snapshots of the target device
 # vim:se tw=78 ai ts=2 sts=2 sw=2 et:
 ##############################################################################
 # Copyright (C) Osamu Aoki <osamu@debian.org>

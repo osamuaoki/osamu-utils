@@ -1,4 +1,5 @@
 #!/bin/bash -e
+## @brief manage configuration files (public/private)
 # vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
 #
 # configuration
@@ -8,10 +9,10 @@
 # functions
 f_help () {
   echo "Syntax:"
-  echo "  hal conf i[nstall] # install public template "
-  echo "  hal conf d[iff]    # diff against public template"
-  echo "  hal conf u[pdate]  # update public template"
-  echo "  hal conf b[ackup]  # make private backup in ~/backup"
+  echo "  hal conf i[nstall] # install public configuration files"
+  echo "  hal conf d[iff]    # diff against public configuration files"
+  echo "  hal conf u[pdate]  # update public configuration files"
+  echo "  hal conf b[ackup]  # backup private configuration files in ~/backup"
   exit
 }
 
@@ -149,7 +150,7 @@ f_backup () {
 }
 
 f_update () {
-# update the template files by the latest installed dot files
+# update the configuration files by the latest installed dot files
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
@@ -157,7 +158,7 @@ f_update () {
       cp -f "${HOME}/$f" "$p"
     fi
   done
-# update the template files by the latest installed pbuilder hooks
+# update the configuration files by the latest installed pbuilder hooks
   sudo mkdir -p /var/cache/pbuilder/hooks
   for p in /var/cache/pbuilder/hooks/* ; do
     f=$(basename "$p")

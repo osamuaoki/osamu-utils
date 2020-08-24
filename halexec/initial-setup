@@ -1,4 +1,5 @@
 #!/bin/sh -e
+## @brief initial system setups (apt/sudo/...)
 # Initial setup
 # Copyright 2018 Osamu Aoki <osamu@debian.org>, GPL-2+
 # vim: set ts=2 sts=2 sw=2 ai et:

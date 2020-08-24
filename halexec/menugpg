@@ -1,4 +1,5 @@
 #!/bin/bash
+## @brief GnuPG helper menu
 
 MYKEY=D5DE453D
 
