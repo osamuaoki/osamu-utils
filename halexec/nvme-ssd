@@ -6,7 +6,9 @@ for dev in /dev/nvme? ; do
   sudo smartctl -a "$dev" | grep \
     -e '^Model Number:' \
     -e '^Firmware Version:' \
+    -e 'Comp. Temp. Threshold:' \
     -e '^SMART overall-health self-assessment test result:'
   sudo nvme smart-log "$dev"
+  echo
 done
 
