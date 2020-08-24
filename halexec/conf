@@ -88,8 +88,15 @@ f_backup () {
   rsync -av "${HOME}/bin"       "${HOME}/$BUSR/"
   rsync -av "${HOME}/.gnupg"    "${HOME}/$BUSR/"
   rsync -av "${HOME}/.ssh"      "${HOME}/$BUSR/"
-  rsync -av "${HOME}/.config"   "${HOME}/$BUSR/"
-  rsync -av --exclude=".local/share/Trash" "${HOME}/.local"    "${HOME}/$BUSR/"
+  # evolution needs to be backuped for filter
+  rsync -av \
+      --exclude=".config/chromium" \
+      --exclude=".config/libreoffice" \
+      --exclude=".config/GIMP" \
+      "${HOME}/.config"   "${HOME}/$BUSR/"
+  rsync -av \
+      --exclude=".local/share/Trash" \
+      "${HOME}/.local"    "${HOME}/$BUSR/"
   #rsync -av "${HOME}//"          "${HOME}/$BUSR/"
   for p in /etc/skel/.* ; do
     f=$(basename "$p")
