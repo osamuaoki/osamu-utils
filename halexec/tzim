@@ -1,4 +1,5 @@
 #!/usr/bin/python
+## @brief convert a Tomboy notes database to Zim format
 #################################################################################################
 #                                                                                               #
 # tzim.py - Simple conversion module to convert a Tomboy notes database to zim format.          #
