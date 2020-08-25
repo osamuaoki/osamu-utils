@@ -1,0 +1,168 @@
+#!/bin/sh
+## @brief tool for the Evolution message filter
+# vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
+conv_to_name() {
+  for f in "$EVOLUTION_CONFIG_SRC/sources/"* ; do
+    if grep -q -e "Imapx Backend" "$f" ; then
+      g="${f%.source}"
+      g="${g##*/}"
+      #echo -n "-e 's/$g/"
+      sed -n -e "/^DisplayName=/s/DisplayName=\(.*\)/-e s\/$g\/@@@@@\1@@@@@\/ /p" "$f"
+    fi
+  done
+}
+
+conv_to_hash() {
+  for f in "$EVOLUTION_CONFIG_DST/sources/"* ; do
+    if grep -q -e "Imapx Backend" "$f" ; then
+      g="${f%.source}"
+      g="${g##*/}"
+      #echo -n "-e 's/$g/"
+      sed -n -e "/^DisplayName=/s/DisplayName=\(.*\)/-e s\/@@@@@\1@@@@@\/$g\/ /p" "$f"
+    fi
+  done
+}
+
+__help () {
+  echo "Tool for the Evolution message filter
+
+  Hash strings in the Evolution message filter file may be different for the
+  same account on each Evolution installation.  This script should help
+  migration of an Evolution message filter from one Evolution installation
+  to another.
+
+  This script reads the source Evolution message filter file at
+      ~/.config/evolution/mail/filters.xml (Evolution default)
+  and performs the forward conversion from hash strings to name strings using
+      ~/.config/evolution/sources/*.source
+  files and outputs its conversion result to the STDOUT.
+
+  This script with the '-r' option performs the reverse conversion by reading
+  its data with name strings from STDIN and outputs its result with hash
+  strings to the destination Evolution message filter file
+      ~/.config/evolution/mail/filters.xml.
+
+  This script with the '-d' option performs the double conversion by reading
+  the source configuration data copied to the directory by user under
+      ~/.config/evolution-old
+  and outputs its result to the destination Evolution message filter file at
+      ~/.config/evolution/mail/filters.xml.
+
+  -f            perform the forward conversion.
+  -r            perform the reverse conversion.
+  -d            perform the double conversion.
+  -c <path>     use the Evolution configuration files from <path>
+                instead of its default ~/.config/evolution .
+  -o <path>     use the source Evolution configuration files from <path>
+                instead of its default ~/.config/evolution-old for double
+                conversion mode.  This automatically sets the '-d' option.
+"
+}
+
+EVOLUTION_CONFIG_DST=""
+EVOLUTION_CONFIG_SRC=""
+SED="sed"
+SED2="sed"
+MODE="forward"
+if [ -z "$1" ]; then
+  __help
+  exit
+fi
+
+while [ -n "$1" ] ; do
+  case $1 in
+    -f|--forward) MODE="forward"
+      ;;
+    -r|--reverse) MODE="reverse"
+      ;;
+    -d|--double) MODE="double"
+      ;;
+    -c) shift
+      if [ ! -e "$1" ]; then
+        echo "E: path to the Evolution configuration files missing: $1"
+        exit
+      elif [ ! -e "$1/mail" ]; then
+        echo "E: path to the Evolution configuration files missing: $1/mail"
+        exit
+      elif [ ! -e "$1/sources" ]; then
+        ls -l "$1/mail/sources"
+        echo "E: path to the Evolution configuration files missing: $1/sources"
+        exit
+      else
+        EVOLUTION_CONFIG_DST="$1"
+      fi
+      ;;
+    -o) shift
+      if [ ! -e "$1" ]; then
+        echo "E: path to the source Evolution configuration files missing: $1"
+        exit
+      elif [ ! -e "$1/mail" ]; then
+        echo "E: path to the source Evolution configuration files missing: $1/mail"
+        exit
+      elif [ ! -e "$1/sources" ]; then
+        echo "E: path to the source Evolution configuration files missing: $1/sources"
+        exit
+      else
+        EVOLUTION_CONFIG_SRC="$1"
+        MODE="double"
+      fi
+      ;;
+    -n) SED="echo"
+      SED2="cat ; echo"
+      ;;
+    -x) set -x
+      ;;
+    -h|--help) __help
+      exit
+      ;;
+    *) __help
+      echo "E: !!! UNKNOWN command !!!: $*"
+      exit
+      ;;
+  esac
+  shift
+done
+
+
+if [ -z "$EVOLUTION_CONFIG_DST" ]; then
+  EVOLUTION_CONFIG_DST="${HOME}/.config/evolution"
+fi
+
+if [ -z "$EVOLUTION_CONFIG_SRC" ] && [ "$MODE" = "forward" ]; then
+  EVOLUTION_CONFIG_SRC="$EVOLUTION_CONFIG_DST"
+elif [ -z "$EVOLUTION_CONFIG_SRC" ]; then
+  EVOLUTION_CONFIG_SRC="${HOME}/.config/evolution-old"
+fi
+
+EVOLUTION_FILTERS_DST="${EVOLUTION_CONFIG_DST}/mail/filters.xml"
+EVOLUTION_FILTERS_SRC="${EVOLUTION_CONFIG_SRC}/mail/filters.xml"
+
+if [ "$MODE" = "forward" ]; then
+  if [ ! -e "$EVOLUTION_FILTERS_SRC" ]; then
+    echo "E: the source Evolution message filter file missing: $EVOLUTION_FILTERS_SRC"
+    exit
+  fi
+  # shellcheck disable=SC2046
+  $SED $(conv_to_name) "$EVOLUTION_FILTERS_SRC"
+elif [ "$MODE" = "reverse" ]; then
+  if [ -e "$EVOLUTION_FILTERS_DST" ]; then
+    echo "E: the destination Evolution message filter file already existing: $EVOLUTION_FILTERS_DST"
+    exit
+  fi
+  # shellcheck disable=SC2046
+  $SED $(conv_to_hash) > "$EVOLUTION_FILTERS_DST"
+elif [ "$MODE" = "double" ]; then
+  if [ ! -e "$EVOLUTION_FILTERS_SRC" ]; then
+    echo "E: the source Evolution message filter file missing: $EVOLUTION_FILTERS_SRC"
+    exit
+  fi
+  if [ -e "$EVOLUTION_FILTERS_DST" ]; then
+    echo "E: the destination Evolution message filter file already existing: $EVOLUTION_FILTERS_DST"
+    exit
+  fi
+  # shellcheck disable=SC2046
+  $SED $(conv_to_name) "$EVOLUTION_FILTERS_SRC" | $SED2 $(conv_to_hash) > "$EVOLUTION_FILTERS_DST"
+else
+  echo "E: !!! UNKNOWN mode !!!: $MODE"
+fi
+
