@@ -1,7 +1,15 @@
 #!/bin/sh -e
-## @brief print nvme ssd temperature
+## @brief print nvme ssd S.M.A.R.T. info
 # vim:set tw=78 sts=2 ts=2 sw=2 et ai si:
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "print nvme ssd S.M.A.R.T. info
 
+example: print Model and Temperature repeatedly
+
+  \$  watch \"hal nvme-ssd|grep '^te\\|^Mo'\"
+"
+  exit
+fi
 for dev in /dev/nvme? ; do
   sudo smartctl -a "$dev" | grep \
     -e '^Model Number:' \
