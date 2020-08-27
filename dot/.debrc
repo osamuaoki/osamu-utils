@@ -9,55 +9,93 @@
 # @ALL@ -6 only for Development with Doc+TeX+All
 #
 #############################################################################
-# *** Bare Minimum Utilities ***
+#
+# Gather installed package from:
+#   $ aptitude search '~i!~prequired!~pimportant!~pstandard!~M'
+#
 #############################################################################
-# This is installed to track auto/manual install
-aptitude
-# remove nano abs ubstall vim
-nano-
-vim
-# very basics installed via aptitude
-mc sudo locales-all git wget gnupg
-task-english
-task-ssh-server
+#
+#############################################################################
+# *** Pre-installed Utilities ***
+#############################################################################
+# Should have been installed by installer
+task-english            # General English environment
+@GUI@ task-gnome-desktop      # GNOME
+task-laptop             # laptop
+tasksel                 # tool for selecting tasks for installation on Debian systems
+discover                # hardware identification system
+installation-report     # system installation report
+popularity-contest      # Vote for your favourite packages automatically
+lsb-base                # Linux Standard Base init script functionality
+grub-common             # GRand Unified Bootloader (common files)
+grub-efi-amd64          # GRand Unified Bootloader, version 2 (EFI-AMD64 version)
+linux-image-amd64       # Linux for 64-bit PCs (meta-package)
 #############################################################################
 # *** NON-FREE firmwares *** (mostly wifi)
 #############################################################################
-atmel-firmware
-bluez-firmware
-firmware-atheros
-firmware-bnx2
-firmware-bnx2x
-firmware-brcm80211
-firmware-intel-sound
-firmware-intelwimax
-firmware-ipw2x00
-firmware-iwlwifi
-firmware-libertas
-firmware-linux
-firmware-linux-nonfree # micro code etc.
-firmware-netxen
-firmware-qlogic
-firmware-realtek
-firmware-ti-connectivity
-firmware-zd1211
-#broadcom-sta-dkms # Kernel source or headers are required
-#firmware-cavium
-#firmware-myricom
-#sl-modem-dkms
+# firmwares (non-free)  Thinkpad T14 (AMD)
+firmware-amd-graphics   # Binary firmware for AMD/ATI graphics chips
+firmware-iwlwifi        # Binary firmware for Intel Wireless cards
+firmware-linux          # Binary firmware for various drivers in the Linux kernel (metapackage)
+#firmware-linux-nonfree # micro code etc. (pulled in)
+firmware-misc-nonfree   # Binary firmware for various drivers in the Linux kernel
+firmware-realtek        # Binary firmware for Realtek wired/wifi/BT adapters
+# Generic cases
+#   atmel-firmware
+#   bluez-firmware
+#   firmware-atheros
+#   firmware-bnx2
+#   firmware-bnx2x
+#   firmware-brcm80211
+#   firmware-intel-sound
+#   firmware-intelwimax
+#   firmware-ipw2x00
+#   firmware-libertas
+#   firmware-linux
+#   firmware-netxen
+#   firmware-qlogic
+#   firmware-ti-connectivity
+#   firmware-zd1211
+#############################################################################
+# *** Bare Minimum Utilities ***
+#############################################################################
+# This is installed to track auto/manual install
+aptitude                # terminal-based package manager
+mc                      # Midnight Commander - a powerful file manager
+# remove nano and install vim
+nano-
+vim                     # Vi IMproved - enhanced vi editor
+sudo                    # Provide limited super user privileges to specific users
+gnupg                   # GNU privacy guard - a free PGP replacement
+locales-all             # GNU C Library: Precompiled locale data
+git                     # fast, scalable, distributed revision control system
+#wget                   # Priority: standard
 #############################################################################
 # *** System Utilities ***
 #############################################################################
 # filesystem/block device tools
-btrfs-progs
+dmsetup                 # Linux Kernel Device Mapper userspace library
+kpartx                  # create device mappings for partitions
+btrfs-progs             # Checksumming Copy on Write Filesystem utilities
+mtools                  # Tools for manipulating MSDOS files
+nvme-cli                # userspace tooling to control NVMe drives
+udftools                # tools for UDF filesystems and DVD/CD-R(W) drives
+hdparm                  # tune hard disk parameters for high performance
+smart-notifier          # graphical hard disk health status notifier
+smartmontools           # control and monitor storage systems using S.M.A.R.T.
+# Console basics
+fzf                     # general-purpose command-line fuzzy finder
+info                    # Standalone GNU Info documentation browser
+rsync                   # fast, versatile, remote (and local) file-copying tool
+xxd                     # tool to make (or reverse) a hex dump
+shellcheck              # lint tool for shell scripts
+#############################################################################
+# More (probably pulled in by others)
+#############################################################################
 cryptsetup
-dmsetup
 e2fsprogs
 eject
 exfat-utils
-kpartx
-# Removed to avoid error
-#lvm2
 ntfs-3g
 usbutils
 xfsprogs
@@ -67,15 +105,19 @@ hdparm
 fdisk
 gdisk
 parted
-@GUI@ gparted
 # filesystem fix-up
 gpart
 testdisk
 # file compression tools
-gzip bzip2 xz-utils liblz4-tool zstd
+gzip
+bzip2
+xz-utils
+liblz4-tool
+zstd
 # network utilities
 iproute2
-# mails are now all imap4 via evolution
+# mails are now all imap4 via evolution or sendmail/ssh
+exim4-daemon-light
 #getmail
 #maildrop
 #msmtp
@@ -84,47 +126,51 @@ iproute2
 screen
 tmux
 # other basic utilities
-fzf
 htop
 less
 tree
 lsb-base
 memtest86+
+grub2-splashimages # Nice boot screen
 moreutils
-pinfo
 popularity-contest
 rename
 rsync
 time
 w3m
-wget
-xxd
-# rescue
-grml-rescueboot # set up /boot/grml for live DVDs (not all iso)
-grub2-splashimages # Nice boot screen
-exim4-daemon-light
+# rescue media
+#grml-rescueboot # set up /boot/grml for live DVDs (not all iso) -> New tool (not signed)
 #############################################################################
 # *** Desktop ***
 #############################################################################
-# basic GUI packages
-@GUI@ task-desktop
-@GUI@ task-gnome-desktop
-@GUI@ chromium pepperflashplugin-nonfree # alt. browser
-@GUI@ gnote # desktop note
-@GUI@ psensor # temp. mon.
-@GUI@ rxvt-unicode # alt. console
-@GUI@ fonts-hack # Nice terminal fonts
-#emacs
+# GUI basics
+@GUI@ chromium                # web browser
+@GUI@ pepperflashplugin-nonfree # Pepper Flash Player - browser plugin
+@GUI@ fonts-hack              # Typeface designed for source code
+@GUI@ gnome-usage             # simple system monitor app for GNOME
+@GUI@ gparted                 # GNOME partition editor
+@GUI@ psensor                 # display graphs for monitoring hardware temperature
+@GUI@ linux-cpupower          # CPU power management tools for Linux
+@GUI@ tlp                     # Save battery power on laptops
+@GUI@ tkinfo                  # Tcl/Tk Info browser
+@GUI@ gitk                    # fast, scalable, distributed revision control system (revision tree visualizer)
+@GUI@ zim                     # graphical text editor based on wiki technologies
+# GUI (Japanese)
+# Japanese input method support for me
+@GUI@ ibus-anthy              # anthy engine for IBus
+@GUI@ ibus-mozc               # Mozc engine for IBus - Client of the Mozc input method
+@GUI@ ibus-wayland            # Intelligent Input Bus - Wayland support
+@GUI@ ibus-gtk ibus-gtk3 libqt5gui5
+# @GUI@ fonts-ipaexfont       # Takao should be better
+@GUI@ fonts-takao             # Japanese TrueType font set, Takao Fonts
+@GUI@ fonts-vlgothic          # Japanese TrueType font from Vine Linux
+@GUI@ nkf
+@GUI@ lv
 # security related (gnupg friends)
 @GUI@ scdaemon
 @GUI@ pinentry-curses
 @GUI@ pinentry-gnome3
 @GUI@ libsecret-tools
-# Japanese input method support for me
-@GUI@ nkf lv
-@GUI@ ibus-anthy ibus-gtk ibus-gtk3 libqt5gui5 ibus-wayland ibus-mozc
-@GUI@ fonts-vlgothic fonts-ipaexfont
-@GUI@ zim
 #############################################################################
 # Development tools
 #############################################################################
