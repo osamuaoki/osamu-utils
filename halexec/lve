@@ -1,5 +1,6 @@
 #!/bin/sh -e
 # vim:se ts=2 sts=2 et ai sw=2 tw=78:
+## @brief viewer for euc-japan file
 
 # Set input coding system to  ej: euc-japan
 # Set output coding system to u8: UTF-8

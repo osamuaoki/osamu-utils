@@ -8,7 +8,7 @@
 # fd=9 not used elsewhere in this script.
 exec 9< "$0"
 if ! flock --nonblock 9 ; then
-  echo "${0##*/} already running.  Try later" >&2
+  echo "hal ${0##*/} already running.  Try later" >&2
   exit 2
 fi
 ##############################################################################

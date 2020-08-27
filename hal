@@ -1,14 +1,33 @@
 #!/bin/sh -e
 # vim:se sw=2 ts=2 sts=2 et ai tw=78:
 # Local shell command family
-THISPATH=$(realpath $0)
-THISDIR=$(dirname ${THISPATH})
+MAINCMD=${0##*/}
+THISPATH=$(realpath "$0")
+THISDIR=$(dirname "${THISPATH}")
 SUBCOMMAND="${1}"
-# execute private subcommand in ./hal
-if [ -n "$SUBCOMMAND" ] && [ -x "${THISDIR}/halexec/$SUBCOMMAND" ]; then
+if [ ! -d "${THISDIR}/${MAINCMD}exec" ]; then
+  echo "E: directory '${THISDIR}/${MAINCMD}exec' not found."
+elif [ -n "$SUBCOMMAND" ] && \
+     [ -x "${THISDIR}/${MAINCMD}exec/$SUBCOMMAND" ] && \
+     [ "$SUBCOMMAND" != "help" ]; then
   shift
-  "${THISDIR}/halexec/$SUBCOMMAND" "$@"
+  # execute private subcommand in ./${MAINCMD}exec
+  "${THISDIR}/${MAINCMD}exec/$SUBCOMMAND" "$@"
 else
-  echo "Sub-command '$SUBCOMMAND' not found."
-  hal help
+  if [ "$SUBCOMMAND" != "help" ] && [ -n "$SUBCOMMAND" ]; then
+    echo "E: sub-command '$SUBCOMMAND' not found."
+    echo
+  fi
+  echo "${MAINCMD}: wrapper command to keep clean namespace for shell commands"
+  echo
+  echo "Sub-command choices and meanings:"
+  cd "${THISDIR}/${MAINCMD}exec" >/dev/null
+  for c in * ; do
+    if [ "${#c}" -lt 7 ]; then
+      b=$(sed -n -e '/^## @brief\s\s*/s/## @brief\s\s*/\t\t/p' "$c")
+    else
+      b=$(sed -n -e '/^## @brief\s\s*/s/## @brief\s\s*/\t/p' "$c")
+    fi
+    echo " $c$b"
+  done
 fi

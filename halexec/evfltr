@@ -48,6 +48,8 @@ __help () {
   and outputs its result to the destination Evolution message filter file at
       ~/.config/evolution/mail/filters.xml.
 
+  syntax: hal ${0##*/} [options]
+
   -f            perform the forward conversion.
   -r            perform the reverse conversion.
   -d            perform the double conversion.

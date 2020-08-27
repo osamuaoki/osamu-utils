@@ -1,5 +1,5 @@
 #!/bin/sh
-# add usertag to a package BTS
+## @brief add usertag to a package BTS
 #############################################################################
 # Copyright (c) 2017 Osamu Aoki
 #

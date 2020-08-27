@@ -9,10 +9,10 @@
 # functions
 f_help () {
   echo "Syntax:"
-  echo "  hal conf i[nstall] # install public configuration files"
-  echo "  hal conf d[iff]    # diff against public configuration files"
-  echo "  hal conf u[pdate]  # update public configuration files"
-  echo "  hal conf b[ackup]  # backup private configuration files in ~/backup"
+  echo "  hal ${0##*/} i[nstall] # install public configuration files"
+  echo "  hal ${0##*/} d[iff]    # diff against public configuration files"
+  echo "  hal ${0##*/} u[pdate]  # update public configuration files"
+  echo "  hal ${0##*/} b[ackup]  # backup private configuration files in ~/backup"
   exit
 }
 

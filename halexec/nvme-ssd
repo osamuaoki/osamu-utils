@@ -6,7 +6,9 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 
 example: print Model and Temperature repeatedly
 
-  \$  watch \"hal nvme-ssd|grep '^te\\|^Mo'\"
+  \$  watch \"hal ${0##*/}|grep '^te\\|^Mo'\"
+
+(For temperature, psensor does a good job.)
 "
   exit
 fi

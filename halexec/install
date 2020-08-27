@@ -8,7 +8,7 @@ MODE="install"
 OPTS=""
 fn_help() {
   echo "install or check packages using ~/.debrc"
-  echo "${0##/} [-s|--simulate] [-c|--check] [-1|-2|-3|-4|-5|-6]"
+  echo "${0##*/} [-s|--simulate] [-c|--check] [-1|-2|-3|-4|-5|-6]"
   echo
   echo "    -s|--simulate      simulate install packages"
   echo "    -c|--check         check installed packages against ~/.debrc"
