@@ -1,0 +1,26 @@
+#!/bin/sh -e
+## @brief trap test
+__term_exit () {
+  echo "I am afraid I can't do that Dave."
+  exit 1
+}
+__err_exit () {
+  echo "WWWWWWW !!!!!! WWWWWWWWWW."
+  exit 1
+}
+__exit_exit () {
+	echo ":-) :-) :-) :-)."
+  exit 1
+}
+# HUP INT QUIT TERM
+trap '__term_exit' HUP INT QUIT TERM
+# dash: EXIT (but no ERR)
+trap '[ $? -eq 0 ] && __exit_exit || __err_exit' EXIT
+echo "-----"
+trap
+echo "-----"
+
+while true; do
+	read -r line
+	eval "$line"
+done
