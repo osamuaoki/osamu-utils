@@ -1,5 +1,6 @@
 #!/bin/sh -e
-#
+## @brief image sorting for imageindex
+
 # Execute jhead command for all files and organize them
 # into dayly folder and within day serial number (001-999)
 # The daily folder are organized as a part of month and 

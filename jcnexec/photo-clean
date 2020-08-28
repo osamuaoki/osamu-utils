@@ -2,6 +2,7 @@
 #
 # Execute this command for all files and organize them
 # on recovered data from cd
+## @brief remove junks from CD data with image files
 #
 echo -n "You will be cleaning data in $(pwd).  Are you sure (y/n)?"
 read YN
