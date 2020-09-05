@@ -1,0 +1,939 @@
+#!/bin/sh -e
+## @brief backup with "rsync" and "btrfs subvolume snapshot"
+# vim:se ai ts=2 sts=2 sw=2 et:
+##############################################################################
+# Copyright 2020 (C) Osamu Aoki <osamu@debian.org>
+# License: GPL 2+
+##############################################################################
+
+__help () {
+echo "\
+NAME
+  $BU -- backup with \"rsync\" and \"btrfs subvolume snapshot\"
+
+SYNOPSIS
+  $BU [OPTIONS] [COMMAND [ARG(s)]]
+
+DESCRIPTION
+  $BU is a \"rsync\" and \"btrfs subvolume snapshot\" command wrapper to help
+  make and manage data backup.
+
+  The use of \"rsync\" to copy data from the actively used working directory on
+  one device to another archive device ensures robustness of the stored data
+  against device failures.  (All HDD/SSD will die at some point in future.)
+
+  The use of \"btrfs subvolume snapshot\" to create readonly snapshots with ISO
+  8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the file path, provides
+  intuitive and compact storage of data history on the stable standard data
+  format.
+
+OPTIONS:
+  -l,--local    snapshot on the local Btrfs (default: local=Btrfs)
+  -r,--remote   snapshot on the remote Btrfs (default: local=non-Btrfs)
+                prepending COMMAND with \"r\" also sets this option.
+  -i,--id ID    use ID for the snapshot name instead of the time stamp
+  -c,--conf RC  use RC.$EXT_CONF and RC.$EXT_FLTR instead of their default
+                $BU_CONF0 and $BU_FLTR0
+  -n,--noop     No file nor filesystem modification by prepending pertinent
+                internal commands with \"echo __\"
+  -q,--quiet    quiet (no echo except error message)
+  -v,--verbose  verbose
+  -vv           very verbose for debug
+  -vvv          extremely verbose for debug with shell command trace
+
+COMMAND: (may use shorter text, may specify options)
+  snapshot  make a local sanpshot under \"$BU_DIR/\" as \<ISO_8601_date> (-l implied)
+  rsync     copy data using \"rsync\" with $BU_FLTR0 (-r implied)
+  backup    make a destination snapshot after rsync (-r implied)
+  list      list ISO 8601 time stamps of all snapshots
+  analyze   analyze the aging status of all snapshots
+  prune     prune snapshots based on the aging status
+  zap       zap particular snapshots specified by ARGs (no short form)
+  template  make template files:
+              $BU_CONF0 (always)
+              $BU_FLTR0 (used only if \"-r\" is used)
+
+ARGs:
+  Most COMMANDs take a single ARG specifying the data source PATH.  If omitted,
+  the current directory (\".\") is assumed.  $BU makes reasonable efforts to
+  reduce PATH to the root of the mounted btrfs or to the directory where
+  $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
+  working data directory tree.
+
+  One exception is \"$BU --remote template <RSYNC_DST>\".   Here, ARG is
+  <RSYNC_DST> which specifies the rsync destination which may be on btrfs.
+  This is executed at the root of rsync source tree which may be on a different
+  host from one where the rsync destination exists.
+
+  Another exception is \"$BU zap\".  Here, ARGs are subcommand and can be:
+    new:  zap the newest snapshots
+    old:  zap the oldest snapshots
+    half: zap the older half of snapshots
+    <PATH ...>     zap snapshots specified: \"btrfs subvolume delete <PATH ...>\"
+
+  zap requires to type full command and subcommand to be on the safe side.
+
+CONFIGURATION FILES
+  $BU_CONF0 and $BU_FLTR0 at the root of the target btrfs defines
+  aging behavior of readonly btrfs sanpshots and copying behavior of rsync.
+
+CAVEAT:
+  Most of the $BU commands must be executed on the host where btrfs exists.
+
+  (Currently, this $BU is mostly used for cases where the source and
+  destination are on the same host.)
+
+  The user who executes this command must be a member of \"sudo\".
+
+Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
+}
+
+#############################################################################
+# Constants
+#############################################################################
+BU="${0##*/}"
+UID=$(id -u)
+VERBOSE_LEVEL=1
+NOOP="" # "echo"
+BU_MODE=""
+BU_ID=""
+BU_DIR=".snap"
+EXT_CONF="conf"
+EXT_FLTR="fltr"
+BU_STEM=".$BU"
+BU_CONF0="$BU_STEM.$EXT_CONF"
+BU_FLTR0="$BU_STEM.$EXT_FLTR"
+NOW_TS=$(date -u --iso=second) # time stamp
+NOW_EP=$(date +%s -d"$NOW_TS") # unix epoch
+BU_MIN="3"             # aging keep initial minimum items
+BU_SHRT="24*60*60"     # aging short threashold 1 day
+BU_LONG="365*24*60*60" # aging long  threashold 1 year
+BU_STEP="10"           # aging step %
+# shellcheck disable=SC2016
+SUSH='$NOOP sudo sh -c'
+# shellcheck disable=SC2016
+BSV='$NOOP sudo btrfs subvolume'
+#############################################################################
+# RSYNC Constants
+##############################################################################
+#
+#   https://www.sanitarium.net/golug/rsync+btrfs_backups_2011.html
+#     rsync --archive --one-file-system --hard-links --inplace --numeric-ids \
+#       --delete --delete-excluded --exclude-from=excludefile host:/src/ /dest/
+#
+#   https://wiki.debian.org/Btrfs
+#
+# rsync command and options
+#     -a --archive     == -rlptgoD
+#     -H --hard-links
+#     -A --acls
+#     -X --xattrs
+#     -x --one-file-system
+#     -v --verbose
+#     --inplace
+#     --delete-during
+#
+# Please note --delete-excluded can't be used to avoid trying to remove
+# mount points used by other submodules
+# shellcheck disable=SC2016
+RSYNC='$NOOP sudo rsync -aHAXxv --inplace --delete-during --exclude=.snap/'
+#############################################################################
+# System Functions (trap and echo)
+##############################################################################
+# fd=9 not used elsewhere in this script.
+exec 9< "$0"
+if ! flock --nonblock 9 ; then
+  __echo 0 "$BU already running.  Try later" >&2
+  exit 2
+fi
+# traps
+__term_exit () {
+  __echo 0 "E: Process externally interrupted.  Terminating."
+  exit 1
+}
+trap '__term_exit' HUP INT QUIT TERM
+# dash: EXIT (but no ERR)
+__err_exit () {
+  __echo 0 "E: Internal process returned an error exit.  Terminating."
+  exit 1
+}
+__exit_exit () {
+  exit 0
+}
+trap '[ $? -eq 0 ] && __exit_exit || __err_exit' EXIT
+# echo with verbose level, 0 through 3
+VERBOSE_LEVEL="1"
+# 0 E:   Quiet     Print fatal errors only                       (-q)
+# 1 W/I: Default   Print errors and warnings only                (normal)
+# 2 W/I: Verbose   Show equivalent shell commands being executed (-v)
+# 3 D:   Debug     Everything                                    (-vv)
+__echo () {
+if [ "$1" -le $VERBOSE_LEVEL ]; then
+  shift
+  echo "$*" >&2
+fi
+}
+##############################################################################
+# Internal Functions
+##############################################################################
+
+##############################################################################
+# @brief             convert $1 in seconds to day.hh:mm:ss string
+# @arg   $1          seconds
+# @echo              "day.hh:mm:ss" string
+##############################################################################
+age_string () {
+  # @ $1 second
+  SEC="$1"
+  MIN=$((SEC/60))
+  SEC=$((SEC%60))
+  HR=$((MIN/60))
+  MIN=$((MIN%60))
+  DAY=$((HR/24))
+  HR=$((HR%24))
+  printf "%2i.%02i:%02i:%02i" "$DAY" "$HR" "$MIN" "$SEC"
+}
+
+##############################################################################
+# @brief             test $1 is btrfs mount point or not
+# @arg   $1          path to the directory to b checked
+# @set   $?          true if $1 is btrfs mount point
+##############################################################################
+__is_btrfs_mount_point () {
+  mount |cut -d ' ' -f "3,5"|grep " btrfs$"|sort -r|grep -q -e "^$1 btrfs\$"
+}
+
+##############################################################################
+# @brief             find base directory holding btrfs mount point or $BU_CONF
+# @arg   $1          path to the directory to work from (default='.')
+# @set   BU_BASE     base of $BU_CONF
+# @set   BTRFS_BASE  base of btrfs
+##############################################################################
+__find_base () {
+  # input
+  # $1            path to the directory to work from (default='.')
+  # return
+  # @ BU_BASE     base of $BU_CONF          (set by  __find_base)
+  # @ BTRFS_BASE  base of btrfs             (set by  __find_base)
+  d=$(realpath "${1:-.}")
+  d0="$d"
+  BTRFS_BASE=""
+  BU_BASE=""
+  while [ "$d" != "/" ]; do
+    if __is_btrfs_mount_point "$d"; then
+      BTRFS_BASE="$d"
+      if [ -f "$d/$BU_CONF" ]; then
+        BU_BASE="$d"
+      fi
+      break
+    elif [ -f "$d/$BU_CONF" ]; then
+      BU_BASE="$d"
+      break
+    fi
+    d=$(realpath "$d/..")
+  done
+  # sanity check
+  if [ -z "$BTRFS_BASE" ] && [ -z "$BU_BASE" ]; then
+    __echo 0 "E: Can't find btrfs nor .../$BU_CONF for $d0"
+    exit 1
+  fi
+}
+
+##############################################################################
+# @brief             load config and sanitize it
+# @arg   $1          path to the directory to work from (default='.')
+# @set   BU_BASE     base of $BU_CONF                   (set by  __find_base)
+# @set   BTRFS_BASE  base of btrfs                      (set by  __find_base)
+# @set   RSYNC_SRC   base of rsync source               (read from $BU_CONF)
+# @set   RSYNC_DST   base of rsync destination          (read from $BU_CONF)
+# @set   BU_*        all btrfs aging related parameters
+##############################################################################
+__load_config () {
+##############################################################################
+# find base
+##############################################################################
+  __find_base "$1" # BU_BASE and BTRFS_BASE returned
+##############################################################################
+# sanity check for BU_BASE and BTRFS_BASE and default value for BU_MODE
+##############################################################################
+  if [ -z "$BTRFS_BASE" ]; then
+    # not on btrfs
+    BU_MODE="${BU_MODE:-remote}"
+  else
+    # on btrfs
+    BU_MODE="${BU_MODE:-local}"
+  fi
+  __echo 3 "D: BU_MODE       = '$BU_MODE' (in __load_config)"
+  if [ "$BU_MODE" = "local" ]; then
+    if [ -z "$BTRFS_BASE" ]; then
+      __echo 0 "E: need $BU_BASE/$BU_CONF for mode=$BTRFS_MODE operation"
+      exit 1
+    fi
+  else # [ "$BU_MODE" = "remote" ]
+    if [ -z "$BU_BASE" ] ; then
+      __echo 0 "E: need $BU_BASE/$BU_CONF for mode=$BU_MODE operation"
+      exit 1
+    fi
+  fi
+  __echo 2 "I: mode='$BU_MODE', BTRFS_BASE='$BTRFS_BASE', BU_BASE='$BU_BASE'"
+##############################################################################
+# load parameters
+##############################################################################
+  if [ "$BU_MODE" = "local" ]; then
+    if [ -n "$BU_BASE" ]; then
+      __echo 2 "I: found $BU_BASE/$BU_CONF for mode=$BU_MODE operation"
+      # shellcheck disable=SC1090
+      . "$BU_BASE/$BU_CONF"
+      __echo 2 "I: sourced $BU_BASE/$BU_CONF as mode=$BU_MODE"
+    else
+      __echo 2 "I: not found $BTRFS_BASE/$BU_CONF but on Btrfs=$BTRFS_BASE for mode=$BU_MODE operation"
+    fi
+    # Set these to be on safe side
+    RSYNC_SRC="$BTRFS_BASE"
+    RSYNC_DST="$BTRFS_BASE"
+  else # [ "$BU_MODE" = "remote" ]
+    __echo 2 "I: found $BU_BASE/$BU_CONF for mode=$BU_MODE operation"
+    # shellcheck disable=SC1090
+    . "$BU_BASE/$BU_CONF"
+    __echo 2 "I: sourced $BU_BASE/$BU_CONF as mode=$BU_MODE"
+    if __is_btrfs_mount_point "$RSYNC_DST" ; then
+      BTRFS_BASE="$RSYNC_DST"
+    else
+      __echo 0 "W: non-btrfs RSYNC_DST='$RSYNC_DST' in $BU_BASE/$BU_CONF"
+      BTRFS_BASE=""
+    fi
+  fi
+##############################################################################
+# sanity chack
+##############################################################################
+  # sanity check for rsync parameters
+  if [ "$BU_MODE" = "remote" ]; then
+    if [ "$RSYNC_SRC" != "$BU_BASE" ] && [ "$RSYNC_DST" != "$BU_BASE" ]; then
+      __echo 0 "E: One of RSYNC_SRC='$RSYNC_SRC' and RSYNC_DST='$RSYNC_DST' must match in BU_BASE='$BU_BASE' for mode=$BU_MODE."
+      exit 1
+    fi
+    if [ "$RSYNC_SRC" = "$RSYNC_DST" ]; then
+      __echo 0 "E: RSYNC_SRC='$RSYNC_SRC' and RSYNC_DST='$RSYNC_DST' are the same in $BU_BASE/$BU_CONF for mode=$BU_MODE."
+      exit 1
+    fi
+  fi
+  # sanity check for aging parameters
+  BU_INDEX_MIN="${BU_INDEX_MIN:-$BU_MIN}" # items min.
+  if [ "$BU_INDEX_MIN" -lt "0" ]; then
+    BU_INDEX_MIN="0"
+  fi
+  BU_AGE_SHRT="${BU_AGE_SHRT:-$((BU_SHRT))}" # short age
+  BU_AGE_LONG="${BU_AGE_LONG:-$((BU_LONG))}" # long age
+  if [ "$BU_AGE_SHRT" -lt "60" ]; then
+    BU_AGE_SHRT=60
+  fi
+  if [ "$BU_AGE_LONG" -lt "$BU_AGE_SHRT" ]; then
+    BU_AGE_LONG="$BU_AGE_SHRT"
+  fi
+  BU_AGE_STEP="${BU_AGE_STEP:-10}" # 10% reduced geometric gap for mid range aging
+  if [ "$BU_AGE_STEP" -lt "2" ]; then
+    BU_AGE_STEP=2
+  elif [ "$BU_AGE_STEP" -gt "50" ]; then
+    BU_AGE_STEP=50
+  fi
+  # "forget" for erasing really old data > BU_AGE_LONG for aging
+  if [ "$AGE_MODE" != "forget" ]; then
+    AGE_MODE="keep" # this is default
+  fi
+  # preparation
+  if [ -n "$BTRFS_BASE" ] && [ ! -e "$BTRFS_BASE/$BU_DIR" ]; then
+    __echo 1 "I: make snapshot directory $BTRFS_BASE/$BU_DIR"
+    eval "$SUDO mkdir -p '$BTRFS_BASE/$BU_DIR' >/dev/null"
+  fi
+  # result of loading
+  __echo 3 "D: BU_INDEX_MIN  = '$BU_INDEX_MIN'"
+  __echo 3 "D: BU_AGE_SHRT   = '$BU_AGE_SHRT' = $(age_string "$BU_AGE_SHRT")"
+  __echo 3 "D: BU_AGE_LONG   = '$BU_AGE_LONG' = $(age_string "$BU_AGE_LONG")"
+  __echo 3 "D: BU_AGE_STEP   = '$BU_AGE_STEP'%"
+  __echo 3 "D: AGE_MODE      = '$AGE_MODE'"
+  __echo 3 "D: RSYNC_SRC     = '$RSYNC_SRC'"
+  __echo 3 "D: RSYNC_DST     = '$RSYNC_DST'"
+}
+
+##############################################################################
+# @brief             rsync from RSYNC_SRC to RSYNC_DST using BU_FLTR filter
+# @read  RSYNC_SRC   base of rsync source set by __load_config
+# @read  RSYNC_DST   base of rsync destination set by __load_config
+# @read  BU_FLTR     rsync filter configuration file name
+# @set   BTRFS_BASE  update f rsync is run and RSYNC_DST is Btrfs
+##############################################################################
+__rsync () {
+  if [ "$RSYNC_SRC" != "$RSYNC_DST" ]; then
+    __echo 2 "I: rsync RSYNC_SRC:'$RSYNC_SRC' -> RSYNC_DST:'$RSYNC_DST'"
+    if [ "$VERBOSE_LEVEL" -eq "2" ] || [ "$VERBOSE_LEVEL" -eq "3" ]; then
+      RSYNC="$RSYNC --verbose"
+    elif [ "$VERBOSE_LEVEL" -eq "4" ]; then
+      RSYNC="$RSYNC -vv"
+    elif [ "$VERBOSE_LEVEL" -ge "5" ]; then
+      RSYNC="$RSYNC -vvv"
+    fi
+    RSYNC="$RSYNC --filter '+ $RSYNC_SRC/$BU_CONF'"
+    RSYNC="$RSYNC --filter '+ $RSYNC_SRC/$BU_FLTR'"
+    if [ -e "$RSYNC_SRC/$BU_FLTR" ]; then
+      RSYNC="$RSYNC --filter '. $RSYNC_SRC/$BU_FLTR'"
+    fi
+    if [ "$VERBOSE_LEVEL" -ge "2" ]; then
+      echo ">>> $RSYNC '$RSYNC_SRC/' '$RSYNC_DST/'"
+    fi
+    eval "$RSYNC '$RSYNC_SRC/' '$RSYNC_DST/'"
+    if __is_btrfs_mount_point "$RSYNC_DST"; then
+      BTRFS_BASE="$RSYNC_DST"
+    fi
+  fi
+}
+
+##############################################################################
+# @brief             make snapshot on BTRFS_BASE
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BU_ID       snapshot id to use (normally '')
+# @read  NOW_TS      time stamp
+##############################################################################
+__snapshot () {
+  if [ -n "$BTRFS_BASE" ]; then
+    if [ -z "$BU_ID" ]; then
+      while [ -d "$BTRFS_BASE/$BU_DIR/$NOW_TS" ]; do
+        sleep "1s"
+        NOW_TS=$(date -u --iso=second)
+        NOW_EP=$(date +%s -d"$NOW_TS")
+      done
+      BU_ID="$NOW_TS"
+    fi
+    __echo 2 "I: make snapshot of $BTRFS_BASE @ $BU_ID"
+    # shellcheck disable=SC2046
+    eval "$BSV snapshot -r '$BTRFS_BASE' '$BTRFS_BASE/$BU_DIR/$BU_ID'"
+  fi
+}
+
+##############################################################################
+# @brief             rsync and make snapshot
+# @read  RSYNC_SRC   base of rsync source set by __load_config
+# @read  RSYNC_DST   base of rsync destination set by __load_config
+# @read  BU_FLTR     rsync filter configuration file name
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BU_ID       snapshot id to use (normally '')
+# @read  NOW_TS      time stamp
+##############################################################################
+__rsync_snapshot () {
+  __rsync
+  __snapshot
+}
+
+##############################################################################
+# @brief             list snapshot time stamp of Btrfs (old->new order)
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @echo              snapshot time stamps
+##############################################################################
+__list () {
+  if [ -n "$BTRFS_BASE" ]; then
+    __echo 3 "D: list readonly snapshots in $BTRFS_BASE/$BU_DIR"
+    cd "$BTRFS_BASE/$BU_DIR" >/dev/null
+    # shellcheck disable=SC2010
+    { ls -1d -- * 2>/dev/null || true ; }| grep -E \
+        '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$' || true
+  else
+    __echo 0 "E: no Btrfs found for list"
+    exit 1
+  fi
+}
+
+##############################################################################
+# @brief             aging analysis of time stamps of Btrfs
+# @call              __list
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BU_*        all btrfs aging related parameters set by __load_config
+# @echo              snapshot time stamps with + or - prepended
+##############################################################################
+__analyze () {
+  if [ -n "$BTRFS_BASE" ]; then
+    __echo 3 "D: analyzing readonly snapshots for $BTRFS_BASE"
+    # shellcheck disable=SC2046
+    set -- $(__list)
+    BU_INDEX="${#}" # newest=1, n items
+    BU_INDEX_ORIG="$BU_INDEX"
+    if [ "$BU_INDEX" -le "0" ]; then
+      __echo 1 "I: No snapshot available yet"
+      exit 0
+    fi
+    BU_AGE_DEL_MAX=$((BU_AGE_LONG*BU_AGE_STEP/100))
+    # oldest snapshot
+    BU_TS="$1"
+    __echo 3 "D: ts = $BU_TS, i = $BU_INDEX out of $BU_INDEX_ORIG snapshots (initial)"
+    BU_EP=$(date '+%s' -d"$BU_TS")
+    __echo 3 "D: ts = $BU_TS, age_del_max = $(age_string $BU_AGE_DEL_MAX) = $BU_AGE_STEP% of AGE_LONG (initial)"
+    BU_AGE=$((NOW_EP-BU_EP))
+    if [ "$AGE_MODE" = "forget" ]; then
+      if [ "$BU_AGE" -le "$BU_AGE_LONG" ] || \
+         [ "$BU_INDEX" -le "$BU_INDEX_MIN" ]; then
+        __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") <= age_long:$(age_string "$BU_AGE_LONG") or  i:$BU_INDEX <= min:$BU_INDEX_MIN (oldest but not so old or not enough snapshots - keep)"
+        echo "+$BU_TS"
+      else
+        __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") >  age_long:$(age_string "$BU_AGE_LONG") and i:$BU_INDEX >  min:$BU_INDEX_MIN (oldest - forget)"
+        echo "-$BU_TS"
+      fi
+    else
+      __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") (oldest - keep)"
+      echo "+$BU_TS"
+    fi
+    # loop over second oldest snapshot and newer (n-1 items)
+    shift
+    __echo 3 "D: ts = $BU_TS, age_last    = $(age_string $BU_AGE) (initial)"
+    BU_AGE_LAST="$BU_AGE"
+    for BU_TS in "${@}"; do
+      BU_INDEX=$((BU_INDEX-1))
+      BU_EP=$(date '+%s' -d"$BU_TS")
+      BU_AGE=$((NOW_EP-BU_EP))
+      BU_AGE_DEL=$((BU_AGE_LAST-BU_AGE))
+      __echo 3 "D: ts = $BU_TS, i = $BU_INDEX out of $BU_INDEX_ORIG snapshots"
+      if [ "$BU_AGE" -gt "$BU_AGE_LONG" ]; then
+        __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") > age_long:$(age_string "$BU_AGE_LONG") (old)"
+        if [ "$AGE_MODE" = "forget" ]; then
+          if [ "$BU_INDEX" -le "$BU_INDEX_MIN" ]; then
+            __echo 2 "I: ts = $BU_TS, i:$BU_INDEX <= min:$BU_INDEX_MIN (old but NOT enough snapshots) (old - keep)"
+            echo "+$BU_TS"
+          else
+            __echo 2 "I: ts = $BU_TS, i:$BU_INDEX >  min:$BU_INDEX_MIN (old and enough snapshots)     (old - forget)"
+            echo "-$BU_TS"
+          fi
+        else # "$AGE_MODE" = "keep"
+          __echo 2 "I: ts = $BU_TS, age_del/,,_max = $((BU_AGE_DEL*100/BU_AGE_DEL_MAX))% = $(age_string $BU_AGE_DEL)/$(age_string $BU_AGE_DEL_MAX)"
+          if [ "$BU_AGE_DEL" -gt "$BU_AGE_DEL_MAX" ]; then
+            echo "+$BU_TS"
+            __echo 3 "D: ts = $BU_TS, age_last    = $(age_string $BU_AGE) from $(age_string $BU_AGE_LAST) (updated in old)"
+            BU_AGE_LAST="$BU_AGE"
+            __echo 3 "D: ts = $BU_TS, age_del_max = $(age_string $BU_AGE_DEL_MAX) = $BU_AGE_STEP% of AGE_LONG (constant in old)"
+          else
+            echo "-$BU_TS"
+          fi
+        fi
+      elif [ "$BU_AGE" -gt "$BU_AGE_SHRT" ] && \
+           [ "$BU_INDEX" -gt "$BU_INDEX_MIN" ]; then
+        __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") >  age_shrt:$(age_string "$BU_AGE_SHRT") and i:$BU_INDEX >  min:$BU_INDEX_MIN (middle)"
+        if [ "$BU_AGE_DEL" -gt "$BU_AGE_DEL_MAX" ]; then
+          __echo 2 "I: ts = $BU_TS, age_del/,,_max = $((BU_AGE_DEL*100/BU_AGE_DEL_MAX))% = $(age_string $BU_AGE_DEL)/$(age_string $BU_AGE_DEL_MAX) (middle - keep)"
+          echo "+$BU_TS"
+          __echo 3 "D: ts = $BU_TS, age_last    = $(age_string $BU_AGE) from $(age_string $BU_AGE_LAST) (updated in middle)"
+          BU_AGE_LAST="$BU_AGE"
+          BU_AGE_DEL_MAX=$((BU_AGE_LAST*BU_AGE_STEP/100))
+          __echo 3 "D: ts = $BU_TS, age_del_max = $(age_string $BU_AGE_DEL_MAX) = $BU_AGE_STEP% of AGE_LAST (updated in middle)"
+        else
+          __echo 2 "I: ts = $BU_TS, age_del/,,_max = $((BU_AGE_DEL*100/BU_AGE_DEL_MAX))% = $(age_string $BU_AGE_DEL)/$(age_string $BU_AGE_DEL_MAX) (middle - forget)"
+          echo "-$BU_TS"
+        fi
+      else
+        __echo 2 "I: ts = $BU_TS, age:$(age_string "$BU_AGE") <= age_shrt:$(age_string "$BU_AGE_SHRT") or  i:$BU_INDEX <= min:$BU_INDEX_MIN (recent - keep)"
+        echo "+$BU_TS"
+      fi
+    done
+  else
+    __echo 0 "E: no Btrfs found for analyze"
+    exit 1
+  fi
+}
+
+##############################################################################
+# @brief             prune aged snapshots
+# @call              __analyze
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BU_*        all btrfs aging related parameters set by __load_config
+##############################################################################
+__prune () {
+  if [ -n "$BTRFS_BASE" ]; then
+    __echo 3 "D: prune snapshots at $BTRFS_BASE"
+    # shellcheck disable=SC2046
+    set -- $(__analyze)
+    for x in "${@}"; do
+      d="${x#?}"
+      if [ -z "${x%%-*}" ]; then
+        __echo 1 "I: prune snapshot of $BTRFS_BASE @ $d"
+        eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      else
+        __echo 2 "I: keep  snapshot of $BTRFS_BASE @ $d"
+      fi
+    done
+  else
+    __echo 0 "E: no Btrfs found for prune"
+    exit 1
+  fi
+}
+
+##############################################################################
+# @brief             zap specified snapshots
+# @call              __load_config, __list
+# @read  BTRFS_BASE  base of btrfs set by __load_config
+##############################################################################
+__zap () {
+  case "$1" in
+    half) # half
+      __load_config "$2"
+      if [ -z "$BTRFS_BASE" ]; then
+        __echo 0 "E: no Btrfs found for zap half*"
+        exit 1
+      fi
+      __echo 1 "I: zap snapshots into half at $BTRFS_BASE .  It's aging status --"
+      __analyze
+      __echo 1 "I: Are you sure ? -----------------------------------------------"
+      YN=''
+      while [ -z "$YN" ]; do
+        # shellcheck disable=SC2039
+        read -p "> Please type 'Yes' to confirm: " -r YN
+      done
+      if [ "$YN" != "Yes" ]; then
+        exit 1
+      fi
+      # shellcheck disable=SC2046
+      set -- $(__list)
+      BU_INDEX_MAX="${#}"        # items
+      BU_INDEX="$BU_INDEX_MAX"  # count down
+      BU_INDEX_MIN="$(((BU_INDEX+1)/2))"
+      __echo 3 "D: keep recent $BU_INDEX_MIN snapshots out of $BU_INDEX_MAX snapshots"
+      for d in "${@}"; do
+        # 1 2 3 4 5 6 7 8 ${#}
+        # 1 1 2 2 3 3 4 4 stop at
+        if [ "$BU_INDEX" -le "$BU_INDEX_MIN" ]; then
+          break
+        fi
+        BU_INDEX=$((BU_INDEX-1))
+        __echo 1 "I: zap snapshot of $BTRFS_BASE @ $d"
+        eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      done
+      ;;
+    new*) # newest
+      __load_config "$2"
+      if [ -z "$BTRFS_BASE" ]; then
+        __echo 0 "E: no Btrfs found for zap new*"
+        exit 1
+      fi
+      __echo 3 "D: zap newest snapshots at $BTRFS_BASE"
+      # shellcheck disable=SC2046
+      set -- $(__list| sort -r)
+      d=$1
+      __echo 1 "I:  zap newest snapshot of $BTRFS_BASE @ $d"
+      eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      ;;
+    old*) # oldest
+      __load_config "$2"
+      if [ -z "$BTRFS_BASE" ]; then
+        __echo 0 "E: no Btrfs found for zap old*"
+        exit 1
+      fi
+      __echo 1 "I: zap oldest snapshots at $BTRFS_BASE .  It's aging status --"
+      __analyze
+      __echo 1 "I: Are you sure ? --------------------------------------------"
+      YN=''
+      while [ -z "$YN" ]; do
+        # shellcheck disable=SC2039
+        read -p "> Please type 'Yes' to confirm: " -r YN
+      done
+      if [ "$YN" != "Yes" ]; then
+        exit 1
+      fi
+      # shellcheck disable=SC2046
+      set -- $(__list)
+      d=$1
+      __echo 1 "I:  zap oldest snapshot of $BTRFS_BASE @ $d"
+      eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      ;;
+    *) # labels
+      __echo 3 "D: zap snapshots at $(pwd)"
+      for d in "${@}"; do
+        if [ -e "$d" ]; then
+          __echo 1 "I: zap snapshot of $(pwd) @ $d"
+          eval "$BSV delete '$(pwd)/$d'"
+        else
+          __echo 1 "W: missing zap snapshot of $(pwd) @ $d"
+        fi
+      done
+      ;;
+  esac
+}
+
+##############################################################################
+# @brief             make template BU_CONF and BU_FLTR at BTRFS_BASE or $(pwd)
+# @call              __find_base, __is_btrfs_mount_point
+# @create            BU_CONF BU_FLTR files at newly calculated BU_BASE
+##############################################################################
+__template () {
+  # works for --local or --source
+  BU_MODE="${BU_MODE:-local}"
+  if [ "$BU_MODE" = "local" ]; then # local btrfs aging config (no rsync)
+    __find_base "$1"
+    if [ -z "$BTRFS_BASE" ]; then
+      # not in btrfs
+      __echo 0 "E: not in btrfs -> no snapshot"
+      __echo 0 "E: if you are thinking to use rsync to use remote btrfs, use --remote option"
+      exit 1
+    fi
+    # now BTRFS_BASE exists
+    RSYNC_SRC="$BTRFS_BASE"
+    RSYNC_DST="$BTRFS_BASE"
+    BU_BASE="$BTRFS_BASE"
+    RSYNC_HOST=""
+  elif [ "$BU_MODE" = "remote" ]; then # rsync source side execution
+    RSYNC_DST="$1"
+    while [ -z "$RSYNC_DST" ]; do
+      # shellcheck disable=SC2039
+      read -p "> rsync destination path: " -r RSYNC_DST
+    done
+    if [ "${RSYNC_DST#*:}" != "$RSYNC_DST" ]; then
+      RSYNC_HOST=${RSYNC_DST%%:*}
+      RSYNC_DST=${RSYNC_DST#*:}
+      __echo 1 "I: remote host='$BU_HOST' used with its base dir='$RSYNC_DST'"
+      # XXX FIXME XXX not yet properly addressed remote host for rsync
+      __echo 1 "W: Not implemented ..."
+    else
+      RSYNC_DST="$(realpath "${RSYNC_DST:-.}")"
+      RSYNC_HOST=""
+    fi
+    BU_BASE="$(realpath "${2:-.}")"
+    RSYNC_SRC="$BU_BASE"
+    if ! __is_btrfs_mount_point "$RSYNC_DST"; then
+      __echo 1 "W: $RSYNC_DST not in btrfs -> no 'btrfs subvolume snapshot ...', just 'rsync' only..."
+    fi
+  else # rsync destination side execution
+    __echo 0 "E: template generation with odd BU_MODE=\"$BU_MODE\"."
+    exit 1
+  fi
+  ############################################################################
+  if [ -e "$BU_BASE/$BU_CONF" ]; then
+    __echo 0 "E: configuration file already exists: $BU_BASE/$BU_CONF"
+    exit 1
+  elif [ -e "$BU_BASE/$BU_FLTR" ] ; then
+    __echo 0 "E: configuration file already exists: $BU_BASE/$BU_FLTR"
+    exit 1
+  fi
+  ############################################################################
+  #
+  # conf template
+  #
+  ############################################################################
+  __echo 2 "I: make template $BU_BASE/$BU_CONF file"
+  eval "$SUSH 'cat > \"$BU_BASE/$BU_CONF\" <<END_OF_TEMPLATE
+# $BU configuration (btrfs)
+
+# This configuration file as generated by the \"template\" command can be
+# modified to address both local Btrfs snapshot and remote Btrfs snapshot of
+# backup image generated by rsync.
+
+if [ \"\\\$BU_MODE\" = \"local\" ]; then # for --local
+
+  # aging speed variables
+  BU_INDEX_MIN=\"$BU_MIN\" # keep minimum recent $BU_MIN items
+  BU_AGE_SHRT=\"\\\$(($BU_SHRT))\" # short age
+  BU_AGE_LONG=\"\\\$(($BU_LONG))\" # long age
+  BU_AGE_STEP=\"$BU_STEP\" # $BU_STEP% step for mid range aging
+
+  # aged data: keep or forget
+  # AGE_MODE=\"keep\" # for keeping old data forever
+  # AGE_MODE=\"forget\" # for erasing really old data
+  AGE_MODE=\"keep\" # safer initial setting
+
+else # for --remote
+
+  # aging speed variables
+  BU_INDEX_MIN=\"$BU_MIN\" # keep minimum recent $BU_MIN items
+  BU_AGE_SHRT=\"\\\$(($BU_SHRT))\" # short age
+  BU_AGE_LONG=\"\\\$(($BU_LONG))\" # long age
+  BU_AGE_STEP=\"$BU_STEP\" # $BU_STEP% step for mid range aging
+
+  # aged data: keep or forget
+  # AGE_MODE=\"keep\" # for keeping old data forever
+  # AGE_MODE=\"forget\" # for erasing really old data
+  AGE_MODE=\"keep\" # safer initial setting
+
+  # rsync source and destination for rsync and backup commands and
+  # commands started with --remote option
+  RSYNC_SRC=\"$RSYNC_SRC\" # *** may be on non-btrfs ***
+  RSYNC_DST=\"$RSYNC_DST\" # *** must be on btrfs to make btrfs snapshot ***
+  RSYNC_HOST=\"$RSYNC_HOST\" # *** rsync source host name (FIXME)
+  # You can add custom filtering for rsync using ./\"$BU_FLTR\"
+
+fi
+END_OF_TEMPLATE'"
+
+  # make this editable without sudo
+  eval "$SUSH 'chown $UID:$UID \"$BU_BASE/$BU_CONF\"'"
+  ############################################################################
+  #
+  # filter template
+  #
+  ############################################################################
+  __echo 2 "I: make template $BU_BASE/$BU_FLTR file"
+  eval "$SUSH  'cat > \"$BU_BASE/$BU_FLTR\" <<END_OF_TEMPLATE
+# $BU configuration (rsync)
+#
+#  RSYNC_SRC=\"$RSYNC_SRC\"
+#  RSYNC_DST=\"$RSYNC_DST\"
+#
+# Example (for user home)
+#
+# + /.gnupg/***
+# + /.ssh/***
+# + /.bash_aliases
+# + /.bash_logout
+# + /.bashrc
+# + /.devscripts
+# + /.gbp.conf
+# + /.gitconfig
+# + /.pbuilderrc
+# + /.profile
+# + /.reportbugrc
+# + /.config/
+# + /.config/evolution/
+# + /.config/evolution/mail/
+# + /.config/evolution/mail/filters.xml
+# + /.config/evolution/sources/***
+# - *
+#
+# See more at rsync(1) manpage for \"FILTER RULES\"
+END_OF_TEMPLATE'"
+  # make this editable without sudo
+  eval "$SUSH 'chown $UID:$UID $RSYNC_SRC/$BU_FLTR'"
+}
+
+
+##############################################################################
+# Parse Command Line
+##############################################################################
+# The quotes around "$@" are essential!
+# We need TEMP as the 'eval set --' would nuke the return value of getopt.
+TEMP=$(getopt -o 'lri:c:nqvh' -n "${BU}" \
+  --long 'local,remote,id:,config:,noop,quiet,verbose,debug' -- "$@")
+# Note the quotes around "$TEMP": they are essential!
+#echo "DEBUG: ***** TEMP='$TEMP'"
+eval set -- "$TEMP"
+unset TEMP
+# OPTIONS
+while [ -n "$1" ]; do
+	case "$1" in
+		-l|--local)
+      BU_MODE="local"
+		  ;;
+		-r|--remote)
+      BU_MODE="remote"
+		  ;;
+		-i|--id)
+			shift
+      BU_ID="$1"
+		  ;;
+		-c|--config)
+			shift
+      BU_STEM="$1"
+      ;;
+    -n|--noop)
+      NOOP="echo __"
+      ;;
+		-q|--quiet)
+      VERBOSE_LEVEL=0
+      ;;
+		-v|--verbose)
+      VERBOSE_LEVEL=$((VERBOSE_LEVEL+1))
+      ;;
+		-h|--help)
+      __help
+      exit 0
+      ;;
+		'--')
+      shift
+      break
+		;;
+		-*)
+			echo "E: Unknown option: '$1'" >&2
+      __help
+			exit 1
+		;;
+		*)
+      break
+		;;
+	esac
+	shift
+done
+# derivative parameters
+BU_CONF="$BU_STEM.$EXT_CONF"
+BU_FLTR="$BU_STEM.$EXT_FLTR"
+##############################################################################
+__echo 3 "D: NOOP          = '$NOOP'"
+__echo 3 "D: BU_MODE       = '$BU_MODE'"
+__echo 3 "D: BU_STEM       = '$BU_STEM'"
+__echo 3 "D: BU_ID         = '$BU_ID'"
+__echo 3 "D: VERBOSE_LEVEL = '$VERBOSE_LEVEL'"
+if [ "$VERBOSE_LEVEL" -ge 4 ]; then
+  set -x
+fi
+#############################################################################
+# Action
+#############################################################################
+case "$1" in
+  s*) #snapshot
+    BU_MODE="${BU_MODE:-local}"
+    __load_config "$2"
+    __snapshot
+    ;;
+  b*|rs*) # backup = -r snap
+    BU_MODE="${BU_MODE:-remote}"
+    __load_config "$2"
+    __rsync
+    __snapshot
+    ;;
+  l*) # list
+    __load_config "$2"
+    __list
+    ;;
+  rl*) # -r list
+    BU_MODE="${BU_MODE:-remote}"
+    __load_config "$2"
+    __list
+    ;;
+  a*) # analyze
+    __load_config "$2"
+    __analyze
+    ;;
+  ra*) # -r analyze
+    BU_MODE="${BU_MODE:-remote}"
+    __load_config "$2"
+    __analyze
+    ;;
+  p*) # prune
+    __load_config "$2"
+    __prune
+    ;;
+  rp*) # -r prune
+    BU_MODE="${BU_MODE:-remote}"
+    __load_config "$2"
+    __prune
+    ;;
+  zap) # zap
+    shift
+    __zap "$@"
+    ;;
+  rzap) # zap
+    BU_MODE="${BU_MODE:-remote}"
+    shift
+    __zap "$@"
+    ;;
+  t*) # template
+    __template "$2"
+    ;;
+  rt*) # -r template
+    BU_MODE="${BU_MODE:-remote}"
+    __template "$2"
+    ;;
+  r*) # rsync
+    BU_MODE="${BU_MODE:-remote}"
+    __load_config "$2"
+    __rsync
+    ;;
+  h*|'') # help
+    __help
+    exit 0
+    ;;
+  *) # unknown
+    echo "E: Unknown command: '$1'" >&2
+    __help
+    exit 1
+    ;;
+esac
