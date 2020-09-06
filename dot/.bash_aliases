@@ -31,12 +31,12 @@ alias v=sensible-pager
 alias o=libreoffice
 alias p=evince
 alias e=fbreader
-alias dq="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
-alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
-complete -F _quilt_completion $_quilt_complete_opt dq
-complete -F _quilt_completion $_quilt_complete_opt dquilt
+alias dq="quilt --quiltrc=\${HOME}/.quiltrc-dpkg"
+alias dquilt="quilt --quiltrc=\${HOME}/.quiltrc-dpkg"
+complete -F _quilt_completion \$_quilt_complete_opt dq
+complete -F _quilt_completion \$_quilt_complete_opt dquilt
 mkdir -p ~/.cache/ben
-alias ben="BEN_CACHE_DIR=~/.cache/ben ben --config=${HOME}/.benrc"
+alias ben="BEN_CACHE_DIR=~/.cache/ben ben --config=\${HOME}/.benrc"
 
 
 alias ml="date --iso=sec && getmails -v && mutt"
@@ -47,14 +47,17 @@ alias upgrade="up-apt && echo "" && up-papt ; sync"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 
-function mcd { mkdir $1 ; cd $1 ; }
+mcd () {
+  mkdir "$1"
+  cd "$1" || return
+}
 
 # fd - cd to selected directory
 fd() {
   local dir
-  dir=$(find ${1:-.} -path '*/\.*' -prune \
-                  -o -type d -print 2> /dev/null | fzf +m) &&
-  cd "$dir"
+  dir="$(find "${1:-.}" -path '*/\.*' -prune \
+                  -o -type d -print 2> /dev/null | fzf +m)" &&
+  cd "$dir" || return
 }
 
 # wrap sudo to minimize exposure (w/ check for the 2nd sudo process)
@@ -63,7 +66,7 @@ fd() {
 # https://support.google.com/chromebook/thread/36971806?hl=en
 xsudo() {
   /usr/bin/xhost si:localuser:root
-  /usr/bin/sudo $@
+  /usr/bin/sudo "$@"
   /usr/bin/pgrep /usr/bin/sudo >/dev/null || /usr/bin/xhost -si:localuser:root
 }
 # sudoedit to use vi (normally vim)
@@ -125,8 +128,10 @@ if [ -x /usr/bin/lesspipe ]; then
   eval "$(SHELL=/bin/sh lesspipe)"
 fi
 
+# shellcheck disable=SC2154
 if [ "$color_prompt" = yes ]; then
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+# shellcheck disable=SC2154
     PS1='${debian_chroot:+($debian_chroot)}\$ '
 else
     #PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
