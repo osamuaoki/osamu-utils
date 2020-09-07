@@ -53,6 +53,9 @@ COMMAND: (may use shorter text, may specify options)
               $BU_CONF0 (always)
               $BU_FLTR0 (used only if \"-r\" is used)
 
+Setting alias name of $BU starting with \"r\" and prefixing COMMANDs with \"r\"
+set \"-r\".
+
 ARGs:
   Most COMMANDs take a single ARG specifying the data source PATH.  If omitted,
   the current directory (\".\") is assumed.  $BU makes reasonable efforts to
@@ -65,7 +68,8 @@ ARGs:
   This is executed at the root of rsync source tree which may be on a different
   host from one where the rsync destination exists.
 
-  Another exception is \"$BU zap\".  Here, ARGs are subcommand and can be:
+  Another exception is \"$BU zap\".  Here, ARG_1 is mandatory PATH (usually put
+  \".\") and ARG_2 is subcommand and can be:
     new:  zap the newest snapshots
     old:  zap the oldest snapshots
     half: zap the older half of snapshots
@@ -195,6 +199,23 @@ age_string () {
 }
 
 ##############################################################################
+# @brief             set $BU_MODE by $1
+# @arg   $1          value to set to $BU_MODE
+# @set   $BU_MODE    Backup mode: 'local' or 'remote'
+# @err               print error message with $2 and exit
+##############################################################################
+__set_bu_mode () {
+  if [ -z "$BU_MODE" ]; then
+    BU_MODE="$1"
+  elif  [ "$BU_MODE" = "$1" ]; then
+    :
+  else
+    __echo 0 "E: Can't change BU_MODE from '$BU_MODE' to '$1' ($2)"
+    exit 1
+  fi
+}
+
+##############################################################################
 # @brief             test $1 is btrfs mount point or not
 # @arg   $1          path to the directory to b checked
 # @set   $?          true if $1 is btrfs mount point
@@ -258,12 +279,13 @@ __load_config () {
 ##############################################################################
   if [ -z "$BTRFS_BASE" ]; then
     # not on btrfs
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "fall-back for no local btrfs"
   else
     # on btrfs
-    BU_MODE="${BU_MODE:-local}"
+    __set_bu_mode "local" "fall-back when local btrfs usable"
   fi
-  __echo 3 "D: BU_MODE       = '$BU_MODE' (in __load_config)"
+  __echo 3 "D: BU_MODE       = '$BU_MODE' (finalized in __load_config)"
+  # sanity check
   if [ "$BU_MODE" = "local" ]; then
     if [ -z "$BTRFS_BASE" ]; then
       __echo 0 "E: need $BU_BASE/$BU_CONF for mode=$BTRFS_MODE operation"
@@ -288,7 +310,7 @@ __load_config () {
     else
       __echo 2 "I: not found $BTRFS_BASE/$BU_CONF but on Btrfs=$BTRFS_BASE for mode=$BU_MODE operation"
     fi
-    # Set these to be on safe side
+    # Set these to be on safe side and ignore values in $BU_BASE/$BU_CONF
     RSYNC_SRC="$BTRFS_BASE"
     RSYNC_DST="$BTRFS_BASE"
   else # [ "$BU_MODE" = "remote" ]
@@ -567,13 +589,18 @@ __prune () {
 # @read  BTRFS_BASE  base of btrfs set by __load_config
 ##############################################################################
 __zap () {
+  __load_config "${1:-.}"
+  if [ "$BU_ZAP_ACTIVE" != "true" ]; then
+      __echo 0 "E: No zap operation since $BU_BASE/$BU_CONF has BU_ZAP_ACTIVE='$BU_ZAP_ACTIVE'"
+      exit 1
+  fi
+  if [ -z "$BTRFS_BASE" ]; then
+    __echo 0 "E: no Btrfs found for zap half*"
+    exit 1
+  fi
+  shift
   case "$1" in
     half) # half
-      __load_config "$2"
-      if [ -z "$BTRFS_BASE" ]; then
-        __echo 0 "E: no Btrfs found for zap half*"
-        exit 1
-      fi
       __echo 1 "I: zap snapshots into half at $BTRFS_BASE .  It's aging status --"
       __analyze
       __echo 1 "I: Are you sure ? -----------------------------------------------"
@@ -603,11 +630,6 @@ __zap () {
       done
       ;;
     new*) # newest
-      __load_config "$2"
-      if [ -z "$BTRFS_BASE" ]; then
-        __echo 0 "E: no Btrfs found for zap new*"
-        exit 1
-      fi
       __echo 3 "D: zap newest snapshots at $BTRFS_BASE"
       # shellcheck disable=SC2046
       set -- $(__list| sort -r)
@@ -616,11 +638,6 @@ __zap () {
       eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       ;;
     old*) # oldest
-      __load_config "$2"
-      if [ -z "$BTRFS_BASE" ]; then
-        __echo 0 "E: no Btrfs found for zap old*"
-        exit 1
-      fi
       __echo 1 "I: zap oldest snapshots at $BTRFS_BASE .  It's aging status --"
       __analyze
       __echo 1 "I: Are you sure ? --------------------------------------------"
@@ -638,14 +655,14 @@ __zap () {
       __echo 1 "I:  zap oldest snapshot of $BTRFS_BASE @ $d"
       eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       ;;
-    *) # labels
-      __echo 3 "D: zap snapshots at $(pwd)"
+    *) # labels (local only now)
+      __echo 3 "D: zap snapshots at $BTRFS_BASE"
       for d in "${@}"; do
         if [ -e "$d" ]; then
-          __echo 1 "I: zap snapshot of $(pwd) @ $d"
-          eval "$BSV delete '$(pwd)/$d'"
+          __echo 1 "I: zap snapshot of $BTRFS_BASE @ $d"
+          eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
         else
-          __echo 1 "W: missing zap snapshot of $(pwd) @ $d"
+          __echo 1 "W: missing zap snapshot of $BTRFS_BASE @ $d"
         fi
       done
       ;;
@@ -719,40 +736,28 @@ __template () {
 # modified to address both local Btrfs snapshot and remote Btrfs snapshot of
 # backup image generated by rsync.
 
-if [ \"\\\$BU_MODE\" = \"local\" ]; then # for --local
+# aging speed variables
+BU_INDEX_MIN=\"$BU_MIN\" # keep minimum recent $BU_MIN items
+BU_AGE_SHRT=\"\\\$(($BU_SHRT))\" # short age
+BU_AGE_LONG=\"\\\$(($BU_LONG))\" # long age
+BU_AGE_STEP=\"$BU_STEP\" # $BU_STEP% step for mid range aging
 
-  # aging speed variables
-  BU_INDEX_MIN=\"$BU_MIN\" # keep minimum recent $BU_MIN items
-  BU_AGE_SHRT=\"\\\$(($BU_SHRT))\" # short age
-  BU_AGE_LONG=\"\\\$(($BU_LONG))\" # long age
-  BU_AGE_STEP=\"$BU_STEP\" # $BU_STEP% step for mid range aging
+# aged data: keep or forget
+# AGE_MODE=\"keep\" # for keeping old data forever
+# AGE_MODE=\"forget\" # for erasing really old data
+AGE_MODE=\"keep\" # safer initial setting
 
-  # aged data: keep or forget
-  # AGE_MODE=\"keep\" # for keeping old data forever
-  # AGE_MODE=\"forget\" # for erasing really old data
-  AGE_MODE=\"keep\" # safer initial setting
+# rsync source and destination for rsync and backup commands and
+# commands started with --remote option
+# for --local operation, these are ignored
+RSYNC_SRC=\"$RSYNC_SRC\" # *** may be on non-btrfs ***
+RSYNC_DST=\"$RSYNC_DST\" # *** must be on btrfs to make btrfs snapshot ***
+RSYNC_HOST=\"$RSYNC_HOST\" # *** rsync source host name (FIXME)
+# You can add custom filtering for rsync using ./\"$BU_FLTR\"
 
-else # for --remote
+# safety (change this if you want to disable some zap operations
+BU_ZAP_ACTIVE=\"true\"
 
-  # aging speed variables
-  BU_INDEX_MIN=\"$BU_MIN\" # keep minimum recent $BU_MIN items
-  BU_AGE_SHRT=\"\\\$(($BU_SHRT))\" # short age
-  BU_AGE_LONG=\"\\\$(($BU_LONG))\" # long age
-  BU_AGE_STEP=\"$BU_STEP\" # $BU_STEP% step for mid range aging
-
-  # aged data: keep or forget
-  # AGE_MODE=\"keep\" # for keeping old data forever
-  # AGE_MODE=\"forget\" # for erasing really old data
-  AGE_MODE=\"keep\" # safer initial setting
-
-  # rsync source and destination for rsync and backup commands and
-  # commands started with --remote option
-  RSYNC_SRC=\"$RSYNC_SRC\" # *** may be on non-btrfs ***
-  RSYNC_DST=\"$RSYNC_DST\" # *** must be on btrfs to make btrfs snapshot ***
-  RSYNC_HOST=\"$RSYNC_HOST\" # *** rsync source host name (FIXME)
-  # You can add custom filtering for rsync using ./\"$BU_FLTR\"
-
-fi
 END_OF_TEMPLATE'"
 
   # make this editable without sudo
@@ -766,10 +771,7 @@ END_OF_TEMPLATE'"
   eval "$SUSH  'cat > \"$BU_BASE/$BU_FLTR\" <<END_OF_TEMPLATE
 # $BU configuration (rsync)
 #
-#  RSYNC_SRC=\"$RSYNC_SRC\"
-#  RSYNC_DST=\"$RSYNC_DST\"
-#
-# Example (for user home)
+# Example (for making small user home)
 #
 # + /.gnupg/***
 # + /.ssh/***
@@ -807,14 +809,21 @@ TEMP=$(getopt -o 'lri:c:nqvh' -n "${BU}" \
 #echo "DEBUG: ***** TEMP='$TEMP'"
 eval set -- "$TEMP"
 unset TEMP
+# if $BU = ${0##*/} start with "r" --> BU_MODE="remote"
+case $BU in
+  r*) BU_MODE="remote"
+    ;;
+esac
 # OPTIONS
 while [ -n "$1" ]; do
 	case "$1" in
 		-l|--local)
       BU_MODE="local"
+      __set_bu_mode "local" "set as -l or --local"
 		  ;;
 		-r|--remote)
       BU_MODE="remote"
+      __set_bu_mode "remote" "set as -r or --remote"
 		  ;;
 		-i|--id)
 			shift
@@ -865,16 +874,15 @@ if [ "$VERBOSE_LEVEL" -ge 4 ]; then
   set -x
 fi
 #############################################################################
-# Action
+# Command (any commands starting with "r" set BU_MODE="remote")
 #############################################################################
 case "$1" in
   s*) #snapshot
-    BU_MODE="${BU_MODE:-local}"
     __load_config "$2"
     __snapshot
     ;;
-  b*|rs*) # backup = -r snap
-    BU_MODE="${BU_MODE:-remote}"
+  rs*) # -r snap
+    __set_bu_mode "remote" "command=rs*"
     __load_config "$2"
     __rsync
     __snapshot
@@ -884,7 +892,7 @@ case "$1" in
     __list
     ;;
   rl*) # -r list
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "command=rl*"
     __load_config "$2"
     __list
     ;;
@@ -893,7 +901,7 @@ case "$1" in
     __analyze
     ;;
   ra*) # -r analyze
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "command=ra*"
     __load_config "$2"
     __analyze
     ;;
@@ -902,7 +910,7 @@ case "$1" in
     __prune
     ;;
   rp*) # -r prune
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "command=rp*"
     __load_config "$2"
     __prune
     ;;
@@ -911,7 +919,7 @@ case "$1" in
     __zap "$@"
     ;;
   rzap) # zap
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "command=rzap"
     shift
     __zap "$@"
     ;;
@@ -919,11 +927,11 @@ case "$1" in
     __template "$2"
     ;;
   rt*) # -r template
-    BU_MODE="${BU_MODE:-remote}"
+    __set_bu_mode "remote" "command=rt*"
     __template "$2"
     ;;
-  r*) # rsync
-    BU_MODE="${BU_MODE:-remote}"
+  r*) # rsync (only rsync, no btrfs-snapshot)
+    __set_bu_mode "remote" "command=r*"
     __load_config "$2"
     __rsync
     ;;
