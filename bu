@@ -22,9 +22,9 @@ DESCRIPTION
   \"remote mode\" operation:
 
   1. \"rsync\" copies data from the actively used working data on one storage
-     device to a separate storage device on the same host.  This improves
-     robustness of the stored data against device failures.  (All HDD/SSD will
-     die at some point in future.)
+     device to a separate storage device formatted with btrfs on the same host.
+     This improves robustness of the stored data against device failures.  (All
+     HDD/SSD will die at some point in future.)
   2. \"btrfs subvolume snapshot\" creates readonly snapshots of the copied data
      with ISO 8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the file
      path.
@@ -32,8 +32,8 @@ DESCRIPTION
   \"local mode\" operation:
 
   1. \"btrfs subvolume snapshot\" creates readonly snapshots of the working
-     data with ISO 8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the
-     file path.
+     data on a storage device formatted in btrfs with ISO 8601 time stamps,
+     e.g. '2020-09-02T11:51:50+00:00' as the file path.
 
 OPTIONS:
   -l,--local    $BU_MES_L
