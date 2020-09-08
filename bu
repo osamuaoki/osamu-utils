@@ -22,7 +22,7 @@ DESCRIPTION
   \"remote mode\" operation:
 
   1. \"rsync\" copies data from the actively used working data on one storage
-     device to a separate storage device formatted with btrfs on the same host.
+     device to a separate storage device formatted with Btrfs on the same host.
      This improves robustness of the stored data against device failures.  (All
      HDD/SSD will die at some point in future.)
   2. \"btrfs subvolume snapshot\" creates readonly snapshots of the copied data
@@ -32,7 +32,7 @@ DESCRIPTION
   \"local mode\" operation:
 
   1. \"btrfs subvolume snapshot\" creates readonly snapshots of the working
-     data on a storage device formatted in btrfs with ISO 8601 time stamps,
+     data on a storage device formatted in Btrfs with ISO 8601 time stamps,
      e.g. '2020-09-02T11:51:50+00:00' as the file path.
 
 OPTIONS:
@@ -59,19 +59,19 @@ SUBCOMMAND: (may be shortened)
               $BU_CONF0 (always)
               $BU_FLTR0 (used only for remote mode)
   rsync     copy data from local data to remote data using \"rsync\" with
-            $BU_FLTR0 (no btrfs operation)
+            $BU_FLTR0 (no Btrfs operation)
 
   Prepending these subcommands with \"r\" sets \"-r\" option.
 
 ARGs:
   Most SUBCOMMANDs take a single ARG specifying the data source PATH.  If ARG
   is omitted, the current directory (\".\") is assumed.  $BU makes reasonable
-  efforts to reduce PATH to the root of the mounted btrfs or to the directory
+  efforts to reduce PATH to the root of the mounted Btrfs or to the directory
   where $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
   working data directory tree.
 
   One exception is \"$BU --remote template <RSYNC_DST> [<RSYNC_SRC>]\".   Here,
-  <RSYNC_DST> specifies the rsync destination which may be on btrfs.  The
+  <RSYNC_DST> specifies the rsync destination which may be on Btrfs.  The
   optional <RSYNC_SRC> specifies the directory where the configuration files
   are generated.  If <RSYNC_SRC> is omitted, the current directory (\".\") is
   assumed.
@@ -84,7 +84,7 @@ ARGs:
     <PATH ...>  zap snapshots specified: \"btrfs subvolume delete <PATH ...>\"
 
 CONFIGURATION FILES
-  $BU_CONF0 and $BU_FLTR0 defines aging behavior of readonly btrfs sanpshots
+  $BU_CONF0 and $BU_FLTR0 defines aging behavior of readonly Btrfs sanpshots
   and copying behavior of rsync.  For local mode, RSYNC_SRC and RSYNC_DST are
   ignored.
 
@@ -228,26 +228,26 @@ __set_bu_mode () {
 }
 
 ##############################################################################
-# @brief             test $1 is btrfs mount point or not
+# @brief             test $1 is Btrfs mount point or not
 # @arg   $1          path to the directory to b checked
-# @set   $?          true if $1 is btrfs mount point
+# @set   $?          true if $1 is Btrfs mount point
 ##############################################################################
 __is_btrfs_mount_point () {
   mount |cut -d ' ' -f "3,5"|grep " btrfs$"|sort -r|grep -q -e "^$1 btrfs\$"
 }
 
 ##############################################################################
-# @brief             find base directory holding btrfs mount point or $BU_CONF
+# @brief             find base directory holding Btrfs mount point or $BU_CONF
 # @arg   $1          path to the directory to work from (default='.')
 # @set   BU_BASE     base of $BU_CONF
-# @set   BTRFS_BASE  base of btrfs
+# @set   BTRFS_BASE  base of Btrfs
 ##############################################################################
 __find_base () {
   # input
   # $1            path to the directory to work from (default='.')
   # return
   # @ BU_BASE     base of $BU_CONF          (set by  __find_base)
-  # @ BTRFS_BASE  base of btrfs             (set by  __find_base)
+  # @ BTRFS_BASE  base of Btrfs             (set by  __find_base)
   d=$(realpath "${1:-.}")
   d0="$d"
   BTRFS_BASE=""
@@ -267,7 +267,7 @@ __find_base () {
   done
   # sanity check
   if [ -z "$BTRFS_BASE" ] && [ -z "$BU_BASE" ]; then
-    __echo 0 "E: Can't find btrfs nor .../$BU_CONF for $d0"
+    __echo 0 "E: Can't find Btrfs nor .../$BU_CONF for $d0"
     exit 1
   fi
 }
@@ -276,10 +276,10 @@ __find_base () {
 # @brief             load config and sanitize it
 # @arg   $1          path to the directory to work from (default='.')
 # @set   BU_BASE     base of $BU_CONF                   (set by  __find_base)
-# @set   BTRFS_BASE  base of btrfs                      (set by  __find_base)
+# @set   BTRFS_BASE  base of Btrfs                      (set by  __find_base)
 # @set   RSYNC_SRC   base of rsync source               (read from $BU_CONF)
 # @set   RSYNC_DST   base of rsync destination          (read from $BU_CONF)
-# @set   BU_*        all btrfs aging related parameters
+# @set   BU_*        all Btrfs aging related parameters
 ##############################################################################
 __load_config () {
 ##############################################################################
@@ -290,11 +290,11 @@ __load_config () {
 # sanity check for BU_BASE and BTRFS_BASE and default value for BU_MODE
 ##############################################################################
   if [ -z "$BTRFS_BASE" ]; then
-    # not on btrfs
-    __set_bu_mode "remote" "fall-back for no local btrfs"
+    # not on Btrfs
+    __set_bu_mode "remote" "fall-back for no local Btrfs"
   else
-    # on btrfs
-    __set_bu_mode "local" "fall-back when local btrfs usable"
+    # on Btrfs
+    __set_bu_mode "local" "fall-back when local Btrfs usable"
   fi
   __echo 3 "D: BU_MODE       = '$BU_MODE' (finalized in __load_config)"
   # sanity check
@@ -333,7 +333,7 @@ __load_config () {
     if __is_btrfs_mount_point "$RSYNC_DST" ; then
       BTRFS_BASE="$RSYNC_DST"
     else
-      __echo 0 "W: non-btrfs RSYNC_DST='$RSYNC_DST' in $BU_BASE/$BU_CONF"
+      __echo 0 "W: non-Btrfs RSYNC_DST='$RSYNC_DST' in $BU_BASE/$BU_CONF"
       BTRFS_BASE=""
     fi
   fi
@@ -423,7 +423,7 @@ __rsync () {
 
 ##############################################################################
 # @brief             make snapshot on BTRFS_BASE
-# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
 # @read  BU_ID       snapshot id to use (normally '')
 # @read  NOW_TS      time stamp
 ##############################################################################
@@ -449,7 +449,7 @@ __snapshot0 () {
 # @read  RSYNC_SRC   base of rsync source set by __load_config
 # @read  RSYNC_DST   base of rsync destination set by __load_config
 # @read  BU_FLTR     rsync filter configuration file name
-# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
 # @read  BU_ID       snapshot id to use (normally '')
 # @read  NOW_TS      time stamp
 ##############################################################################
@@ -460,7 +460,7 @@ __snapshot () {
 
 ##############################################################################
 # @brief             list snapshot time stamp of Btrfs (old->new order)
-# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
 # @echo              snapshot time stamps
 ##############################################################################
 __list () {
@@ -479,8 +479,8 @@ __list () {
 ##############################################################################
 # @brief             aging analysis of time stamps of Btrfs
 # @call              __list
-# @read  BTRFS_BASE  base of btrfs set by __load_config
-# @read  BU_*        all btrfs aging related parameters set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
+# @read  BU_*        all Btrfs aging related parameters set by __load_config
 # @echo              snapshot time stamps with + or - prepended
 ##############################################################################
 __analyze () {
@@ -573,8 +573,8 @@ __analyze () {
 ##############################################################################
 # @brief             prune aged snapshots
 # @call              __analyze
-# @read  BTRFS_BASE  base of btrfs set by __load_config
-# @read  BU_*        all btrfs aging related parameters set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
+# @read  BU_*        all Btrfs aging related parameters set by __load_config
 ##############################################################################
 __prune () {
   if [ -n "$BTRFS_BASE" ]; then
@@ -598,7 +598,7 @@ __prune () {
 ##############################################################################
 # @brief             zap specified snapshots
 # @call              __load_config, __list
-# @read  BTRFS_BASE  base of btrfs set by __load_config
+# @read  BTRFS_BASE  base of Btrfs set by __load_config
 ##############################################################################
 __zap () {
   if [ "$BU_ZAP_ACTIVE" != "true" ]; then
@@ -683,12 +683,12 @@ __zap () {
 __template () {
   # works for --local or --source
   BU_MODE="${BU_MODE:-local}"
-  if [ "$BU_MODE" = "local" ]; then # local btrfs aging config (no rsync)
+  if [ "$BU_MODE" = "local" ]; then # local Btrfs aging config (no rsync)
     __find_base "$1"
     if [ -z "$BTRFS_BASE" ]; then
-      # not in btrfs
-      __echo 0 "E: not in btrfs -> no snapshot"
-      __echo 0 "E: if you are thinking to use rsync to use remote btrfs, use --remote option"
+      # not in Btrfs
+      __echo 0 "E: not in Btrfs -> no snapshot"
+      __echo 0 "E: if you are thinking to use rsync to use remote Btrfs, use --remote option"
       exit 1
     fi
     # now BTRFS_BASE exists
@@ -715,7 +715,7 @@ __template () {
     BU_BASE="$(realpath "${2:-.}")"
     RSYNC_SRC="$BU_BASE"
     if ! __is_btrfs_mount_point "$RSYNC_DST"; then
-      __echo 1 "W: $RSYNC_DST not in btrfs -> no 'btrfs subvolume snapshot ...', just 'rsync' only..."
+      __echo 1 "W: $RSYNC_DST not in Btrfs -> no 'btrfs subvolume snapshot ...', just 'rsync' only..."
     fi
   else # rsync destination side execution
     __echo 0 "E: template generation with odd BU_MODE=\"$BU_MODE\"."
@@ -736,7 +736,7 @@ __template () {
   ############################################################################
   __echo 2 "I: make template $BU_BASE/$BU_CONF file"
   eval "$SUSH 'cat > \"$BU_BASE/$BU_CONF\" <<END_OF_TEMPLATE
-# $BU configuration (btrfs)
+# $BU configuration (Btrfs)
 
 # This configuration file as generated by the \"template\" command can be
 # modified to address both local Btrfs snapshot and remote Btrfs snapshot of
@@ -756,8 +756,8 @@ AGE_MODE=\"keep\" # safer initial setting
 # rsync source and destination for rsync and backup commands and
 # commands started with --remote option
 # for --local operation, these are ignored
-RSYNC_SRC=\"$RSYNC_SRC\" # *** may be on non-btrfs ***
-RSYNC_DST=\"$RSYNC_DST\" # *** must be on btrfs to make btrfs snapshot ***
+RSYNC_SRC=\"$RSYNC_SRC\" # *** may be on non-Btrfs ***
+RSYNC_DST=\"$RSYNC_DST\" # *** must be on Btrfs to make Btrfs snapshot ***
 RSYNC_HOST=\"$RSYNC_HOST\" # *** rsync source host name (FIXME)
 # You can add custom filtering for rsync using ./\"$BU_FLTR\"
 
@@ -822,8 +822,8 @@ case $BU in
     BU_MES_R="remote mode (default)"
     ;;
   *) BU_MODE=""
-    BU_MES_L="local mode (default: local=Btrfs)"
-    BU_MES_R="remote mode (default: local=non-Btrfs)"
+    BU_MES_L="local mode (default: working data on Btrfs)"
+    BU_MES_R="remote mode (default: working data not on Btrfs)"
     ;;
 esac
 # OPTIONS
@@ -945,7 +945,7 @@ case "$1" in
     __set_bu_mode "remote" "command=rt*"
     __template "$2"
     ;;
-  r*) # rsync (only rsync, no btrfs-snapshot)
+  r*) # rsync (only rsync, no Btrfs-snapshot)
     __set_bu_mode "remote" "command=r*"
     __load_config "$2"
     __rsync
