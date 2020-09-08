@@ -16,18 +16,24 @@ SYNOPSIS
 
 DESCRIPTION
   $BU is a \"rsync\" and \"btrfs subvolume snapshot\" command wrapper to help
-  make and manage data backup.
+  make and manage data backups using the standard data format with the
+  intuitive data history representation.
 
-  The use of \"rsync\" to copy data from the actively used working data on one
-  device to a separate device even on the same host improves robustness of the
-  stored data against device failures.  (All HDD/SSD will die at some point in
-  future.)  Working data are referred as \"local\" while copied data are
-  referred as \"remote\"
+  \"remote mode\" operation:
 
-  The use of \"btrfs subvolume snapshot\" to create readonly snapshots with ISO
-  8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the file path, provides
-  intuitive and compact storage of data history on the stable standard data
-  format.
+  1. \"rsync\" copies data from the actively used working data on one storage
+     device to a separate storage device on the same host.  This improves
+     robustness of the stored data against device failures.  (All HDD/SSD will
+     die at some point in future.)
+  2. \"btrfs subvolume snapshot\" creates readonly snapshots of the copied data
+     with ISO 8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the file
+     path.
+
+  \"local mode\" operation:
+
+  1. \"btrfs subvolume snapshot\" creates readonly snapshots of the working
+     data with ISO 8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the
+     file path.
 
 OPTIONS:
   -l,--local    $BU_MES_L
@@ -42,9 +48,7 @@ OPTIONS:
   -vv           very verbose for debug
   -vvv          extremely verbose for debug with shell command trace
 
-SUBCOMMAND: (may use shorter text, may set options)
-  rsync     copy data from local data to remote data using \"rsync\" with
-            $BU_FLTR0 (-r implied)
+SUBCOMMAND: (may be shortened)
   snapshot  make a sanpshot under \"$BU_DIR/\" as \<ISO_8601_date>
   list      list ISO 8601 time stamps of all snapshots
   analyze   analyze the aging status of all snapshots
@@ -53,36 +57,43 @@ SUBCOMMAND: (may use shorter text, may set options)
             \"zap\" is required to be typed in full text.
   template  make template files:
               $BU_CONF0 (always)
-              $BU_FLTR0 (used only if \"-r\" is used)
+              $BU_FLTR0 (used only for remote mode)
+  rsync     copy data from local data to remote data using \"rsync\" with
+            $BU_FLTR0 (no btrfs operation)
 
-Prepending SUBCOMMAND with \"r\" sets \"-r\" option.
+  Prepending these subcommands with \"r\" sets \"-r\" option.
 
 ARGs:
-  Most SUBCOMMANDs take a single ARG specifying the data source PATH.  If
-  omitted, the current directory (\".\") is assumed.  $BU makes reasonable
+  Most SUBCOMMANDs take a single ARG specifying the data source PATH.  If ARG
+  is omitted, the current directory (\".\") is assumed.  $BU makes reasonable
   efforts to reduce PATH to the root of the mounted btrfs or to the directory
   where $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
   working data directory tree.
 
-  One exception is \"$BU --remote template <RSYNC_DST>\".   Here, ARG is
-  <RSYNC_DST> which specifies the rsync destination which may be on btrfs.
+  One exception is \"$BU --remote template <RSYNC_DST> [<RSYNC_SRC>]\".   Here,
+  <RSYNC_DST> specifies the rsync destination which may be on btrfs.  The
+  optional <RSYNC_SRC> specifies the directory where the configuration files
+  are generated.  If <RSYNC_SRC> is omitted, the current directory (\".\") is
+  assumed.
 
-  Another exception is \"$BU zap\".  Here, ARG_1 is mandatory PATH (usually
-  \".\") and ARG_2 is the target specifier which can be:
+  Another exception is \"$BU zap ARG_1 ARG_2\".  Here, ARG_1 is mandatory PATH
+  (usually \".\") and ARG_2 is the target specifier which can be:
     new:        zap the newest snapshots
     old:        zap the oldest snapshots
     half:       zap the older half of snapshots
     <PATH ...>  zap snapshots specified: \"btrfs subvolume delete <PATH ...>\"
 
 CONFIGURATION FILES
-  $BU_CONF0 and $BU_FLTR0 at the root of the target btrfs defines
-  aging behavior of readonly btrfs sanpshots and copying behavior of rsync.
+  $BU_CONF0 and $BU_FLTR0 defines aging behavior of readonly btrfs sanpshots
+  and copying behavior of rsync.  For local mode, RSYNC_SRC and RSYNC_DST are
+  ignored.
 
 HINT
   You can start this $BU under different \$0 value by creating symlink and
-  using it to start this $BU.  If \$0 starts with \"r\", \"-r\" option is set.
-  If not used by other applications, I suggest using \"bu\" and \"rbu\" as good
-  choices for \$0.  Default configuration file name matches with \$0.
+  using it to start this $BU.  If \$0 starts with \"r\", \"-r\" option is
+  automatically set.  Otherwise, you can set \"-l\" option.  I suggest using
+  \"bu\" and \"rbu\" as good choices for \$0 if these names are not already used by
+  others.  Default configuration file names matche with \$0.
 
 CAVEAT:
   Currently, this $BU is designed and used for cases where the source and
@@ -807,12 +818,12 @@ unset TEMP
 # if $BU = ${0##*/} start with "r" --> BU_MODE="remote"
 case $BU in
   r*) BU_MODE="remote"
-    BU_MES_L="don't use this (since $BU starts with 'r')"
-    BU_MES_R="work with the remote filesystem (default)"
+    BU_MES_L="... not available (since $BU starts with 'r')"
+    BU_MES_R="remote mode (default)"
     ;;
   *) BU_MODE=""
-    BU_MES_L="work on the local data (default: local=Btrfs)"
-    BU_MES_R="work with the remote data (default: local=non-Btrfs)"
+    BU_MES_L="local mode (default: local=Btrfs)"
+    BU_MES_R="remote mode (default: local=non-Btrfs)"
     ;;
 esac
 # OPTIONS
