@@ -18,9 +18,11 @@ DESCRIPTION
   $BU is a \"rsync\" and \"btrfs subvolume snapshot\" command wrapper to help
   make and manage data backup.
 
-  The use of \"rsync\" to copy data from the actively used working directory on
-  one device to another archive device ensures robustness of the stored data
-  against device failures.  (All HDD/SSD will die at some point in future.)
+  The use of \"rsync\" to copy data from the actively used working data on one
+  device to a separate device even on the same host improves robustness of the
+  stored data against device failures.  (All HDD/SSD will die at some point in
+  future.)  Working data are referred as \"local\" while copied data are
+  referred as \"remote\"
 
   The use of \"btrfs subvolume snapshot\" to create readonly snapshots with ISO
   8601 time stamps, e.g. '2020-09-02T11:51:50+00:00' as the file path, provides
@@ -28,9 +30,8 @@ DESCRIPTION
   format.
 
 OPTIONS:
-  -l,--local    snapshot on the local Btrfs (default: local=Btrfs)
-  -r,--remote   snapshot on the remote Btrfs (default: local=non-Btrfs)
-                prepending COMMAND with \"r\" also sets this option.
+  -l,--local    $BU_MES_L
+  -r,--remote   $BU_MES_R
   -i,--id ID    use ID for the snapshot name instead of the time stamp
   -c,--conf RC  use RC.$EXT_CONF and RC.$EXT_FLTR instead of their default
                 $BU_CONF0 and $BU_FLTR0
@@ -41,51 +42,51 @@ OPTIONS:
   -vv           very verbose for debug
   -vvv          extremely verbose for debug with shell command trace
 
-COMMAND: (may use shorter text, may specify options)
-  snapshot  make a local sanpshot under \"$BU_DIR/\" as \<ISO_8601_date> (-l implied)
-  rsync     copy data using \"rsync\" with $BU_FLTR0 (-r implied)
-  backup    make a destination snapshot after rsync (-r implied)
+SUBCOMMAND: (may use shorter text, may set options)
+  rsync     copy data from local data to remote data using \"rsync\" with
+            $BU_FLTR0 (-r implied)
+  snapshot  make a sanpshot under \"$BU_DIR/\" as \<ISO_8601_date>
   list      list ISO 8601 time stamps of all snapshots
   analyze   analyze the aging status of all snapshots
   prune     prune snapshots based on the aging status
   zap       zap particular snapshots specified by ARGs (no short form)
+            \"zap\" is required to be typed in full text.
   template  make template files:
               $BU_CONF0 (always)
               $BU_FLTR0 (used only if \"-r\" is used)
 
-Setting alias name of $BU starting with \"r\" and prefixing COMMANDs with \"r\"
-set \"-r\".
+Prepending SUBCOMMAND with \"r\" sets \"-r\" option.
 
 ARGs:
-  Most COMMANDs take a single ARG specifying the data source PATH.  If omitted,
-  the current directory (\".\") is assumed.  $BU makes reasonable efforts to
-  reduce PATH to the root of the mounted btrfs or to the directory where
-  $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
+  Most SUBCOMMANDs take a single ARG specifying the data source PATH.  If
+  omitted, the current directory (\".\") is assumed.  $BU makes reasonable
+  efforts to reduce PATH to the root of the mounted btrfs or to the directory
+  where $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
   working data directory tree.
 
   One exception is \"$BU --remote template <RSYNC_DST>\".   Here, ARG is
   <RSYNC_DST> which specifies the rsync destination which may be on btrfs.
-  This is executed at the root of rsync source tree which may be on a different
-  host from one where the rsync destination exists.
 
-  Another exception is \"$BU zap\".  Here, ARG_1 is mandatory PATH (usually put
-  \".\") and ARG_2 is subcommand and can be:
-    new:  zap the newest snapshots
-    old:  zap the oldest snapshots
-    half: zap the older half of snapshots
-    <PATH ...>     zap snapshots specified: \"btrfs subvolume delete <PATH ...>\"
-
-  zap requires to type full command and subcommand to be on the safe side.
+  Another exception is \"$BU zap\".  Here, ARG_1 is mandatory PATH (usually
+  \".\") and ARG_2 is the target specifier which can be:
+    new:        zap the newest snapshots
+    old:        zap the oldest snapshots
+    half:       zap the older half of snapshots
+    <PATH ...>  zap snapshots specified: \"btrfs subvolume delete <PATH ...>\"
 
 CONFIGURATION FILES
   $BU_CONF0 and $BU_FLTR0 at the root of the target btrfs defines
   aging behavior of readonly btrfs sanpshots and copying behavior of rsync.
 
-CAVEAT:
-  Most of the $BU commands must be executed on the host where btrfs exists.
+HINT
+  You can start this $BU under different \$0 value by creating symlink and
+  using it to start this $BU.  If \$0 starts with \"r\", \"-r\" option is set.
+  If not used by other applications, I suggest using \"bu\" and \"rbu\" as good
+  choices for \$0.  Default configuration file name matches with \$0.
 
-  (Currently, this $BU is mostly used for cases where the source and
-  destination are on the same host.)
+CAVEAT:
+  Currently, this $BU is designed and used for cases where the source and
+  destination of rsync are on the same host.
 
   The user who executes this command must be a member of \"sudo\".
 
@@ -98,8 +99,6 @@ Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL 2+"
 BU="${0##*/}"
 UID=$(id -u)
 VERBOSE_LEVEL=1
-NOOP="" # "echo"
-BU_MODE=""
 BU_ID=""
 BU_DIR=".snap"
 EXT_CONF="conf"
@@ -113,10 +112,8 @@ BU_MIN="3"             # aging keep initial minimum items
 BU_SHRT="24*60*60"     # aging short threashold 1 day
 BU_LONG="365*24*60*60" # aging long  threashold 1 year
 BU_STEP="10"           # aging step %
-# shellcheck disable=SC2016
-SUSH='$NOOP sudo sh -c'
-# shellcheck disable=SC2016
-BSV='$NOOP sudo btrfs subvolume'
+SUSH="sudo sh -c"
+BSV="sudo btrfs subvolume"
 #############################################################################
 # RSYNC Constants
 ##############################################################################
@@ -130,17 +127,15 @@ BSV='$NOOP sudo btrfs subvolume'
 # rsync command and options
 #     -a --archive     == -rlptgoD
 #     -H --hard-links
-#     -A --acls
-#     -X --xattrs
+#     (-A --acls)
+#     (-X --xattrs)
 #     -x --one-file-system
-#     -v --verbose
 #     --inplace
 #     --delete-during
 #
 # Please note --delete-excluded can't be used to avoid trying to remove
-# mount points used by other submodules
-# shellcheck disable=SC2016
-RSYNC='$NOOP sudo rsync -aHAXxv --inplace --delete-during --exclude=.snap/'
+# mount points used by other submodules (Need to check "protect")
+RSYNC="sudo rsync -aHx --inplace --delete-during --numeric-ids"
 #############################################################################
 # System Functions (trap and echo)
 ##############################################################################
@@ -172,10 +167,16 @@ VERBOSE_LEVEL="1"
 # 2 W/I: Verbose   Show equivalent shell commands being executed (-v)
 # 3 D:   Debug     Everything                                    (-vv)
 __echo () {
-if [ "$1" -le $VERBOSE_LEVEL ]; then
+if [ "$VERBOSE_LEVEL" -ge "$1" ]; then
   shift
   echo "$*" >&2
 fi
+}
+__eval () {
+  if [ "$VERBOSE_LEVEL" -ge 2 ]; then
+    echo ">>> $*"
+  fi
+  eval "$*"
 }
 ##############################################################################
 # Internal Functions
@@ -288,7 +289,7 @@ __load_config () {
   # sanity check
   if [ "$BU_MODE" = "local" ]; then
     if [ -z "$BTRFS_BASE" ]; then
-      __echo 0 "E: need $BU_BASE/$BU_CONF for mode=$BTRFS_MODE operation"
+      __echo 0 "E: need $BU_BASE to be Btrfs for mode=$BU_MODE operation"
       exit 1
     fi
   else # [ "$BU_MODE" = "remote" ]
@@ -297,7 +298,7 @@ __load_config () {
       exit 1
     fi
   fi
-  __echo 2 "I: mode='$BU_MODE', BTRFS_BASE='$BTRFS_BASE', BU_BASE='$BU_BASE'"
+  __echo 2 "I: Before loading parameters: mode='$BU_MODE', BTRFS_BASE='$BTRFS_BASE', BU_BASE='$BU_BASE'"
 ##############################################################################
 # load parameters
 ##############################################################################
@@ -364,8 +365,7 @@ __load_config () {
   fi
   # preparation
   if [ -n "$BTRFS_BASE" ] && [ ! -e "$BTRFS_BASE/$BU_DIR" ]; then
-    __echo 1 "I: make snapshot directory $BTRFS_BASE/$BU_DIR"
-    eval "$SUDO mkdir -p '$BTRFS_BASE/$BU_DIR' >/dev/null"
+    __eval "$SUDO mkdir -p '$BTRFS_BASE/$BU_DIR' >/dev/null"
   fi
   # result of loading
   __echo 3 "D: BU_INDEX_MIN  = '$BU_INDEX_MIN'"
@@ -387,25 +387,26 @@ __load_config () {
 __rsync () {
   if [ "$RSYNC_SRC" != "$RSYNC_DST" ]; then
     __echo 2 "I: rsync RSYNC_SRC:'$RSYNC_SRC' -> RSYNC_DST:'$RSYNC_DST'"
-    if [ "$VERBOSE_LEVEL" -eq "2" ] || [ "$VERBOSE_LEVEL" -eq "3" ]; then
-      RSYNC="$RSYNC --verbose"
-    elif [ "$VERBOSE_LEVEL" -eq "4" ]; then
+    if [ "$VERBOSE_LEVEL" -eq "1" ]; then
+      RSYNC="$RSYNC -v"
+    elif [ "$VERBOSE_LEVEL" -eq "2" ]; then
       RSYNC="$RSYNC -vv"
-    elif [ "$VERBOSE_LEVEL" -ge "5" ]; then
+    elif [ "$VERBOSE_LEVEL" -eq "3" ]; then
+      RSYNC="$RSYNC -vv"
+    elif [ "$VERBOSE_LEVEL" -ge "4" ]; then
       RSYNC="$RSYNC -vvv"
     fi
+    # protect snapshot mount directory
+    RSYNC="$RSYNC --filter '- $RSYNC_SRC/$BU_DIR'"
+    # ensure copying configurations used
     RSYNC="$RSYNC --filter '+ $RSYNC_SRC/$BU_CONF'"
     RSYNC="$RSYNC --filter '+ $RSYNC_SRC/$BU_FLTR'"
+    # load user provided filter if exists
     if [ -e "$RSYNC_SRC/$BU_FLTR" ]; then
       RSYNC="$RSYNC --filter '. $RSYNC_SRC/$BU_FLTR'"
     fi
-    if [ "$VERBOSE_LEVEL" -ge "2" ]; then
-      echo ">>> $RSYNC '$RSYNC_SRC/' '$RSYNC_DST/'"
-    fi
-    eval "$RSYNC '$RSYNC_SRC/' '$RSYNC_DST/'"
-    if __is_btrfs_mount_point "$RSYNC_DST"; then
-      BTRFS_BASE="$RSYNC_DST"
-    fi
+    # action!
+    __eval "$RSYNC '$RSYNC_SRC/' '$RSYNC_DST/'"
   fi
 }
 
@@ -415,7 +416,7 @@ __rsync () {
 # @read  BU_ID       snapshot id to use (normally '')
 # @read  NOW_TS      time stamp
 ##############################################################################
-__snapshot () {
+__snapshot0 () {
   if [ -n "$BTRFS_BASE" ]; then
     if [ -z "$BU_ID" ]; then
       while [ -d "$BTRFS_BASE/$BU_DIR/$NOW_TS" ]; do
@@ -425,14 +426,15 @@ __snapshot () {
       done
       BU_ID="$NOW_TS"
     fi
-    __echo 2 "I: make snapshot of $BTRFS_BASE @ $BU_ID"
-    # shellcheck disable=SC2046
-    eval "$BSV snapshot -r '$BTRFS_BASE' '$BTRFS_BASE/$BU_DIR/$BU_ID'"
+    __eval "$BSV snapshot -r '$BTRFS_BASE' '$BTRFS_BASE/$BU_DIR/$BU_ID'"
+  else
+    __echo 3 "D: No snapshot since BTRFS_BASE='$BTRFS_BASE'"
+    exit 1
   fi
 }
 
 ##############################################################################
-# @brief             rsync and make snapshot
+# @brief             (rsync and) make snapshot
 # @read  RSYNC_SRC   base of rsync source set by __load_config
 # @read  RSYNC_DST   base of rsync destination set by __load_config
 # @read  BU_FLTR     rsync filter configuration file name
@@ -440,9 +442,9 @@ __snapshot () {
 # @read  BU_ID       snapshot id to use (normally '')
 # @read  NOW_TS      time stamp
 ##############################################################################
-__rsync_snapshot () {
+__snapshot () {
   __rsync
-  __snapshot
+  __snapshot0
 }
 
 ##############################################################################
@@ -571,8 +573,7 @@ __prune () {
     for x in "${@}"; do
       d="${x#?}"
       if [ -z "${x%%-*}" ]; then
-        __echo 1 "I: prune snapshot of $BTRFS_BASE @ $d"
-        eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+        __eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       else
         __echo 2 "I: keep  snapshot of $BTRFS_BASE @ $d"
       fi
@@ -589,16 +590,14 @@ __prune () {
 # @read  BTRFS_BASE  base of btrfs set by __load_config
 ##############################################################################
 __zap () {
-  __load_config "${1:-.}"
   if [ "$BU_ZAP_ACTIVE" != "true" ]; then
       __echo 0 "E: No zap operation since $BU_BASE/$BU_CONF has BU_ZAP_ACTIVE='$BU_ZAP_ACTIVE'"
       exit 1
   fi
   if [ -z "$BTRFS_BASE" ]; then
-    __echo 0 "E: no Btrfs found for zap half*"
+    __echo 0 "E: no Btrfs found to work on"
     exit 1
   fi
-  shift
   case "$1" in
     half) # half
       __echo 1 "I: zap snapshots into half at $BTRFS_BASE .  It's aging status --"
@@ -625,8 +624,7 @@ __zap () {
           break
         fi
         BU_INDEX=$((BU_INDEX-1))
-        __echo 1 "I: zap snapshot of $BTRFS_BASE @ $d"
-        eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+        __eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       done
       ;;
     new*) # newest
@@ -634,8 +632,7 @@ __zap () {
       # shellcheck disable=SC2046
       set -- $(__list| sort -r)
       d=$1
-      __echo 1 "I:  zap newest snapshot of $BTRFS_BASE @ $d"
-      eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      __eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       ;;
     old*) # oldest
       __echo 1 "I: zap oldest snapshots at $BTRFS_BASE .  It's aging status --"
@@ -652,15 +649,13 @@ __zap () {
       # shellcheck disable=SC2046
       set -- $(__list)
       d=$1
-      __echo 1 "I:  zap oldest snapshot of $BTRFS_BASE @ $d"
-      eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+      __eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
       ;;
     *) # labels (local only now)
       __echo 3 "D: zap snapshots at $BTRFS_BASE"
       for d in "${@}"; do
-        if [ -e "$d" ]; then
-          __echo 1 "I: zap snapshot of $BTRFS_BASE @ $d"
-          eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
+        if [ -e "$BTRFS_BASE/$BU_DIR/$d" ]; then
+          __eval "$BSV delete '$BTRFS_BASE/$BU_DIR/$d'"
         else
           __echo 1 "W: missing zap snapshot of $BTRFS_BASE @ $d"
         fi
@@ -755,13 +750,13 @@ RSYNC_DST=\"$RSYNC_DST\" # *** must be on btrfs to make btrfs snapshot ***
 RSYNC_HOST=\"$RSYNC_HOST\" # *** rsync source host name (FIXME)
 # You can add custom filtering for rsync using ./\"$BU_FLTR\"
 
-# safety (change this if you want to disable some zap operations
+# safety (change this if you want to disable some zap operations)
 BU_ZAP_ACTIVE=\"true\"
 
 END_OF_TEMPLATE'"
 
   # make this editable without sudo
-  eval "$SUSH 'chown $UID:$UID \"$BU_BASE/$BU_CONF\"'"
+  __eval "$SUSH 'chown $UID:$UID \"$BU_BASE/$BU_CONF\"'"
   ############################################################################
   #
   # filter template
@@ -794,7 +789,7 @@ END_OF_TEMPLATE'"
 # See more at rsync(1) manpage for \"FILTER RULES\"
 END_OF_TEMPLATE'"
   # make this editable without sudo
-  eval "$SUSH 'chown $UID:$UID $RSYNC_SRC/$BU_FLTR'"
+  __eval "$SUSH 'chown $UID:$UID $RSYNC_SRC/$BU_FLTR'"
 }
 
 
@@ -812,6 +807,12 @@ unset TEMP
 # if $BU = ${0##*/} start with "r" --> BU_MODE="remote"
 case $BU in
   r*) BU_MODE="remote"
+    BU_MES_L="don't use this (since $BU starts with 'r')"
+    BU_MES_R="work with the remote filesystem (default)"
+    ;;
+  *) BU_MODE=""
+    BU_MES_L="work on the local data (default: local=Btrfs)"
+    BU_MES_R="work with the remote data (default: local=non-Btrfs)"
     ;;
 esac
 # OPTIONS
@@ -834,7 +835,9 @@ while [ -n "$1" ]; do
       BU_STEM="$1"
       ;;
     -n|--noop)
-      NOOP="echo __"
+      SUSH="echo ___ $SUSH"
+      BSV="echo ___ $BSV"
+      RSYNC="echo ___ $RSYNC"
       ;;
 		-q|--quiet)
       VERBOSE_LEVEL=0
@@ -884,7 +887,6 @@ case "$1" in
   rs*) # -r snap
     __set_bu_mode "remote" "command=rs*"
     __load_config "$2"
-    __rsync
     __snapshot
     ;;
   l*) # list
@@ -915,12 +917,14 @@ case "$1" in
     __prune
     ;;
   zap) # zap
-    shift
+    __load_config "$2"
+    shift 2
     __zap "$@"
     ;;
   rzap) # zap
     __set_bu_mode "remote" "command=rzap"
-    shift
+    __load_config "$2"
+    shift 2
     __zap "$@"
     ;;
   t*) # template
