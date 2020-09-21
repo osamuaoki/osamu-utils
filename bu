@@ -63,6 +63,7 @@ SUBCOMMAND: (may be shortened)
               $BU_FLTR0 (used only for the remote mode)
   rsync     copy data from local data to remote data using "rsync" with
             $BU_FLTR0 (no Btrfs operation)
+  btrfs     list accessible Btrfs mount points
 
   Prepending these subcommands with "r" sets "-r" option.
 
@@ -384,8 +385,12 @@ __load_config () {
   if [ "$BU_INDEX_MIN" -lt "0" ]; then
     BU_INDEX_MIN="0"
   fi
-  BU_AGE_SHRT="${BU_AGE_SHRT:-$((BU_SHRT))}" # short age
-  BU_AGE_LONG="${BU_AGE_LONG:-$((BU_LONG))}" # long age
+  # odd but dash needs $ here
+  # shellcheck disable=SC2004
+  BU_AGE_SHRT="${BU_AGE_SHRT:-$(($BU_SHRT))}" # short age
+  # odd but dash needs $ here
+  # shellcheck disable=SC2004
+  BU_AGE_LONG="${BU_AGE_LONG:-$(($BU_LONG))}" # long age
   if [ "$BU_AGE_SHRT" -lt "60" ]; then
     BU_AGE_SHRT=60
   fi
