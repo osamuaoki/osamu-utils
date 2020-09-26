@@ -93,12 +93,14 @@ CONFIGURATION FILES
   and copying behavior of rsync.  For local mode, SRC_* and DST_* are ignored.
 
 HINT
-  You can start this $BU under different \$0 value by creating a symlink and
-  using it to start this $BU.  If \$0 starts with "r", "-r" option is
-  automatically set.  Otherwise, you can set "-l" option if SRC_DIR is on
-  Btrfs.  I suggest using "bu" and "rbu" as good choices for \$0 if these names
-  are not already used by others.  Default configuration file names matche with
-  \$0.
+  You can start this $BU program under different \$0 value by creating symlinks
+  and using them to start this.  If \$0 starts with "r" or "s", "-r" option is
+  automatically set.  Otherwise, you can set "-l" option if the data source
+  PATH is on Btrfs.  I suggest using "bu" for backup on the local Btrfs device,
+  "rbu" for backup on the remote Btrfs device of the same host and "sbu" for
+  backup on the Btrfs device of the securely connected remote host as good
+  choices for \$0 if these names are not already used by others.  Default
+  configuration file names match with \$0.
 
 CAVEAT:
   Currently, this $BU is designed and used mostly for cases where the source
@@ -969,8 +971,8 @@ eval set -- "$TEMP"
 unset TEMP
 # if $BU = ${0##*/} start with "r" --> BU_MODE="remote"
 case $BU in
-  r*) BU_MODE="remote"
-    BU_MES_L="... not available (since $BU starts with 'r')"
+  [rs]*) BU_MODE="remote"
+    BU_MES_L="... not available (since $BU starts with 'r' or 's')"
     BU_MES_R="remote mode (default)"
     ;;
   *) BU_MODE=""
