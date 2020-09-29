@@ -289,9 +289,8 @@ __load_config () {
   d0="$d"
   BTRFS_BASE=""
   BU_BASE=""
-  while [ "$d" != "/" ]; do
-    # is btrfs mount point ?
-    if mount |cut -d ' ' -f "3,5"|sort -r|grep -q -e "^$d"' btrfs$' ; then
+  while true; do
+    if [ "$(stat -f -c %T "$d")" = "btrfs" ] && [ "$(stat -c %i "$d")" = "256" ]; then
       BTRFS_BASE="$d"
       if [ -f "$d/$BU_CONF" ]; then
         BU_BASE="$d"
@@ -301,11 +300,16 @@ __load_config () {
       BU_BASE="$d"
       break
     fi
+    if [ "$d" = "/" ]; then
+      break
+    fi
     d=$(realpath "$d/..")
   done
+  echo "BTRFS_BASE='$BTRFS_BASE'"
+  echo "BU_BASE='$BU_BASE'"
   # sanity check
   if [ -z "$BTRFS_BASE" ] && [ -z "$BU_BASE" ]; then
-    __echo 0 "E: Can't find Btrfs nor .../$BU_CONF for $d0"
+    __echo 0 "E: Can't find Btrfs nor $BU_CONF for $d0"
     exit 1
   fi
 ##############################################################################
@@ -500,8 +504,9 @@ BSV="$BSV"
 EOCMD
     # No variable substitution
     cat << 'EOCMD'
-if mount |cut -d ' ' -f "3,5"|sort -r|grep -q -e "^$DST_DIR"' btrfs$' ; then
+if [ "$(stat -f -c %T "$DST_DIR")" = "btrfs" ] && [ "$(stat -c %i "$DST_DIR")" = "256" ]; then
   if [ -z "$BU_ID" ]; then
+    mkdir -p "$DST_DIR/$BU_DIR" >/dev/null
     while [ -d "$DST_DIR/$BU_DIR/$NOW_TS" ]; do
       sleep "1s"
       NOW_TS=$(date -u --iso=second)
@@ -534,7 +539,7 @@ BU_DIR="$BU_DIR"
 EOCMD
     # No variable substitution
     cat << 'EOCMD'
-if mount |cut -d ' ' -f "3,5"|sort -r|grep -q -e "^$DST_DIR"' btrfs$' ; then
+if [ "$(stat -f -c %T "$DST_DIR")" = "btrfs" ] && [ "$(stat -c %i "$DST_DIR")" = "256" ]; then
   cd "$DST_DIR/$BU_DIR" >/dev/null
   # shellcheck disable=SC2010
   { ls -1d -- * 2>/dev/null || true ; }| grep -E \
@@ -788,8 +793,8 @@ __echo () {
 ##############################################################################
 # Main routine
 ##############################################################################
-if ! mount |cut -d ' ' -f "3,5"|sort -r|grep -q -e "^$DST_DIR"' btrfs$' ; then
-  __echo 0 "E: no Btrfs found to work on"
+if [ "$(stat -f -c %T "$DST_DIR")" != "btrfs" ] && [ "$(stat -c %i "$DST_DIR")" = "256" ]; then
+  __echo 0 "E: $DST_DIR is not Btrfs"
   exit 1
 fi
 case "$1" in
