@@ -76,12 +76,13 @@ ARGs:
   where $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
   working data directory tree or your copied backup data directory tree.
 
-  One exception is "$BU template [<DIR_DST>]".   Here, <DIR_DST> specifies the
-  rsync destination which may be on Btrfs.  For more complicated configuration
-  involving multiple hosts, please edit generated $BU_CONF0.  If you are on a
-  private LAN and use the multicast DNS (mDNS), e.g.,  under the typical Debian
-  desktop system with the task-desktop package installed, use "local" for the
-  domain name part.
+  One exception is "$BU template [<DIR_DST>]".  Here, <DIR_DST> specifies the
+  rsync destination which may be on Btrfs.  For snapshot to work, <DIR_DST>
+  must be the path pointing to the Btrfs subvolume.  For more complicated
+  configuration involving multiple hosts, please edit generated $BU_CONF0.  If
+  you are on a private LAN and use the multicast DNS (mDNS), e.g.,  under the
+  typical Debian desktop system with the task-desktop package installed, use
+  "local" for the domain name part.
 
   Another exception is "$BU zap ARG_1 ARG_2".  Here, ARG_1 is mandatory PATH
   (usually ".") and ARG_2 is the target specifier which can be:
