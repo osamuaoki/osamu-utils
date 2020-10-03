@@ -65,8 +65,6 @@ SUBCOMMAND: (may be shortened)
             $BU_FLTR0 (no Btrfs operation)
   btrfs     list accessible Btrfs mount points
 
-  Prepending these subcommands with "r" sets "-r" option.
-
 ARGs:
   Most SUBCOMMANDs take a single ARG specifying the data source PATH.  If ARG
   is omitted, the current directory (".") is assumed.  $BU makes reasonable
@@ -305,8 +303,8 @@ __load_config () {
     fi
     d=$(realpath "$d/..")
   done
-  echo "BTRFS_BASE='$BTRFS_BASE'"
-  echo "BU_BASE='$BU_BASE'"
+  #echo "BTRFS_BASE='$BTRFS_BASE'"
+  #echo "BU_BASE='$BU_BASE'"
   # sanity check
   if [ -z "$BTRFS_BASE" ] && [ -z "$BU_BASE" ]; then
     __echo 0 "E: Can't find Btrfs nor $BU_CONF for $d0"
@@ -1054,17 +1052,7 @@ case "$1" in
     __load_config "$2"
     __snapshot
     ;;
-  rs*) # -r snap
-    __set_bu_mode "remote" "command=rs*"
-    __load_config "$2"
-    __snapshot
-    ;;
   l*) # list
-    __load_config "$2"
-    __list
-    ;;
-  rl*) # -r list
-    __set_bu_mode "remote" "command=rl*"
     __load_config "$2"
     __list
     ;;
@@ -1072,17 +1060,7 @@ case "$1" in
     __load_config "$2"
     __analyze
     ;;
-  ra*) # -r analyze
-    __set_bu_mode "remote" "command=ra*"
-    __load_config "$2"
-    __analyze
-    ;;
   p*) # prune
-    __load_config "$2"
-    __prune
-    ;;
-  rp*) # -r prune
-    __set_bu_mode "remote" "command=rp*"
     __load_config "$2"
     __prune
     ;;
@@ -1091,17 +1069,7 @@ case "$1" in
     shift 2
     __zap "$@"
     ;;
-  rzap) # zap
-    __set_bu_mode "remote" "command=rzap"
-    __load_config "$2"
-    shift 2
-    __zap "$@"
-    ;;
   t*) # template
-    __template "$2"
-    ;;
-  rt*) # -r template
-    __set_bu_mode "remote" "command=rt*"
     __template "$2"
     ;;
   r*) # rsync (only rsync, no Btrfs-snapshot)
