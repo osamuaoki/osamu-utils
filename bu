@@ -46,6 +46,10 @@ OPTIONS:
   -n,--noop     No file nor filesystem modification by prepending pertinent
                 internal commands with "echo __"
   -q,--quiet    quiet (no progress message, just error message)
+  -u,--update   update configuration files before the rsync operation using
+                those in your copied backup data directory tree when $BU is
+                invoked in there.  Otherwise changes there are ignored and
+                overwitten.
   -v,--verbose  verbose
   -vv           very verbose for debug
   -vvv          very very verbose for debug
@@ -70,7 +74,7 @@ ARGs:
   is omitted, the current directory (".") is assumed.  $BU makes reasonable
   efforts to reduce PATH to the root of the mounted Btrfs or to the directory
   where $BU_CONF0 is found.  You can lazily issue $BU command anywhere on your
-  working data directory tree or your backup data directory tree.
+  working data directory tree or your copied backup data directory tree.
 
   One exception is "$BU template [<DIR_DST>]".   Here, <DIR_DST> specifies the
   rsync destination which may be on Btrfs.  For more complicated configuration
@@ -124,6 +128,7 @@ EXT_FLTR="fltr"
 BU_STEM=".$BU"
 BU_CONF0="$BU_STEM.$EXT_CONF"
 BU_FLTR0="$BU_STEM.$EXT_FLTR"
+UPDATE_CONF="false"
 NOW_TS=$(date -u --iso=second) # time stamp
 NOW_EP=$(date +%s -d"$NOW_TS") # unix epoch
 BU_MIN="3"             # aging keep initial minimum items
@@ -449,16 +454,16 @@ __rsync () {
   elif [ "$VERBOSE_LEVEL" -ge "4" ]; then
     RSYNC="$RSYNC -vvv"
   fi
-  # protect snapshot mount directory
-  RSYNC="$RSYNC --filter '- /$BU_DIR/'"
-  if [ "$THIS_HOST" = "$DST_HOST" ] && [ "$BU_BASE" = "$DST_DIR" ]; then
-    # execute CMD lines after substitutions (to copy configuration to source host)
+  if $UPDATE_CONF && [ "$THIS_HOST" = "$DST_HOST" ] && [ "$BU_BASE" = "$DST_DIR" ]; then
+    # copy configuration to source host
     { cat << EOCMD
 $SETX_ON
 $NOOP $RSYNC '$DST_RSYNC/$BU_CONF' '$DST_RSYNC/$BU_FLTR' '$SRC_DIR/'
 EOCMD
     } | __shell_src
   fi
+  # protect snapshot mount directory
+  RSYNC="$RSYNC --filter '- /$BU_DIR/'"
   # ensure copying configurations used to destination host
   RSYNC="$RSYNC --filter '+ /$BU_CONF'"
   RSYNC="$RSYNC --filter '+ /$BU_FLTR'"
@@ -1008,6 +1013,9 @@ while [ -n "$1" ]; do
     -q|--quiet)
       VERBOSE_LEVEL=0
       ;;
+    -u|--update)
+      UPDATE_CONF="true"
+      ;;
     -v|--verbose)
       VERBOSE_LEVEL=$((VERBOSE_LEVEL+1))
       ;;
@@ -1040,7 +1048,9 @@ BU_FLTR="$BU_STEM.$EXT_FLTR"
 ##############################################################################
 __echo 3 "D: NOOP          = '$NOOP'"
 __echo 3 "D: BU_MODE       = '$BU_MODE'"
-__echo 3 "D: BU_STEM       = '$BU_STEM'"
+__echo 3 "D: BU_CONF       = '$BU_CONF'"
+__echo 3 "D: BU_FLTR       = '$BU_FLTR'"
+__echo 3 "D: UPDATE_CONF   = '$UPDATE_CONF'"
 __echo 3 "D: BU_ID         = '$BU_ID'"
 __echo 3 "D: VERBOSE_LEVEL = '$VERBOSE_LEVEL'"
 $SETX_ON
