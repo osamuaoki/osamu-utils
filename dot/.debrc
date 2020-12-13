@@ -138,6 +138,8 @@ rename
 rsync
 time
 w3m
+# Blog authoring in console
+hugo
 # rescue media
 #grml-rescueboot # set up /boot/grml for live DVDs (not all iso) -> New tool (not signed)
 #############################################################################
