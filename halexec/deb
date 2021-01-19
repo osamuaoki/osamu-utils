@@ -1,0 +1,174 @@
+#!/bin/sh -e
+## @brief install or check packages using ~/.debrc
+# Copyright 2020 Osamu Aoki <osamu@debian.org>, GPL-2+
+# vim: set ts=2 sts=2 sw=2 ai et:
+#############################################################################
+__term_exit () {
+  echo
+  echo "E: Process externally interrupted.  Terminating."
+  echo
+  exit 1
+}
+trap '__term_exit' HUP INT QUIT TERM
+# dash: EXIT (but no ERR)
+__err_exit () {
+  echo
+  echo "E: Internal process returned an error exit.  Terminating."
+  echo "   Probably, ~/.debrc contain non-existing package etc..."
+  echo
+  exit 1
+}
+__exit_exit () {
+  #echo
+	#echo "Have a nice day :-)"
+  #echo
+  exit 0
+}
+trap '[ $? -eq 0 ] && __exit_exit || __err_exit' EXIT
+PACKAGE_LEVEL=0
+MODE="install"
+OPTS=""
+fn_help() {
+  echo "install or check packages using ~/.debrc"
+  echo "${0##*/} [-s|--simulate] [-c|--check] spec ... prop ..."
+  echo
+  echo "    -s|--simulate       simulate install packages"
+  echo "    -c|--check          check installed packages against ~/.debrc"
+  echo "    -x|--exclude-kernel Exclude kernel"
+  echo "    -t|--tui            Force TUI (non-GUI)"
+  echo "    -u|--us             Force US (non-JP)"
+  echo "    Specification       package level 0 - 5 (r m g j w p d e)"
+  echo "      r   RootFS (0)"
+  echo "      m   Mini system (1)"
+  echo "      w   Workstation (2)"
+  echo "      p   Programming (3)"
+  echo "      d   Documents (4)"
+  echo "      e   Extras (5)"
+  echo "      f   Fully loaded (6)"
+}
+PACKAGE_X="-e s/@KBF@//"
+PACKAGE_T="-e s/@GUI@//"
+PACKAGE_U="-e s/@JPN@//"
+while [ -n "$1" ]; do
+	case "$1" in
+		'-s'|'--simulate')
+      echo "... Simulation ... no actual install"
+      OPTS="-s"
+			shift
+			continue
+		;;
+		'-c'|'--check')
+      echo "... Check ... no actual install"
+      MODE="check"
+			shift
+			continue
+    ;;
+		'-x'|'--exclude-kernel')
+      PACKAGE_X=""
+			shift
+			continue
+    ;;
+		'-t'|'--tui')
+      PACKAGE_T=""
+			shift
+			continue
+    ;;
+		'-u'|'--us')
+      PACKAGE_U=""
+			shift
+			continue
+    ;;
+		'-h'|'--help')
+      fn_help
+			exit 0
+		;;
+		'--')
+      shift
+      break
+		;;
+		*)
+      break
+		;;
+	esac
+done
+
+#############################################################################
+PACKAGE_FILTER="$PACKAGE_X $PACKAGE_T $PACKAGE_U"
+
+while [ -n "$1" ]; do
+	case "$1" in
+		r*|R*|0)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@//"
+			shift
+			continue
+    ;;
+		m*|M*|1)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@//"
+			shift
+			continue
+    ;;
+		w*|W*|2)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@// -e s/@WKS@//"
+			shift
+			continue
+    ;;
+		p*|P*|3)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@// -e s/@WKS@// -e s/@PRG@//"
+			shift
+			continue
+    ;;
+		d*|D*|4)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@// -e s/@WKS@// -e s/@PRG@// -e s/@DOC@//"
+			shift
+			continue
+    ;;
+		e*|E*|5)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@// -e s/@WKS@// -e s/@PRG@// -e s/@DOC@// -e s/@EXT@//"
+			shift
+			continue
+    ;;
+		f*|F*|6)
+      PACKAGE_FILTER="$PACKAGE_FILTER -e s/@RFS@// -e s/@MIN@// -e s/@WKS@// -e s/@PRG@// -e s/@DOC@// -e s/@EXT@// -e s/@FUL@//"
+			shift
+			continue
+    ;;
+		*)
+			echo "Internal error! with '$1'" >&2
+      help
+			exit 1
+		;;
+	esac
+done
+
+#############################################################################
+if [ "$MODE" = "install" ]; then
+  cat /etc/os-release
+fi
+# VERSION_ID
+#  7: wheezy  = 2013-
+#  8: jessie  = 2015-
+#  9: stretch = 2017-
+# 10: buster  = 2019?
+# 11: bullseye
+# 12: Bookworm
+#############################################################################
+PACKAGE_FILTER="sed $PACKAGE_FILTER -e s/@.*@/#/  -e s/#.*\$// -e s/^.*-\$//"
+#echo "$PACKAGE_FILTER"
+PACKAGES="$($PACKAGE_FILTER <~/.debrc | xargs -n1)"
+#echo $PACKAGES
+if [ "$MODE" = "check" ]; then
+  echo "-----------------------------------------------------------------------"
+  aptitude search '~i!~prequired!~pimportant!~pstandard!~M' | sed -e 's/^i  //g' -e 's/^ih /*HOLD* /g'|\
+  grep -v "$(echo -n '^\(';echo -n "$PACKAGES" | sed -e 's/$/ - \\|/g' | tr -d '\n';echo -n 'XXX_NON_EXISTING_PACKAGE_XXX\)')"|\
+  sort
+  echo "-----------------------------------------------------------------------"
+  exit 0
+else
+  echo "-----------------------------------------------------------------------"
+  echo $PACKAGES
+  echo "-----------------------------------------------------------------------"
+  read -p "Type 'RETURN'-key to install above packages (otherwise ^C to stop here)." FOO
+  # use aptitude instead if apt to track auto/manual install
+  sudo aptitude update
+  sudo aptitude install $OPTS $PACKAGES
+fi

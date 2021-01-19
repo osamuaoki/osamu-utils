@@ -144,12 +144,12 @@ Then use this to set system:
 
 ```
 $ hal initial-setup
-$ hal conf install -3
+$ hal conf install
 $ vim ~/.debrc
  ...
-$ hal install -c -3
+$ hal install -c k r
  ...
-$ hal install -3
+$ hal install k r
  ...
 ```
 
@@ -172,8 +172,8 @@ Then refine GUI desktop as needed:
     * hal conf diff         -- check public configuration files
     * hal conf backup       -- backup secret and public configuration files
     * hal conf update       -- update template dot-files and pbuilder-files
-    * hal install           -- install predefined packages (based on ~/.debrc)
-    * hal install -c        -- check extra packages (based on ~/.debrc)
+    * hal deb               -- install predefined Debian packages (based on ~/.debrc)
+    * hal deb -c           -- check extra Debian packages (based on ~/.debrc)
     * hal update            -- update this `~/bin/*` repository
     * hal bu                -- backup scrips (btrfs/rsync)
 * ...
