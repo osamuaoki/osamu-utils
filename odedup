@@ -1,0 +1,1259 @@
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 et ai:
+"""
+Copyright © 2017 Osamu Aoki
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
+"""
+# For main
+import argparse
+
+# For sub-commands
+import os
+import os.path
+import sys
+import shutil
+import hashlib
+import collections
+from operator import itemgetter
+from PIL import Image
+
+# Use GExiv2 from gir1.2-gexiv2-* package via python3-gi
+#     https://git.gnome.org/browse/gexiv2/tree/GExiv2.py
+import gi
+
+gi.require_version("GExiv2", "0.10")
+from gi.repository import GExiv2
+import time
+import datetime
+import binascii
+
+
+# For test
+from pprint import pprint
+
+MIN_PYTHON = (3, 3)
+if sys.version_info < MIN_PYTHON:
+    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+#######################################################################
+# Global variables
+#######################################################################
+verbose = 0  # quiet
+# verbose = 1: default
+# verbose = 2: block START/END
+# verbose = 3: progress of hash calculation (dot)
+# verbose = 4: details of action results
+# verbose = 5: pmsg for internal variable tracing
+
+# Categories for analyzed files: jiom
+all_categories = "uzbgdhxjiom"  # 'a' set all these
+file_categories = {"j", "i", "o", "m"}
+
+#
+DATE_FORMAT = "%Y:%m:%d %H:%M:%S"
+#######################################################################
+# Subclass of GI Exiv2 library
+#######################################################################
+class OMetadata(GExiv2.Metadata):
+    def set_all_date_time(self, value):
+        self["Exif.Image.DateTime"] = value.strftime(DATE_FORMAT)
+        self["Exif.Photo.DateTimeOriginal"] = value.strftime(DATE_FORMAT)
+        self["Exif.Photo.DateTimeDigitized"] = value.strftime(DATE_FORMAT)
+
+    def set_model(self, value):
+        self["Exif.Image.Model"] = value
+
+    def print_all_tags(self):
+        for tag in self:
+            print("    {:34}: {}".format(tag, self[tag]))
+
+    def print_generic_tags(self):
+        for tag in self:
+            if (
+                tag[:11] == "Exif.Image." or tag[:11] == "Exif.Photo."
+            ) and tag != "Exif.Photo.MakerNote":
+                print("    {:34}: {}".format(tag, self[tag]))
+
+    def print_basic_tags(self):
+        for tag in self:
+            if tag in [
+                "Exif.Image.Make",
+                "Exif.Image.Model",
+                "Exif.Image.DateTime",
+                "Exif.Photo.DateTimeDigitized",
+                "Exif.Photo.DateTimeOriginal",
+            ]:
+                print("    {:34}: {}".format(tag, self[tag]))
+
+    def has_date_time(self):
+        try:
+            self.get_date_time()
+            return True
+        except:
+            return False
+
+    def get_date_time_robust(self, verbose=True):
+        try:
+            dt = self.get_date_time()
+        except:
+            if verbose:
+                print(
+                    "W: No timestamp found in EXIF, use OS timestamp: {}".format(
+                        self._path
+                    ),
+                    file=sys.stderr,
+                )
+            dt = datetime.datetime.fromtimestamp(os.path.getmtime(self._path))
+        return dt
+
+
+#######################################################################
+# sub-commands and their utility functions
+#######################################################################
+# print when verbose >= verbose_level
+def msg(verbose_level, message, end="\n", flush=True, file=sys.stderr):
+    if verbose >= verbose_level:
+        print(message, end=end, flush=flush, file=file)
+
+
+def error_exit(message):
+    print(message)
+    sys.exit(1)
+
+
+def pmsg(name, message):
+    if verbose >= 5:
+        print(">>> {}: ".format(name))
+        pprint(message)
+
+
+# Print dot as progress indicator
+def progress(dot=".", loop=True, flush=True, file=sys.stderr):
+    if verbose:
+        if loop:
+            msg(3, dot, end="", flush=flush, file=file)
+        else:
+            msg(3, "", flush=flush, file=file)
+
+
+# Read first <length> bytes from <path> and return byte stream in HEX format
+def firstbytes(path, length):
+    with open(path, "rb") as f:
+        header = binascii.hexlify(f.read()[:length]).decode("UTF-8")
+    return header
+
+
+# JPEG/EXIF files header 3 bytes
+def isjpeg(path):
+    if firstbytes(path, 3) == "ffd8ff":
+        return True
+    else:
+        return False
+
+
+# Scan and return paths
+def scan(dirs, args):
+    # Here, contents of dirs maybe file or directory names
+    paths = {}
+    for t in all_categories:
+        paths[t] = []
+    for dir in dirs:
+        msg(4, "START: scan: {}".format(dir))
+        dir = os.path.realpath(dir)
+        path = dir
+        if os.path.isfile(path):
+            msg(4, "I: scan file: {}".format(path))
+            if os.path.islink(path):
+                pass  # symlink are ignored
+            elif not os.access(path, os.R_OK):
+                if "u" in args.categories:
+                    paths["u"].append(path)
+            elif os.path.getsize(path) == 0:
+                if "z" in args.categories:
+                    paths["z"].append(path)
+            elif os.path.getsize(path) >= args.size_max_mib:
+                if "b" in args.categories:
+                    paths["b"].append(path)
+            elif path.lower().endswith(args.jpeg_exts):
+                if isjpeg(path):
+                    if "j" in args.categories:
+                        paths["j"].append(path)  # JPEG (JPEG/EXIF)
+                else:
+                    if "i" in args.categories:
+                        paths["i"].append(path)  # Odd JPEG (Mac index data?)
+            elif path.lower().endswith(args.office_exts):
+                if "o" in args.categories:
+                    paths["o"].append(path)
+            else:
+                if "m" in args.categories:
+                    paths["m"].append(path)
+            progress()
+        elif os.path.isdir(path):
+            msg(4, "I: scan directory with os.walk: {}".format(dir))
+            for dirpath, dirnames, filenames in os.walk(dir):
+                if not args.mountpoint:
+                    dirnames[:] = [d for d in dirnames if not os.path.ismount(d)]
+                    for d in dirnames:
+                        if os.path.ismount(d):
+                            if "x" in args.categories:
+                                paths["x"].append(d)
+                if not args.gitdir:
+                    if ".git" in dirnames:
+                        dirnames[:] = []
+                        filenames[:] = []
+                        if "g" in args.categories:
+                            paths["g"].append(dirpath)
+                if not args.debiandir:
+                    if "debian" in dirnames:
+                        dirnames[:] = []
+                        filenames[:] = []
+                        if "d" in args.categories:
+                            paths["d"].append(dirpath)
+                if not args.hiddendir:
+                    dirnames[:] = [d for d in dirnames if d[0] != "."]
+                    for d in dirnames:
+                        if d[0] == ".":
+                            if "h" in args.categories:
+                                paths["h"].append(d)
+                for filename in filenames:
+                    path = os.path.join(dirpath, filename)
+                    if os.path.islink(path):
+                        pass  # symlink are ignored
+                    elif not os.access(path, os.R_OK):
+                        if "u" in args.categories:
+                            paths["u"].append(path)
+                    elif os.path.getsize(path) == 0:
+                        if "z" in args.categories:
+                            paths["z"].append(path)
+                    elif os.path.getsize(path) >= args.size_max_mib:
+                        if "b" in args.categories:
+                            paths["b"].append(path)
+                    elif filename.lower().endswith(args.jpeg_exts):
+                        if isjpeg(path):
+                            if "j" in args.categories:
+                                paths["j"].append(path)  # JPEG (JPEG/EXIF)
+                        else:
+                            if "i" in args.categories:
+                                paths["i"].append(path)  # Odd JPEG (Mac index data?)
+                    elif filename.lower().endswith(args.office_exts):
+                        if "o" in args.categories:
+                            paths["o"].append(path)
+                    else:
+                        if "m" in args.categories:
+                            paths["m"].append(path)
+                    progress()
+                progress(dot=":")
+        else:
+            error_exit("E: *** Neither directory nor file ***: {}".format(dir))
+        progress(dot="/")
+    progress(loop=False)
+    return paths
+
+
+def hash(file, category, jpeg):
+    msg(4, "START: hash: {}".format(file))
+    if category == "j":
+        try:
+            hashv = hashlib.sha256(Image.open(file, mode="r").tobytes()).hexdigest()
+        except IOError:
+            hashv = "_PIL.Image_IOError_JPEG_OR_EXIF_"
+    else:
+        with open(file, "rb") as fp:
+            hashv = hashlib.sha256(fp.read()).hexdigest()
+    msg(4, "END:   hash = {}".format(hashv))
+    return hashv
+
+
+def imagedata(files, type, exact_only):
+    msg(4, "START: {} data: {}".format(type.upper(), len(files)))
+    roughmatch2exactmatches = collections.OrderedDict()
+    match2files = collections.OrderedDict()
+    for f in files:
+        # OS info
+        (file, ext) = os.path.splitext(os.path.basename(f))
+        with open(f, "rb") as fp:
+            exact = hashlib.sha256(fp.read()).hexdigest()
+        if exact_only:
+            rough = "_EXACT_MATCH_ONLY_"
+        else:
+            try:
+                rough = hashlib.sha256(Image.open(f, mode="r").tobytes()).hexdigest()
+            except IOError:
+                rough = "_PIL.Image_IOError_JPEG_OR_EXIF_"
+        if rough in roughmatch2exactmatches:
+            if exact not in roughmatch2exactmatches[rough]:
+                roughmatch2exactmatches[rough].append(exact)
+                msg(4, "APPEND : {} {} {}".format(rough[:8], exact[:8], f))
+            else:
+                msg(4, "DUP    : {} {} {}".format(rough[:8], exact[:8], f))
+        else:
+            roughmatch2exactmatches[rough] = [exact]
+            msg(4, "NEW    : {} {} {}".format(rough[:8], exact[:8], f))
+        match2files.setdefault((exact, rough), []).append(f)
+    msg(4, "END:   {} data".format(type.upper()))
+    return (match2files, roughmatch2exactmatches)
+
+
+def genericdata(files, type, exact_only):
+    msg(4, "START: {} data: {}".format(type.upper(), len(files)))
+    roughmatch2exactmatches = collections.OrderedDict()
+    match2files = collections.OrderedDict()
+    for f in files:
+        # OS info
+        (file, ext) = os.path.splitext(os.path.basename(f))
+        with open(f, "rb") as fp:
+            exact = hashlib.sha256(fp.read()).hexdigest()
+        if exact_only:
+            rough = "_EXACT_MATCH_ONLY_"
+        else:
+            rough = "_" + type.upper() + "_" + ext.upper()
+        if rough in roughmatch2exactmatches:
+            if exact not in roughmatch2exactmatches[rough]:
+                roughmatch2exactmatches[rough].append(exact)
+                msg(4, "APPEND : {} {} {}".format(rough[:8], exact[:8], f))
+            else:
+                msg(4, "DUP    : {} {} {}".format(rough[:8], exact[:8], f))
+        else:
+            roughmatch2exactmatches[rough] = [exact]
+            msg(4, "NEW    : {} {} {}".format(rough[:8], exact[:8], f))
+        match2files.setdefault((exact, rough), []).append(f)
+    msg(4, "END:   {} data".format(type.upper()))
+    return (match2files, roughmatch2exactmatches)
+
+
+def dup_report(match):
+    (matchkey2files, roughmatchkey2exactmatchkeys) = match
+    for rough in roughmatchkey2exactmatchkeys:
+        seen = True
+        for exact in roughmatchkey2exactmatchkeys[rough]:
+            if len(matchkey2files[exact, rough]) > 1:
+                if seen:
+                    print("-" * 72)
+                    print("rough {}".format(rough))
+                    seen = False
+                print("exact {}".format(exact))
+                for f in matchkey2files[(exact, rough)]:
+                    print("      {}".format(f))
+
+
+def removefile(file):
+    try:
+        os.remove(file)
+    except OSError as e:
+        print(e, file=sys.stderr)
+
+
+def removedir(file):
+    try:
+        os.rmdir(file)
+    except OSError as e:
+        print(e, file=sys.stderr)
+
+
+def prunedir(dir):
+    dir = os.path.realpath(dir)
+    for dirpath, dirnames, filenames in os.walk(dir):
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            if os.path.getsize(path) == 0:
+                removefile(path)
+    for dirpath, dirnames, filenames in os.walk(dir, topdown=False):
+        if len(filenames) == 0 and len(dirnames) == 0:
+            removedir(dirpath)
+
+
+def reindexdir(dir, args):
+    dir = os.path.realpath(dir)
+    for dirpath, dirnames, filenames in os.walk(dir):
+        msg(4, "I: dive further into {}".format(dirpath))
+        paths = []
+        for f in filenames:
+            paths.append(os.path.join(dirpath, f))
+        fn = scan(paths, args)
+        if len(fn["j"]) >= 10000:
+            error_exit("E: {} files (too many) in: {}".format(len(fn["j"]), dirpath))
+        msg(4, "I: # of jpeg files to be pre-checked: {}".format(len(fn["j"])))
+        for f in fn["j"]:
+            if os.path.isfile(f + ".orig"):
+                error_exit(
+                    "E: unacceptable file exists (remove it manually): {}".format(
+                        f + ".keep"
+                    )
+                )
+        msg(4, "I: # of jpeg files to be pre-moved to *.orig: {}".format(len(fn["j"])))
+        for f in fn["j"]:
+            try:
+                os.rename(f, f + ".orig")
+                msg(4, "I: rename {} --> {}".format(f, f + ".orig"))
+            except:
+                error_exit("E: fail to rename: {} --> {}".format(f, f + ".keep"))
+        msg(
+            4, "I: # of jpeg files to be checked for date/time: {}".format(len(fn["j"]))
+        )
+        findex = dict()
+        for filename in fn["j"]:
+            f = os.path.join(dirpath, filename) + ".orig"
+            exifdata = OMetadata(f)
+            dtt = exifdata.get_date_time_robust()
+            findex[filename] = dtt
+            pmsg("I: timestamp for {}".format(filename), dtt)
+        msg(
+            4,
+            "I: # of jpeg files to be reindexed for date/time: {}".format(len(fn["j"])),
+        )
+        i = 1
+        for filename, dtt in sorted(findex.items(), key=itemgetter(1), reverse=False):
+            f = os.path.join(dirpath, filename) + ".orig"
+            g = os.path.join(dirpath, "IMG_{:04}.JPG".format(i))
+            i += 1
+            try:
+                os.rename(f, g)
+                msg(4, "I: rename: {} --> {}".format(f, g))
+            except:
+                error_exit("E: fail to rename: {} --> {}".format(f, g))
+    return
+
+
+#######################################################################
+# sub-commands
+#######################################################################
+def help(args):
+    args.parser.print_help()
+    return
+
+
+def ls(args):
+    paths = scan(args.dirs, args)
+    for l in all_categories:
+        for path in paths[l]:
+            if l in args.categories:
+                print("{}: {}".format(l.upper(), path))
+    return
+
+
+# all_categories = "uzbgdhxjiom"
+def status(args):
+    paths = scan(args.dirs, args)
+    if len(paths["u"]):
+        print("#" * 72)
+        print("Number of un-readfable files: {}".format(len(paths["u"])))
+    if len(paths["z"]):
+        print("#" * 72)
+        print("Number of zero length files: {}".format(len(paths["z"])))
+    if len(paths["b"]):
+        print("#" * 72)
+        print("Number of big files: {}".format(len(paths["b"])))
+    if len(paths["g"]):
+        print("#" * 72)
+        print("Number of git repositories: {}".format(len(paths["g"])))
+    if len(paths["d"]):
+        print("#" * 72)
+        print("Number of Debian source trees: {}".format(len(paths["d"])))
+    if len(paths["h"]):
+        print("#" * 72)
+        print("Number of hidden directories: {}".format(len(paths["h"])))
+    if len(paths["x"]):
+        print("#" * 72)
+        print("Number of mount points: {}".format(len(paths["x"])))
+    if len(paths["j"]):
+        print("### Duplicate data stat of JPEG")
+        dup_report(imagedata(paths["j"], "JPEG", args.exact_only))
+    if len(paths["i"]):
+        print("### Duplicate data stat of non-JPEG with *.JPG")
+        dup_report(genericdata(paths["i"], "NON_JPEG_JPG", args.exact_only))
+    if len(paths["o"]):
+        print("### Duplicate data stat of OFFICE data")
+        dup_report(genericdata(paths["o"], "OFFICE", args.exact_only))
+    if len(paths["m"]):
+        print("### Duplicate data stat of MISC data")
+        dup_report(genericdata(paths["m"], "MISC", args.exact_only))
+
+
+def dedup(args):
+    excludes = set()
+    if args.preloaddir != "":
+        # sanity chack
+        for dir in args.dirs:
+            if (
+                os.path.commonpath([dir, args.preloaddir]) == args.preloaddir
+                or os.path.commonpath([dir, args.preloaddir]) == dir
+            ):
+                error_exit("preloaddir should not be on or under the target paths")
+        # preload hash pool "excludes" for files
+        preloadpaths = scan([args.preloaddir], args)
+        for category in file_categories:
+            for p in preloadpaths[category]:
+                h = hash(p, category, args.jpeg)
+                excludes.update(h)
+    paths = scan(args.dirs, args)
+    for f in paths["z"]:
+        if not args.simulate:
+            removefile(f)
+    if args.category:
+        for category in file_categories:
+            msg(4, "I: hash match category: {}".format(category.upper()))
+            for f in paths[category]:
+                msg(4, "I: hash match file: {}".format(f))
+                exact = hash(f, category, args.jpeg)
+                if exact in excludes:
+                    if not args.simulate:
+                        removefile(f)
+                else:
+                    excludes.add(exact)
+    else:  #
+        for dir in args.dirs:
+            dir = os.path.realpath(dir)
+            for dirpath, dirnames, filenames in os.walk(dir):
+                for f in filenames:
+                    msg(4, "I: hash match file: {}".format(f))
+                    exact = hash(f, category, args.jpeg)
+                    if exact in excludes:
+                        if not args.simulate:
+                            removefile(f)
+                    else:
+                        excludes.add(exact)
+    for dir in args.dirs:
+        msg(4, "I: prune dir: {}".format(dir))
+        prunedir(dir)
+    return
+
+
+def prune(args):
+    for dir in args.dirs:
+        msg(4, "I: prune dir: {}".format(dir))
+        prunedir(dir)
+    return
+
+
+def jmv(args):
+    args.removeold = True
+    jcp(args)
+    return
+
+
+def jcp(args):
+    paths = scan(args.dirs, args)
+    os.makedirs(args.newpath, exist_ok=True)
+    (match2files, roughmatch2exactmatches) = imagedata(paths["j"], "EXIF", True)
+    pmsg(">>> match2files:", match2files)
+    pmsg(">>> roughmatch2exactmatches:", roughmatch2exactmatches)
+    for roughmatch in roughmatch2exactmatches:
+        for exactmatch in roughmatch2exactmatches[roughmatch]:
+            files = match2files[(exactmatch, roughmatch)]
+            f = files[0]
+            msg(2, "READ FILE={}".format(f))
+            # Exif.Photo.DateTimeOriginal
+            # pick timestamp in exif as datetime.datetime(*,*,*,*,*,*)
+            exifdata = OMetadata(f)
+            dtt = exifdata.get_date_time_robust()
+            utime = dtt.timestamp()  # Python 3.3 required
+            dtp = time.localtime(utime)
+            if exifdata.has_date_time:
+                xexif = "EXIF-TIME"
+            else:
+                xexif = "OSFS-TIME"
+                # pick the oldest filesystem timestamp
+                for f in files[1:]:
+                    xdtp = time.localtime(os.path.getmtime(f))
+                    xutime = time.mktime(dtp)
+                    if xutime < utime:
+                        dtp = xdtp
+                        utime = xutime
+            # Exif.Image.Model: Canon PowerShot G9 X
+            try:
+                camera = exifdata["Exif.Image.Model"].replace(" ", "_")
+            except:
+                camera = "NO-CAMERA"
+            destdirlist = [os.path.realpath(args.newpath)]
+            if args.camera:
+                destdirlist.append(camera)
+            if args.split == "all":
+                pass
+            elif args.split == "year":
+                destdirlist.append(time.strftime("%Y", dtp))
+            elif args.split == "month":
+                destdirlist.append(time.strftime("%Y", dtp))
+                destdirlist.append(time.strftime("%m", dtp))
+            else:
+                destdirlist.append(time.strftime("%Y", dtp))
+                destdirlist.append(time.strftime("%m", dtp))
+                destdirlist.append(time.strftime("%d", dtp))
+            destdir = os.sep.join(destdirlist)
+            os.makedirs(destdir, exist_ok=True)
+            destpath = time.strftime("%Y%m%d_%H%M%S", dtp)
+            destpath = os.sep.join([destdir, destpath])
+            # short 8 char suffix
+            xlen = 8
+            if (
+                args.camera_length >= 0
+                and args.hash_length >= 0
+                and (args.camera_length + args.hash_length) <= xlen
+            ):
+                if os.path.isfile(destpath + ".jpeg"):
+                    destpath = (
+                        destpath
+                        + "_"
+                        + camera[: args.camera_length]
+                        + exactmatch[: args.hash_length]
+                        + xexif[: xlen - args.camera_length - args.hash_length]
+                    )
+            else:
+                # camera
+                if args.camera_length < 0:
+                    if os.path.isfile(destpath + ".jpeg"):
+                        destpath = destpath + "_" + camera
+                elif args.camera_length > 0:
+                    if os.path.isfile(destpath + ".jpeg"):
+                        destpath = destpath + "_" + camera[: args.camera_length]
+                # hash
+                if args.hash_length < 0:
+                    if os.path.isfile(destpath + ".jpeg"):
+                        destpath = destpath + "_" + exactmatch
+                elif args.hash_length > 0:
+                    if os.path.isfile(destpath + ".jpeg"):
+                        destpath = destpath + "_" + exactmatch[: args.hash_length]
+                # exif or not
+                if args.camera_length != 0 and args.hash_length != 0:
+                    if os.path.isfile(destpath + ".jpeg"):
+                        destpath = destpath + "_" + xexif
+            # make full jpeg file destination path
+            destpath = destpath + ".jpeg"
+            if os.path.isfile(destpath):
+                error_exit(
+                    "Destination should not exist as file: {} for {}".format(
+                        destpath, f
+                    )
+                )
+            if os.path.isfile(destpath):
+                error_exit(
+                    "Destination should not exist as dir: {} for {}".format(destpath, f)
+                )
+            if os.path.isfile(destpath):
+                error_exit(
+                    "Destination should not exist as link: {} for {}".format(
+                        destpath, f
+                    )
+                )
+            if f != destpath:
+                msg(4, "LINK FILE: {} --> {}".format(f, destpath))
+                os.link(f, destpath)
+                if args.removeold:
+                    for f in files:
+                        removefile(f)
+                        msg(4, "REMOVE FILE: {}".format(f))
+            else:
+                error_exit("Link error: {} --> {}".format(f, destpath))
+            # update timestamp
+            os.utime(destpath, times=(utime, utime))
+    if args.removeold:
+        for dir in args.dirs:
+            msg(4, "I: prune dir: {}".format(dir))
+            prunedir(dir)
+    return
+
+
+def exif(args):
+    paths = scan(args.dirs, args)
+    for f in paths["j"]:
+        print("File: {}".format(f))
+        exifdata = OMetadata(f)
+        if args.generic:
+            exifdata.print_generic_tags()
+        elif args.all:
+            exifdata.print_all_tags()
+        else:
+            exifdata.print_basic_tags()
+    return
+
+
+TIME_FORMAT = "%H:%M:%S"
+
+
+def ts(args):
+    paths = scan(args.dirs, args)
+    delta_time = datetime.datetime.strptime(
+        args.updated, TIME_FORMAT
+    ) - datetime.datetime.strptime(args.original, TIME_FORMAT)
+    for f in paths["j"]:
+        msg(2, "READ FILE={}".format(f))
+        try:
+            exifdata = OMetadata(f)
+        except:
+            error_exit("E: Not readable as OMetadata instance: {}".format(f))
+        dtt_orig = exifdata.get_date_time_robust()
+        if args.keep:
+            try:
+                os.rename(f, f + ".keep")
+            except:
+                error_exit("E: fail to rename: {} --> {}".format(f, f + ".keep"))
+        dtt_up = dtt_orig + delta_time
+        exifdata.set_all_date_time(dtt_up)
+        msg(4, "{} -> {}: {}".format(dtt_orig, dtt_up, f))
+        if not args.simulate:
+            try:
+                exifdata.save_file()
+            except:
+                error_exit("E: Not writable with new exif date and time: {}".format(f))
+    return
+
+
+def reindex(args):
+    for dir in args.dirs:
+        reindexdir(dir, args)
+    return
+
+
+def head(args):
+    paths = scan(args.dirs, args)
+    for category in file_categories:
+        for f in paths[category]:
+            print("{}: {}".format(firstbytes(f, args.length), f))
+    return
+
+
+#######################################################################
+# main: parse commandline parser
+#######################################################################
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+A collection of python scripts to organize files by removing duplicates and
+sorting by the time stamp.  The main target files are the digital camera image
+files in the exif format.  This program uses the exiv2 library via GObject
+introspection and PIL, and sha256 hash.
+
+"jcp" and "jmv" generate unique file names based on the exif date and time.  If
+they are not found, "jcp" and "jmv" simply use the oldest OS timestamp of the
+same file and keep exif data and time missing.  These commands move all files
+to new location while performing the deduplication. Use "reindex" to regain the
+IMG_????.JPG style filenames.
+
+"dedup" doesn't touch files in the preload directory but removes duplicate
+files in the target directories.
+
+"timestamp" not only shifts the exif date and time as requested but also add
+them from the OS timestamp (mtime/localtime) if it is missing.
+
+If you encounter problem, it is best to inspect its cause using the "exif" and
+"head" commands.
+
+The common options for the subcommand are specified right after the parent
+command.
+
+version: {}
+copyright 2017 Osamu Aoki <osamu@debian.org>
+license: GPL 2.0+
+
+""".format(
+            "0.1"
+        ),
+        epilog="See https://github.com/osamuaoki/{} .".format(
+            os.path.basename(sys.argv[0])
+        ),
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=1, help="Turn on verbose output"
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        default=False,
+        help="Turn off verbose output completely",
+    )
+    parser.add_argument(
+        "-j",
+        "--jpeg_ext",
+        default=".jpg,.jpeg",
+        help="""\
+file extension match string for jpeg files (comma separated, case
+insensitive: default JPEG_EXT = ".jpg,.jpeg")""",
+    )
+    parser.add_argument(
+        "-o",
+        "--office_ext",
+        default=".pdf,.doc,.docx,.xsl,.xslx,.ppt,.pptx,.odc,.odg,.odp",
+        help="""\
+file extension match string for office suites files (comma separated, case
+insensitive: default OFFICE_EXT = ".pdf,.doc,.docx,.xsl,.xslx,.ppt,.pptx,.odc,.odg,.odp")""",
+    )
+    parser.add_argument(
+        "-m",
+        "--mountpoint",
+        default=False,
+        action="store_true",
+        help="search into the mount point",
+    )
+    parser.add_argument(
+        "-H",
+        "--hiddendir",
+        default=False,
+        action="store_true",
+        help="search into the hidden directory",
+    )
+    parser.add_argument(
+        "-g",
+        "--gitdir",
+        default=False,
+        action="store_true",
+        help="search into the git repository directory",
+    )
+    parser.add_argument(
+        "-d",
+        "--debiandir",
+        default=False,
+        action="store_true",
+        help="search into the debian source tree directory",
+    )
+    parser.add_argument(
+        "-s",
+        "--size_max",
+        default=16,
+        type=int,
+        help="huge file threshold in MiB.  16 MiB as default.",
+    )
+    parser.add_argument(
+        "-c",
+        "--category",
+        default="a",
+        help="categorize files and directories to be processed: u=unreadable_file, z=zero=length=file, b=big=file, j=jpeg_file, o=office=file, m=misc=file, g=gitrepo_dir, d=debian_dir, h=hidden_dir, x=mount_dir, a=all, a-...=all but ...: default=a",
+    )
+    parser.set_defaults(func=help, parser=parser)
+    #######################################################################
+    # sub-command
+    #######################################################################
+    subparsers = parser.add_subparsers(
+        description="""\
+help for sub-commands are available by following each one of them with
+--help."""
+    )
+    #######################################################################
+    # sub-command: list
+    #######################################################################
+    parser_ls = subparsers.add_parser(
+        "ls",
+        aliases=["ls"],
+        help="list files by the matching category",
+        description="list files by the matching category",
+    )
+    parser_ls.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="search files found at or under these paths",
+    )
+    parser_ls.set_defaults(func=ls)
+    #######################################################################
+    # sub-command: status
+    #######################################################################
+    parser_st = subparsers.add_parser(
+        "status",
+        aliases=["st"],
+        help="list file status for the matching category",
+        description="list file status for the matching category",
+    )
+    parser_st.add_argument(
+        "-e",
+        "--exact_only",
+        default=False,
+        action="store_true",
+        help="match only exact matches",
+    )
+    parser_st.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="search files found at or under these paths",
+    )
+    parser_st.set_defaults(func=status)
+    #######################################################################
+    # sub-command: dedup (dd)
+    #######################################################################
+    parser_dedup = subparsers.add_parser(
+        "dedup",
+        aliases=["dd"],
+        help="deduplicate files with prune",
+        description="deduplicate files with prune",
+    )
+    parser_dedup.add_argument(
+        "-p",
+        "--preloaddir",
+        default="",
+        help="treat files in this directory to be pre-existing",
+    )
+    parser_dedup.add_argument(
+        "-s",
+        "--simulate",
+        default=False,
+        action="store_true",
+        help="simulate operation (no file removals)",
+    )
+    parser_dedup.add_argument(
+        "-j",
+        "--jpeg",
+        default=False,
+        action="store_true",
+        help="match jpeg files only with the image data",
+    )
+    parser_dedup.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="remove duplicate files found at or under these paths",
+    )
+    parser_dedup.set_defaults(func=dedup)
+    #######################################################################
+    # sub-command: prune (pr)
+    #######################################################################
+    parser_pr = subparsers.add_parser(
+        "prune",
+        aliases=["pr"],
+        help="Prune empty files and empty directory trees",
+        description="Prune empty file and empty directory tree",
+    )
+    parser_pr.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="check at or under these paths",
+    )
+    parser_pr.set_defaults(func=prune)
+    #######################################################################
+    # sub-command: jcopy (jcp)
+    #######################################################################
+    parser_jcp = subparsers.add_parser(
+        "jcopy",
+        aliases=["jcp"],
+        help="copy jpeg files to a new directory tree",
+        description="copy jpeg files to a new directory tree",
+    )
+    parser_jcp.add_argument(
+        "-n",
+        "--newpath",
+        default="./NEW",
+        help="place copied jpeg files under this new directory",
+    )
+    parser_jcp.add_argument(
+        "-r",
+        "--removeold",
+        default=False,
+        action="store_true",
+        help="remove old files as jpeg files are copied",
+    )
+    parser_jcp.add_argument(
+        "-c",
+        "--camera",
+        default=False,
+        action="store_true",
+        help="split directory tree by camera",
+    )
+    parser_jcp.add_argument(
+        "-a",
+        "--all",
+        const="all",
+        dest="split",
+        action="store_const",
+        help="all in one directory",
+    )
+    parser_jcp.add_argument(
+        "-y",
+        "--year",
+        const="year",
+        dest="split",
+        action="store_const",
+        help="split directory tree by year",
+    )
+    parser_jcp.add_argument(
+        "-m",
+        "--month",
+        const="month",
+        dest="split",
+        action="store_const",
+        help="split directory tree by month",
+    )
+    parser_jcp.add_argument(
+        "-d",
+        "--day",
+        const="day",
+        dest="split",
+        default="day",
+        action="store_const",
+        help="split directory tree by day (default)",
+    )
+    parser_jcp.add_argument(
+        "-C",
+        "--camera-length",
+        type=int,
+        default=1,
+        action="store",
+        help="length of camera string in filename (default=1, -1 for all)",
+    )
+    parser_jcp.add_argument(
+        "-H",
+        "--hash-length",
+        type=int,
+        default=4,
+        action="store",
+        help="length of hash string in filename (default=4, -1 for all)",
+    )
+    parser_jcp.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="copy jpeg files found at or under these paths",
+    )
+    parser_jcp.set_defaults(func=jcp)
+    #######################################################################
+    # sub-command: jmove (jmv)
+    #######################################################################
+    parser_jmv = subparsers.add_parser(
+        "jmove",
+        aliases=["jmv"],
+        help="move jpeg files to a new directory tree",
+        description="move jpeg files to a new directory tree",
+    )
+    parser_jmv.add_argument(
+        "-n",
+        "--newpath",
+        default="./NEW",
+        help="place moved jpeg files under this new directory",
+    )
+    parser_jmv.add_argument(
+        "-c",
+        "--camera",
+        default=False,
+        action="store_true",
+        help="split directory tree by camera",
+    )
+    parser_jmv.add_argument(
+        "-a",
+        "--all",
+        const="all",
+        dest="split",
+        action="store_const",
+        help="all in one directory",
+    )
+    parser_jmv.add_argument(
+        "-y",
+        "--year",
+        const="year",
+        dest="split",
+        action="store_const",
+        help="split directory tree by year",
+    )
+    parser_jmv.add_argument(
+        "-m",
+        "--month",
+        const="month",
+        dest="split",
+        action="store_const",
+        help="split directory tree by month",
+    )
+    parser_jmv.add_argument(
+        "-d",
+        "--day",
+        const="day",
+        dest="split",
+        default="day",
+        action="store_const",
+        help="split directory tree by day (default)",
+    )
+    parser_jmv.add_argument(
+        "-C",
+        "--camera-length",
+        type=int,
+        default=1,
+        action="store",
+        help="length of camera string in filename (default=1, -1 for all)",
+    )
+    parser_jmv.add_argument(
+        "-H",
+        "--hash-length",
+        type=int,
+        default=4,
+        action="store",
+        help="length of hash string in filename (default=4, -1 for all)",
+    )
+    parser_jmv.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="move jpeg files found at or under these paths",
+    )
+    parser_jmv.set_defaults(func=jmv)
+    #######################################################################
+    # sub-command: exif
+    #######################################################################
+    parser_exif = subparsers.add_parser(
+        "exif",
+        help="list exif data of the file",
+        description="list exif data of the file",
+    )
+    parser_exif.add_argument(
+        "-a",
+        "--all",
+        default=False,
+        action="store_true",
+        help="list exif attributes for all tags",
+    )
+    parser_exif.add_argument(
+        "-g",
+        "--generic",
+        default=False,
+        action="store_true",
+        help="list exif attributes attributs for generic tags",
+    )
+    parser_exif.add_argument(
+        "-b",
+        "--basic",
+        default=False,
+        action="store_true",
+        help="list exif attributes attributs for basic tags (default)",
+    )
+    parser_exif.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="check files found at these paths",
+    )
+    parser_exif.set_defaults(func=exif)
+    #######################################################################
+    # sub-command: timestamp (ts)
+    #######################################################################
+    parser_ts = subparsers.add_parser(
+        "timestamp",
+        aliases=["ts"],
+        help="shift exif timestamp (if missing, set it with the file timestamp (mtime/localtime)",
+        description="shift exif timestamp (if missing, set it with the file timestamp (mtime/localtime)",
+    )
+    parser_ts.add_argument(
+        "-o",
+        "--original",
+        metavar="HH:MM:SS",
+        default="00:00:00",
+        help="original exif timestamp value (default=00:00:00)",
+    )
+    parser_ts.add_argument(
+        "-u",
+        "--updated",
+        metavar="HH:MM:SS",
+        default="00:00:00",
+        help="updated exif timestamp value (default=00:00:00)",
+    )
+    parser_ts.add_argument(
+        "-s",
+        "--simulate",
+        default=False,
+        action="store_true",
+        help="simulate timestamp but don't actually modify files.",
+    )
+    parser_ts.add_argument(
+        "-k",
+        "--keep",
+        default=False,
+        action="store_true",
+        help='keep original file as "*.orig"',
+    )
+    parser_ts.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="process jpeg files found at or under these paths",
+    )
+    parser_ts.set_defaults(func=ts)
+    #######################################################################
+    # sub-command: reindex
+    #######################################################################
+    parser_ri = subparsers.add_parser(
+        "reindex",
+        aliases=["ri"],
+        help="reindex jpeg filename within each directory",
+        description="reindex jpeg filename within each directory",
+    )
+    parser_ri.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="check files found at or under these paths",
+    )
+    parser_ri.set_defaults(func=reindex)
+    #######################################################################
+    # sub-command: head
+    #######################################################################
+    parser_head = subparsers.add_parser(
+        "head",
+        help="list first few bytes of files in HEX format",
+        description="list first few bytes of files in HEX format",
+    )
+    parser_head.add_argument(
+        "-l", "--length", type=int, default=8, help="specify length to read in byte"
+    )
+    parser_head.add_argument(
+        "dirs",
+        nargs="*",
+        metavar="path",
+        default=["./"],
+        help="check files found at or under these paths",
+    )
+    parser_head.set_defaults(func=head)
+    #######################################################################
+    # generate argument parser instance
+    #######################################################################
+    args = parser.parse_args()
+    #######################################################################
+    # Update variables with sanitization
+    #######################################################################
+    args.jpeg_exts = tuple(args.jpeg_ext.split(","))
+    args.office_exts = tuple(args.office_ext.split(","))
+    args.size_max_mib = args.size_max * (2 ** 20)  # MiB
+    if "a" in args.category:
+        args.categories = set(all_categories)
+        state = False
+        for x in args.category:
+            if x == "-":
+                state = True
+            elif state:
+                args.categories.discard(x)
+            else:
+                pass
+    else:
+        args.categories = set(args.category).intersection(set(all_categories))
+    if args.quiet:
+        args.verbose = 0
+    global verbose
+    verbose = args.verbose
+    #######################################################################
+    # call sub-command
+    #######################################################################
+    args.func(args)
+    return
+
+
+#######################################################################
+# Test code
+#######################################################################
+if __name__ == "__main__":
+    main()
