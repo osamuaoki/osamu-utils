@@ -134,15 +134,15 @@
 @WKS@		zip
 
 # File transfer
-@WKS@		rsync				# fast, versatile, remote (and local) file-copying tool
+@WKS@		rsync			# fast, versatile, remote (and local) file-copying tool
 
 # File viewer
 @WKS@		less
 @WKS@		tree
 @JPN@ @WKS@	lv
-@WKS@		info				# GNU Info
-@GUI@ @WKS@	tkinfo				# Tcl/Tk Info browser
-@WKS@		xxd				# tool to make (or reverse) a hex dump
+@WKS@		info			# GNU Info
+@GUI@ @WKS@	tkinfo			# Tcl/Tk Info browser
+@WKS@		xxd			# tool to make (or reverse) a hex dump
 
 # File inspection
 @WKS@		xdu
@@ -151,14 +151,14 @@
 @JPN@ @WKS@	nkf
 
 # Filesystem and device utilities
-@WKS@		dmsetup				# Linux Kernel Device Mapper userspace library
-@WKS@		kpartx				# create device mappings for partitions
-@WKS@		btrfs-progs			# Checksumming Copy on Write Filesystem utilities
-@WKS@		mtools				# Tools for manipulating MSDOS files
-@WKS@		nvme-cli			# userspace tooling to control NVMe drives
-@WKS@		udftools			# tools for UDF filesystems and DVD/CD-R(W) drives
-@WKS@		hdparm				# tune hard disk parameters for high performance
-@WKS@		smartmontools			# control and monitor storage systems using S.M.A.R.T.
+@WKS@		dmsetup			# Linux Kernel Device Mapper userspace library
+@WKS@		kpartx			# create device mappings for partitions
+@WKS@		btrfs-progs		# Checksumming Copy on Write Filesystem utilities
+@WKS@		mtools			# Tools for manipulating MSDOS files
+@WKS@		nvme-cli		# userspace tooling to control NVMe drives
+@WKS@		udftools		# tools for UDF filesystems and DVD/CD-R(W) drives
+@WKS@		hdparm			# tune hard disk parameters for high performance
+@WKS@		smartmontools		# control and monitor storage systems using S.M.A.R.T.
 @WKS@		cryptsetup
 @WKS@		e2fsprogs
 @WKS@		eject
@@ -168,6 +168,7 @@
 @WKS@		xfsprogs
 @WKS@		xorriso
 @WKS@		hdparm
+@WKS@		dislocker		# read/write encrypted BitLocker volumes
 @GUI@ @WKS@	btrfs-heatmap		# FS fragmentation
 
 # Filesystem rescue
@@ -344,12 +345,12 @@ PRG@		faketime		# Report faked system time to programs (command-line tool)
 @EXT@		id3			# Editor for ID3 tags
 @EXT@		id3v2			# command line id3v2 tag editor
 @EXT@		libcddb-get-perl	# Perl interface to read the CDDB entry for an audio CD in your drive
-@EXT@		libmusicbrainz-discid-perl		# Perl interface to the MusicBrainz libdiscid library
+@EXT@		libmusicbrainz-discid-perl	# Perl interface to the MusicBrainz libdiscid library
 @EXT@		mkcue			# Generates a CUE sheet from a CD
 @EXT@		normalize-audio		# adjusts the volume of WAV, MP3 and OGG files to a standard volume level
 @EXT@		vorbisgain		# add Replay Gain volume tags to Ogg Vorbis files
 @EXT@		vorbis-tools		# several Ogg Vorbis tools
-@EXT@		libwebservice-musicbrainz-perl		# XML based Web service API to the MusicBrainz database
+@EXT@		libwebservice-musicbrainz-perl	# XML based Web service API to the MusicBrainz database
 
 # Web scraping
 @EXT@		python3-lxml		# pythonic binding for the libxml2 and libxslt libraries
@@ -396,13 +397,13 @@ PRG@		faketime		# Report faked system time to programs (command-line tool)
 
 
 @FUL@		busybox-static		# Standalone rescue shell with tons of builtin utilities
-@FUL@		iftop		# displays bandwidth usage information on an network interface
+@FUL@		iftop			# displays bandwidth usage information on an network interface
 @FUL@		randomsound		# ALSA sound card related entropy gathering daemon
 
 # used by osamu
 @FUL@		gir1.2-gexiv2-0.10	# GObject-based wrapper around the Exiv2 library - introspection data
-#####		gnome-video-effects		# Collection of GStreamer effects
-#####		
-#####		poutils		# auto-generated package by debmake
+#####		gnome-video-effects	# Collection of GStreamer effects
+##### Private PKG
+#####		poutils			# auto-generated package by debmake
 #####		
 

@@ -39,11 +39,13 @@ mkdir -p ~/.cache/ben
 alias ben="BEN_CACHE_DIR=~/.cache/ben ben --config=\${HOME}/.benrc"
 
 
-alias ml="date --iso=sec && getmails -v && mutt"
+#alias ml="date --iso=sec && getmails -v && mutt"
 alias sapt="sudo aptitude -u"
 alias up-apt="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
 alias up-papt="set -x; date --iso=sec;sudo git-pbuilder update --override-config && set +x; sync"
-alias upgrade="up-apt && echo "" && up-papt ; sync"
+alias up-wip="set -x; date --iso=sec;sudo cowbuilder update --basepath ~/wip && set +x; sync"
+alias wip="date --iso=sec;sudo cowbuilder login --basepath ~/wip"
+alias upgrade="up-apt && echo "" && up-papt ; && up-wapt ; sync"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 
@@ -93,7 +95,7 @@ if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
 fi
 
 # set CDPATH
-export CDPATH=.:/usr/share/doc:~:~/pub/salsa:~/pub/github:~/pub/tmp
+export CDPATH=.:~:/usr/share/doc
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
@@ -122,6 +124,8 @@ ulimit -c unlimited
 DEBEMAIL=osamu@debian.org
 DEBFULLNAME="Osamu Aoki"
 export DEBEMAIL DEBFULLNAME
+DEBSIGN_KEYID="3133724D6207881579E95D621E1356881DD8D791"
+export DEBSIGN_KEYID
 
 # make less more friendly for non-text input files, see lesspipe(1)
 if [ -x /usr/bin/lesspipe ]; then

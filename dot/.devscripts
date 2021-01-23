@@ -6,4 +6,7 @@ DEBSIGN_KEYID="3133724D6207881579E95D621E1356881DD8D791"
 #USCAN_PASV=yes
 USCAN_SYMLINK=rename
 USCAN_VERBOSE=yes
+# What sendmail command do we use?  This will be split on whitespace.
+BTS_SENDMAIL_COMMAND='/home/osamu/bin/sendmail-p.d.o'
+
 
