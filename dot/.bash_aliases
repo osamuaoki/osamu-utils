@@ -48,6 +48,7 @@ alias wip="date --iso=sec;sudo cowbuilder login --basepath ~/wip"
 alias upgrade="up-apt && echo "" && up-papt ; && up-wapt ; sync"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
+alias cgdo="systemd-run --scope --quiet --user --property=Delegate=yes"
 
 mcd () {
   mkdir "$1"
