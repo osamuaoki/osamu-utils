@@ -11,9 +11,8 @@
 	aa = add -A .
 	sd = svn dcommit
 	sr = svn rebase
-	# for checkout to repo like /home/<user> and /root /etc
-	# creating simple alias is problematic.
-        # ~/bin/git-zap has priority over this
+	# creating simple alias "git zap" is problematic for some repos like /home/<user> and /root /etc.
+        # ~/bin/git-zap has priority over this alias and can avoid such risky situation
 	zap = ! "echo \"\\\"git zap\\\" command disabled.\""
 #	citool = gui citool
 [push]
@@ -32,5 +31,10 @@
 [url "git@github.com:"]
 	pushInsteadOf = https://github.com/
 	insteadOf = github:
+
 [core]
 	autocrlf = false
+
+# BLM in 2021
+[init]
+	defaultBranch = main
