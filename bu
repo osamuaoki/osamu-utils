@@ -91,7 +91,7 @@ END_OF_HELP
 #############################################################################
 BU="${0##*/}"
 VERBOSE_LEVEL=1
-BU_DIR=".snap"
+BU_DIR=".bsnap"
 BU_TYPE="ro" # ro, pre, post, boot, cron, ...
 EXT_CONF="conf"
 EXT_FLTR="fltr"
