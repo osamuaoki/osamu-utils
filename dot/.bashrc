@@ -109,7 +109,7 @@ fi
 umask 002
 
 # set CDPATH
-export CDPATH=.:/usr/share/doc
+export CDPATH=.:~:/usr/share/doc
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
