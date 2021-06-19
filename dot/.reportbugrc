@@ -1,11 +1,15 @@
 # reportbug preferences file
 # character encoding: UTF-8
 # Version of reportbug this preferences file was written by
-reportbug_version "7.9.0"
+reportbug_version "7.10.2"
 # default operating mode: one of: novice, standard, advanced, expert
-mode advanced
+#mode standard
+#mode advanced
+mode expert
 # default user interface
-ui gtk
+#ui text
+ui urwid
+#ui gtk
 # offline disables querying information over the network
 #offline
 # name and email setting (if non-default)

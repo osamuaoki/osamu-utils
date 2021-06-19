@@ -9,10 +9,10 @@
 # functions
 f_help () {
   echo "Syntax:"
-  echo "  hal ${0##*/} i[nstall] # install public configuration files"
-  echo "  hal ${0##*/} d[iff]    # diff against public configuration files"
-  echo "  hal ${0##*/} u[pdate]  # update public configuration files"
-  echo "  hal ${0##*/} b[ackup]  # backup private configuration files in ~/backup"
+  echo "  hal ${0##*/} i[nstall] # install configuration files from git repo"
+  echo "  hal ${0##*/} d[iff]    # diff configuration files against ones in git repo"
+  echo "  hal ${0##*/} u[pdate]  # update git repo with installed configuration files"
+  echo "  hal ${0##*/} b[ackup]  # backup private configuration files to ~/backup"
   exit
 }
 
@@ -20,7 +20,9 @@ f_diff () {
 # install the latest system skel files
   for p in /etc/skel/.* ; do
     f=$(basename "$p")
-    if [ -f "$p" ]; then
+    if [ "$f" = ".bashrc" ]; then
+      echo " --- skip ---: diff -u $p  ${HOME}/$f"
+    elif [ -f "$p" ]; then
       echo " $ diff -u $p  ${HOME}/$f"
       diff -u "$p" "${HOME}/$f" || true
     else
@@ -33,15 +35,6 @@ f_diff () {
     if [ -f "$p" ]; then
       echo " $ diff -u ~/bin/dot/$f  $f"
       diff -u "$p" "${HOME}/$f" || true
-    fi
-  done
-# install the latest pbuilder hooks
-  sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in ${HOME}/bin/pbuilder/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ diff -u  ~/bin/pbuilder/$f  .../hooks/$f"
-      sudo diff -u "$p" "/var/cache/pbuilder/hooks/$f" || true
     fi
   done
 }
@@ -64,15 +57,6 @@ f_install () {
     if [ -f "$p" ]; then
       echo " $ cp -f ~/bin/dot/$f  ~/$f"
       cp -f "$p" "${HOME}/$f"
-    fi
-  done
-# install the latest pbuilder hooks
-  sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in ${HOME}/bin/pbuilder/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f ~/bin/pbuilder/$f  .../hooks/$f"
-      sudo cp -p "$p" "/var/cache/pbuilder/hooks/$f"
     fi
   done
 }
@@ -163,15 +147,6 @@ f_update () {
     if [ -f "$p" ]; then
       echo " $ cp -f ~/$f $p"
       cp -f "${HOME}/$f" "$p"
-    fi
-  done
-# update the configuration files by the latest installed pbuilder hooks
-  sudo mkdir -p /var/cache/pbuilder/hooks
-  for p in /var/cache/pbuilder/hooks/* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ sudo cp -f .../hooks/$f ~/bin/pbuilder/$f"
-      sudo cp -p "/var/cache/pbuilder/hooks/$f" "$p"
     fi
   done
 }

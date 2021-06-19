@@ -15,13 +15,32 @@ $CONFIG{'reply-to'} = 'osamu@debian.org';
 #   $CONFIG{'keyid'} = [ qw{FEDCBA9876543210} ];
 #  or, if you have more than one key:
 #   $CONFIG{'keyid'} = [ qw{0123456789ABCDEF 89ABCDEF76543210} ];
-$CONFIG{'keyid'} = [ qw{1E1356881DD8D791} ];
+#-------------------------------------------------------------------------
+# $CONFIG{'keyid'} = [ qw{1E1356881DD8D791} ];
+# 
+# # Select this/these keys to sign with
+# $CONFIG{'local-user'} = [ qw{1E1356881DD8D791} ];
+# 
+# # Additionally encrypt messages for these keyids
+# $CONFIG{'also-encrypt-to'} = [ qw{1E1356881DD8D791} ];
+# 
+# #  --- THIS is WHAT I DID ---
+# $ gpg --delete-secret-and-public-key 253A40766A3BCCE2A426DEF5E80FC4C1A8061F32
+# $ gpg --list-keys  --with-subkey-fingerprint osamu
+# pub   rsa4096 2010-09-23 [SC]
+#       3133724D6207881579E95D621E1356881DD8D791
+# uid           [ultimate] Osamu Aoki <osamu@debian.org>
+# sub   rsa4096 2010-09-23 [E]
+#       FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD
+#-------------------------------------------------------------------------
+
+$CONFIG{'keyid'} = [ qw{FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD} ];
 
 # Select this/these keys to sign with
-$CONFIG{'local-user'} = [ qw{1E1356881DD8D791} ];
+$CONFIG{'local-user'} = [ qw{FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD} ];
 
 # Additionally encrypt messages for these keyids
-$CONFIG{'also-encrypt-to'} = [ qw{1E1356881DD8D791} ];
+$CONFIG{'also-encrypt-to'} = [ qw{FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD} ];
 
 # Mail template to use for the encrypted part
 #$CONFIG{'mail-template'} = << 'EOM';

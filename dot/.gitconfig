@@ -1,6 +1,15 @@
 [user]
 	name = Osamu Aoki
 	email = osamu@debian.org
+	signingKey = FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD
+#        $ gpg --list-secret-key --with-subkey-fingerprint
+#        /home/osamu/.gnupg/pubring.gpg
+#        ------------------------------
+#        sec   rsa4096 2010-09-23 [SC]
+#              3133724D6207881579E95D621E1356881DD8D791
+#        uid           [ultimate] Osamu Aoki <osamu@debian.org>
+#        ssb   rsa4096 2010-09-23 [E]
+#              FDCAD8AB29E281A0E004B510A04CBCEEF08BEFAD
 [alias]
 	c = commit -s
 	ci = commit -as
