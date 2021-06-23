@@ -20,7 +20,9 @@ f_diff () {
 # install the latest system skel files
   for p in /etc/skel/.* ; do
     f=$(basename "$p")
-    if [ "$f" = ".bashrc" ]; then
+    if [ -d "$p" ]; then
+      :
+    elif [ -e "${HOME}/bin/dot/$f" ]; then
       echo " --- skip ---: diff -u $p  ${HOME}/$f"
     elif [ -f "$p" ]; then
       echo " $ diff -u $p  ${HOME}/$f"

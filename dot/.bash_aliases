@@ -13,6 +13,8 @@ alias o=libreoffice
 # pdf
 alias p=evince
 
+# mc  . .
+alias mcc="mc . ."
 alias sapt="sudo aptitude -u"
 alias up-apt="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
 alias up-papt="set -x; date --iso=sec;sudo git-pbuilder update --override-config && set +x; sync"

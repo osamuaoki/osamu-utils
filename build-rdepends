@@ -1,4 +1,35 @@
 #!/bin/sh -e
-# vim:se ts=2 sts=2 et ai tw=78:
-grep-dctrl -FBuild-Depends ${1} -w -sPackage /var/lib/apt/lists/*_Sources
-
+# vim:se sw=2 ts=2 sts=2 et ai tw=78:
+case "${1}" in
+  -h|--help|'')
+    echo "SYNOPSIS: ${0##*/} [|-b|-x] package_name"
+    echo
+    echo "  No option"
+    echo "    List source packages which build depends on package_name"
+    echo "  -b"
+    echo "    List binary packages which build depends on package_name"
+    echo "  -x"
+    echo "    List source and binary packages which build depends on package_name"
+    ;;
+  -b)
+    shift
+    grep-dctrl -FBuild-Depends "${1}" --whole-pkg -sBinary /var/lib/apt/lists/*_Sources | \
+        sed -e 's/^Binary: //' | sort
+    ;;
+  -x)
+    shift
+    grep-dctrl -FBuild-Depends "${1}" --whole-pkg -sPackage,Binary /var/lib/apt/lists/*_Sources | \
+      sed -e 'N;N;s/\(.*\)\n\(.*\)\n\(.*\)/\1 \2 \3/' | sort
+    ;;
+  -z)
+    shift
+    grep-dctrl \( -FBuild-Depends "${1}" --whole-pkg -a \
+      -FStandards-Version --gt 4.5.1 \) \
+      -sPackage,Binary /var/lib/apt/lists/*_Sources | \
+      sed -e 'N;N;s/\(.*\)\n\(.*\)\n\(.*\)/\1 \2 \3/' | sort
+    ;;
+  *)
+    grep-dctrl -FBuild-Depends "${1}" --whole-pkg  -sPackage /var/lib/apt/lists/*_Sources | \
+        sed -e 's/^Package: //' | sort
+    ;;
+esac
