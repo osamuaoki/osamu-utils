@@ -32,6 +32,7 @@ f_diff () {
     fi
   done
 # install the latest dot files
+  # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
@@ -54,6 +55,7 @@ f_install () {
     fi
   done
 # install the latest dot files
+  # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
@@ -90,6 +92,7 @@ f_backup () {
       rsync -av "${HOME}/$f" "${HOME}/$BUSR"
     fi
   done
+  # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "${HOME}/$f" ]; then
@@ -144,6 +147,7 @@ f_backup () {
 
 f_update () {
 # update the configuration files by the latest installed dot files
+  # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
