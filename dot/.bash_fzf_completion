@@ -9,6 +9,13 @@
 # - $FZF_COMPLETION_TRIGGER (default: '**')
 # - $FZF_COMPLETION_OPTS    (default: empty)
 
+################# CUSTOMIZATION NOTE ##################################
+#   find limits deep directory:   FZF_FIND_DEPTH=20
+FZF_FIND_DEPTH=${FZF_FIND_DEPTH:-20}
+#   find ignores extra directory: FZF_IGNORE_PATH=.git
+FZF_IGNORE_PATH=${FZF_IGNORE_PATH:-.git}
+#######################################################################
+
 if [[ $- =~ i ]]; then
 
 # To use custom commands instead of find, override _fzf_compgen_{path,dir}
@@ -16,7 +23,7 @@ if ! declare -f _fzf_compgen_path > /dev/null; then
   _fzf_compgen_path() {
     echo "$1"
     command find -L "$1" \
-      -maxdepth 10 -name .bss.d -prune \
+      -maxdepth ${FZF_FIND_DEPTH} -name ${FZF_IGNORE_PATH} -prune \
       -name .git -prune -o -name .hg -prune -o -name .svn -prune -o \( -type d -o -type f -o -type l \) \
       -a -not -path "$1" -print 2> /dev/null | sed 's@^\./@@'
   }
@@ -25,7 +32,7 @@ fi
 if ! declare -f _fzf_compgen_dir > /dev/null; then
   _fzf_compgen_dir() {
     command find -L "$1" \
-      -maxdepth 10 -name .bss.d -prune \
+      -maxdepth ${FZF_FIND_DEPTH} -name ${FZF_IGNORE_PATH} -prune \
       -name .git -prune -o -name .hg -prune -o -name .svn -prune -o -type d \
       -a -not -path "$1" -print 2> /dev/null | sed 's@^\./@@'
   }

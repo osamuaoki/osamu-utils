@@ -44,7 +44,12 @@ if [ "$TERM" = "linux" ]; then
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
     # GUI terminal: reverse with U+E0B0 (private area powerline font)
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]\[\033[00m\] '
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🥷⟫\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🤖⟫\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫⌨⟫\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🛠⟫\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🐚⟫\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⧫\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⇶\[\033[00m\] '
@@ -55,7 +60,8 @@ elif [ "$UID" != "0" ]; then
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟠\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]∋\[\033[00m\] '
 else
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]⟫⟫\[\033[00m\] '
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]❖🔒❖\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
@@ -145,26 +151,49 @@ if [ -f /usr/lib/mc/mc.sh ]; then
   . /usr/lib/mc/mc.sh
 fi
 
+################# CUSTOMIZATION NOTE ##################################
+# fancy prompt
+FZF_DEFAULT_OPTS="--prompt='  👹👺👾  '"
+#   find limits deep directory:                   -maxdepth 10
+FZF_FIND_DEPTH=10
+#   find ignores btrfs snapshot backup directory: -name .bss.d
+FZF_IGNORE_PATH=.bss.d
+#######################################################################
+
 # fzf -- follow its README.md
 if which fzf >/dev/null; then
     ## customized to limit 10 levels and print pwd
     ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
-    #FZF_KEYBINDINGS_PATH=/usr/share/doc/fzf/examples/key-bindings.bash
     FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
     if [ -f $FZF_KEYBINDINGS_PATH ]; then
         # shellcheck disable=1090
-      . $FZF_KEYBINDINGS_PATH
+        . $FZF_KEYBINDINGS_PATH
     else
-      echo "E: missing $FZF_KEYBINDINGS_PATH"
+        echo "I: missing $FZF_KEYBINDINGS_PATH ... try another"
+        FZF_KEYBINDINGS_PATH=/usr/share/doc/fzf/examples/key-bindings.bash
+        if [ -f $FZF_KEYBINDINGS_PATH ]; then
+            # shellcheck disable=1090
+            . $FZF_KEYBINDINGS_PATH
+        else
+            echo "E: missing $FZF_KEYBINDINGS_PATH"
+        fi
     fi
     FZF_COMPLETION_PATH=~/.bash_fzf_completion
     if [ -f $FZF_COMPLETION_PATH ]; then
         # shellcheck disable=1090
-      . $FZF_COMPLETION_PATH
+        . $FZF_COMPLETION_PATH
     else
-      echo "E: missing $FZF_COMPLETION_PATH"
+      echo "I: missing $FZF_COMPLETION_PATH ... try another"
+        FZF_COMPLETION_PATH=/usr/share/doc/fzf/examples/completion.bash
+        if [ -f $FZF_COMPLETION_PATH ]; then
+            # shellcheck disable=1090
+            . $FZF_COMPLETION_PATH
+        else
+            echo "E: missing $FZF_COMPLETION_PATH"
+        fi
     fi
 fi
+
 
 # direnv
 if which direnv >/dev/null; then
