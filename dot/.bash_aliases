@@ -12,12 +12,14 @@ alias v=sensible-pager
 alias o=libreoffice
 # pdf
 alias p=evince
-
+# pwd+ ... for prompt like
+alias a='echo $(id -un)@$(hostname):$(pwd | sed "s,/home/$(id -un),~,")'
 # mc  . .
-alias mcc="mc . ."
-alias sapt="sudo aptitude -u"
-alias up-apt="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
-alias up-papt="set -x; date --iso=sec;sudo git-pbuilder update --override-config && set +x; sync"
+alias m="mc . ."
+
+alias up="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
+alias ups="set -x; date --iso=sec;sudo sbuild-update -udcar u && set +x; sync"
+alias upa="sudo aptitude -u"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 # For LXC

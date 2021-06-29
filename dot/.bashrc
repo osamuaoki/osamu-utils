@@ -153,7 +153,7 @@ fi
 
 ################# CUSTOMIZATION NOTE ##################################
 # fancy prompt
-FZF_DEFAULT_OPTS="--prompt='  👹👺👾  '"
+FZF_DEFAULT_OPTS="--prompt='  👹 👺 ⇶ '"
 #   find limits deep directory:                   -maxdepth 10
 FZF_FIND_DEPTH=10
 #   find ignores btrfs snapshot backup directory: -name .bss.d
