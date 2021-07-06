@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# vim:se sw=2 ts=2 sts=2 et ai tw=78:
+#
+# "blm" or "blm on":
+#   activate main as Git's init.defaultBranch
+# "mlb" or "blm off":
+#   deactivate main as Git's init.defaultBranch
+#
+if [ "${0##*/}" = "mlb" ]; then
+  MODE="off"
+else
+  MODE="$1"
+fi
+case "$MODE" in
+  off|--off)
+    git config --global --unset init.defaultBranch
+    ;;
+  *)
+    git config --global init.defaultBranch main
+    ;;
+esac
+
