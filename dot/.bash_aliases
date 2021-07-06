@@ -13,7 +13,7 @@ alias o=libreoffice
 # pdf
 alias p=evince
 # pwd+ ... for prompt like
-alias a='echo $(id -un)@$(hostname):$(pwd | sed "s,/home/$(id -un),~,")'
+alias a='echo "⇶⇶⇶⇶ $(id -un)@$(hostname):$(pwd | sed "s,/home/$(id -un),~,")"'
 # mc  . .
 alias m="mc . ."
 
