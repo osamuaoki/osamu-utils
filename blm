@@ -14,9 +14,11 @@ fi
 case "$MODE" in
   off|--off)
     git config --global --unset init.defaultBranch
+    echo "I: Turn off defaultBranch customization" >&2
     ;;
   *)
     git config --global init.defaultBranch main
+    echo "I: Turn on defaultBranch customization: defaultBranch=main" >&2
     ;;
 esac
 

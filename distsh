@@ -1,0 +1,17 @@
+#!/usr/bin/sh -e
+# vim:se sw=2 ts=2 sts=2 et ai tw=128:
+xhost -
+noxhost () {
+  xhost -
+  echo "I: closed xhost"
+}
+trap noxhost 0
+DIST="${DIST:-unstable}"
+TYPE="${TYPE:-source}"
+USAGE="${USAGE:-term}"
+ARCH="${ARCH:-amd64}"
+echo "I: use ${TYPE}:${DIST}-${ARCH}-${USAGE}"
+xhost +si:localuser:osamu
+schroot -c "${TYPE}:${DIST}-${ARCH}-${USAGE}"
+echo "I: normal exit from schroot"
+

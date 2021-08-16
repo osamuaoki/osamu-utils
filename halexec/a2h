@@ -1,0 +1,28 @@
+#!/bin/sh -e
+## @brief converter from asciidoc to hugo MD
+# vim:se sw=2 ts=2 sts=2 et ai tw=92:
+INFILE=${1}
+OUTFILE=${INFILE%%.txt}.md
+TIME=${INFILE%.txt}
+TIME=${TIME#note-000}
+echo "---
+title: \"Fun to Program -- \"
+date: 2021-07-30T00:00:${TIME}+09:00
+categories:
+  - coding
+  - english
+tags:
+  - fun2prog
+slug: fun2prog-${TIME}
+---" > "${OUTFILE}"
+sed -e 's,\(http[^\[]*\)\[\([^]]*\)\],\[\2\](\1),g' \
+    -e 's/^---*/\`\`\`/' \
+    -e 's/^==== /#### /' \
+    -e 's/^=== /### /' \
+    -e 's/^== /## /' \
+    -e 's/^\.//' \
+    -e 's/^\[.*\]$//' \
+    -e 's,^include::\(.*\)\[\] *$,{{< snippet "examples/\1" >}},' \
+    <${INFILE} >>${OUTFILE}
+echo  >> "${OUTFILE}"
+echo '<!-- vim: set sw=2 sts=2 ai si et tw=79 ft=markdown: -->' >> "${OUTFILE}"
