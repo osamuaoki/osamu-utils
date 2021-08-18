@@ -111,9 +111,12 @@ EOF
 
 _upgrade () {
   cat <<EOF | $DSH
-apt-get update
+# -udcar
+apt-get update --yes
 apt-get dist-upgrade --yes
-apt autoremove --yes
+apt-get clean --yes
+apt-get autoclean --yes
+apt-get autoremove --yes
 EOF
 }
 
