@@ -47,3 +47,5 @@
 # BLM in 2021
 #[init]
 #	defaultBranch = main
+[init]
+	defaultBranch = main

@@ -16,10 +16,12 @@ alias p=evince
 alias a='echo "⇶⇶⇶⇶ $(id -un)@$(hostname):$(pwd | sed "s,/home/$(id -un),~,")"'
 # mc  . .
 alias m="mc . ."
+# python3
+alias py="python3"
 
 alias up="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
 alias ups="set -x; date --iso=sec;sudo sbuild-update -udcar u && set +x; sync"
-alias upa="sudo aptitude -u"
+alias upd="set -x; date --iso=sec;sudo -E DIST dirsh update && set +x; sync"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 # For LXC
@@ -38,9 +40,4 @@ alias s="systemctl"
 ###}
 # sudoedit to use vi (normally vim)
 alias svi="SUDO_EDITOR=/usr/bin/vi /usr/bin/sudoedit"
-
-# schroot development shell (with X)
-#alias dev="xhost +local:localhost && schroot -c unstable-dev && xhost -"
-alias devs="schroot -c source:unstable-dev"
-alias devx="xhost +si:localuser:osamu ; schroot -c chroot:unstable-dev ; xhost -"
 
