@@ -29,8 +29,8 @@ _help() {
   echo "    DIST distribution and provides a shell prompt in the current console"
   echo "    terminal with access to the data in the current home directory."
   echo
-  echo "    If DIST is unset, \${DIST} environment variable is used instead."
-  echo "    If \${DIST} environment variable is also unset, 'unstable' is used."
+  echo "    If DIST is unset, '\${DIST}' environment variable is used instead."
+  echo "    If '\${DIST}' environment variable is also unset, 'unstable' is used."
   echo
   echo "    DIST can be 'unstable', 'testing', 'stable', 'oldstable', or 'oldoldstable'."
   echo "    DIST can be their shortforms, i.e., 'u', 't', 's', 'o', or 'oo'."
@@ -48,8 +48,10 @@ _help() {
   echo "    If '--upgrade' or '-u' is given as an option, this updates schroot"
   echo "    environment of '/srv/chroot/\${DIST}-amd64-${USAGE}'"
   echo
-  echo "    A customized schroot profile based on '/etc/schroot/desktop/*' is"
-  echo "    required.  Currently it is set to '${SCHROOT_PROFILE}/*' ."
+  echo "    A customized schroot profile based on '/etc/schroot/desktop/*' needs"
+  echo "    to be created.  Currently '/etc/schroot/${SCHROOT_PROFILE}/*' profile"
+  echo "    is used.  This default profile can be changed to '/etc/schroot/foo/*'"
+  echo "    by setting '\${SCHROOT_PROFILE}' environment variable to 'foo'."
   echo
 }
 
