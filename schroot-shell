@@ -73,7 +73,8 @@ _distsh () {
 
 _su () {
   if [ "$(id -u)" != 0 ]; then
-    exec sudo --preserve-env=DIST,SCHROOT_PROFILE "$0" "$1"
+    echo "I: execute as root: $*"
+    exec sudo --preserve-env=DIST,SCHROOT_PROFILE "$@"
   fi
 }
 _init () {
@@ -120,7 +121,7 @@ EOF
 }
 
 _upgrade () {
-  cat <<EOF | $DSH
+  cat <<EOF | "$DSH" "$DIST"
 # -udcar
 apt-get update --yes
 apt-get dist-upgrade --yes
@@ -133,38 +134,35 @@ EOF
 # x11-xserver-util package is needed by xhost command
 # xhost command is needed by gitk operation
 _prep () {
-  cat <<EOF | $DSH
-apt-get install --yes aptitude mc vim nano- devscripts gitk git sudo \
-    locales-all imediff fzf rlwrap eatmydata ccache x11-xserver-utils
+  cat <<EOF | $DSH "$DIST"
+if apt-get install --yes aptitude mc vim nano- devscripts gitk git sudo \
+    locales-all imediff fzf rlwrap eatmydata ccache x11-xserver-utils ; then
+  echo "I: Adding pre-loaded packages"
+elif apt-get install --yes aptitude mc vim nano- devscripts gitk git sudo \
+    locales-all rlwrap eatmydata ccache x11-xserver-utils ; then
+  echo "I: Adding pre-loaded packages (missing: imediff fzf)"
+else
+  echo "E: Failed to add pre-loaded packages."
+  echo "   Please resolve manually by logging into $DIST."
+  exit 1
+fi
 EOF
 }
 
 #############################################################################
 DIST="${DIST:-unstable}"
+SCHROOT_CMD="shell"
 
 while [ -n "$1" ]; do
   case "$1" in
     -i|--in*)
-      _su "$1"
-      _init
-      _upgrade
-      _prep
-      exit 0
+      SCHROOT_CMD="init"
       ;;
     -p|--pr*)
-      _su "$1"
-      _upgrade
-      _prep
-      exit 0
+      SCHROOT_CMD="prep"
       ;;
     -u|--up*)
-      _su "$1"
-      _upgrade
-      exit 0
-      ;;
-    '')
-      DIST="${DIST:-unstable}"
-      break
+      SCHROOT_CMD="upgrade"
       ;;
     u)
       DIST="unstable"
@@ -203,6 +201,33 @@ while [ -n "$1" ]; do
   shift
 done
 
-trap _noxhost 0
-_distsh
+#echo "I: UID         = $(id -u)"
+#echo "I: DIST        = ${DIST}"
+#echo "I: SCHROOT_CMD = ${SCHROOT_CMD}"
+#echo "I: ----------------------------"
+
+case "$SCHROOT_CMD" in
+  in*)
+    _su "$DSH" "-i" "$DIST"
+    _init
+    _upgrade
+    _prep
+    exit 0
+    ;;
+  pr*)
+    _su "$DSH" "-p" "$DIST"
+    _upgrade
+    _prep
+    exit 0
+    ;;
+  up*)
+    _su "$DSH" "-u" "$DIST"
+    _upgrade
+    exit 0
+    ;;
+  sh*)
+    trap _noxhost 0
+    _distsh
+    ;;
+esac
 
