@@ -30,7 +30,7 @@ shopt -s checkwinsize
 #shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
-if which lesspipe >/dev/null; then
+if type -p lesspipe >/dev/null; then
   eval "$(SHELL=/bin/sh lesspipe)"
 fi
 
@@ -162,7 +162,7 @@ FZF_IGNORE_PATH=.bss.d
 #######################################################################
 
 # fzf -- follow its README.md
-if which fzf >/dev/null; then
+if type -p fzf >/dev/null; then
     ## customized to limit 10 levels and print pwd
     ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
     FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
@@ -197,6 +197,6 @@ fi
 
 
 # direnv
-if which direnv >/dev/null; then
+if type -p direnv >/dev/null; then
     eval "$(direnv hook bash)"
 fi

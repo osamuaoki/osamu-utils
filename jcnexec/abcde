@@ -369,7 +369,7 @@ new_checkexec ()
 	if [ ! "$@" = "" ]; then
 		# Cut off any command-line option we added in
 		X=$(echo "$@" | cut -d' ' -f2)
-		WHICH=$(which "$X" 2>/dev/null)
+		WHICH=$(type -p "$X" 2>/dev/null)
 		if [ -z "$WHICH" ]; then
 			return 1
 		elif [ ! -x "$WHICH" ]; then
@@ -386,7 +386,7 @@ checkexec ()
 		X=$(echo "$@" | cut -d' ' -f2)
 		# Test for built-in abcde.function
 		[ "$X" != "${X#abcde.}" ] && type "$X" >/dev/null 2>&1 && return
-		WHICH=$(which "$X" 2>/dev/null)
+		WHICH=$(type -p "$X" 2>/dev/null)
 		if [ -z "$WHICH" ]; then
 			log error "$X is not in your path." >&2
 			log info  "Define the full path to the executable if it exists on your system." >&2
@@ -3054,13 +3054,13 @@ do_cddbedit ()
 		if [ -x "/usr/bin/sensible-editor" ]; then
 			/usr/bin/sensible-editor "$CDDBDATA"
 		elif [ -n "$EDITOR" ]; then
-			if [ -x "$(which "${EDITOR%%\ *}")" ]; then
+			if [ -x "$(type -p "${EDITOR%%\ *}")" ]; then
 				# That failed, try to load the preferred editor, starting
 				# with their EDITOR variable
 				$EDITOR "$CDDBDATA"
 			fi
 		# If that fails, check for a vi
-		elif which vi >/dev/null 2>&1; then
+		elif type -p vi >/dev/null 2>&1; then
 			vi "$CDDBDATA"
 		elif [ -x /usr/bin/vim ]; then
 			/usr/bin/vim "$CDDBDATA"
@@ -3069,12 +3069,12 @@ do_cddbedit ()
 		elif [ -x /bin/vi ]; then
 			/bin/vi "$CDDBDATA"
 		# nano should be on all (modern, i.e., sarge) debian systems
-		elif which nano >/dev/null 2>&1 ; then
+		elif type -p nano >/dev/null 2>&1 ; then
 			nano "$CDDBDATA"
 		elif [ -x /usr/bin/nano ]; then
 			/usr/bin/nano "$CDDBDATA"
 		# mg should be on all OpenBSD systems
-		elif which mg >/dev/null 2>&1 ; then
+		elif type -p mg >/dev/null 2>&1 ; then
 			mg "$CDDBDATA"
 		elif [ -x /usr/bin/mg ]; then
 			/usr/bin/mg "$CDDBDATA"
@@ -4446,7 +4446,7 @@ if [ X"$OUTPUTTYPE" = "X" ]; then
 	for DEFAULT_OUTPUT in $( echo "$DEFAULT_OUTPUT_BINARIES" | tr , \ ); do
 		DEFAULT_OUTPUT_FORMAT="$(echo "$DEFAULT_OUTPUT" | cut -d ":" -f 1)"
 		DEFAULT_OUTPUT_BINARY="$(echo "$DEFAULT_OUTPUT" | cut -d ":" -f 2)"
-		if [ -x "$(which "$DEFAULT_OUTPUT_BINARY")" ] ; then
+		if [ -x "$(type -p "$DEFAULT_OUTPUT_BINARY")" ] ; then
 			OUTPUTTYPE=$DEFAULT_OUTPUT_FORMAT
 			vecho "No default output type defined. Autoselecting $OUTPUTTYPE..." >&2
 			break
@@ -5057,7 +5057,7 @@ fi
 
 # And last but not least, check if we can diff between files. We do not abort,
 # since diffing is not critical...
-if [ -x "$(which "$DIFF")" ]; then :; else
+if [ -x "$(type -p "$DIFF")" ]; then :; else
 	vecho warning "Disabling diff since we cannot find it in the \$PATH..."
 	DIFF=""
 fi
@@ -5358,7 +5358,7 @@ if [ "$EJECTCD" = "y" ]; then
 		$eject $EJECTOPTS $cd
 	elif [ X"$UNAME" = X"Darwin" ] ; then
 		diskutil eject "${CDROM#/dev/}" 0
-	elif [ -x "$(which "$EJECT")" ]; then
+	elif [ -x "$(type -p "$EJECT")" ]; then
 		$EJECT $EJECTOPTS "$CDROM"
 	fi
 	#fi

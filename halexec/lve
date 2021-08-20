@@ -5,7 +5,7 @@
 # Set input coding system to  ej: euc-japan
 # Set output coding system to u8: UTF-8
 
-if ! which lv >/dev/null ; then
+if ! type -p lv >/dev/null ; then
   echo " Install 'lv' package"
   exit
 fi
