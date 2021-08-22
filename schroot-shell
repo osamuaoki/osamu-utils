@@ -7,13 +7,13 @@ else
   XHOST=":"
 fi
 # For ease of customization, here are key parameters
-DSH="$0"
-USERNAME="osamu"
+SCHROOT_SHELL="$0"
+USERNAME="$(id -u -n)"
 TYPE="${TYPE:-source}"
-USAGE="${USAGE:-term}"
+SCHROOT_PROFILE="${SCHROOT_PROFILE:-term}"
 ARCH="${ARCH:-amd64}"
 BASECHROOT="/srv/chroot" # enough disk space here
-SCHROOT_PROFILE="${SCHROOT_PROFILE:-osamu}" # name for local customized /etc/schroot/chroot.d/desktop
+SCHROOT_PROFILE="${SCHROOT_PROFILE:-term}" # name for local customized /etc/schroot/chroot.d/desktop
 URL="http://127.0.0.1:3142/deb.debian.org/debian"
 _help() {
   echo "NAME"
@@ -25,9 +25,15 @@ _help() {
   echo "DESCRIPTION"
   echo "    This is modeled after *sbuild-shell* and *sbuild-update* commands."
   echo
+  echo "    A customized schroot profile based on '/etc/schroot/desktop/*' needs"
+  echo "    to be created.  Currently '/etc/schroot/${SCHROOT_PROFILE}/*' profile"
+  echo "    is used.  This default profile can be changed to '/etc/schroot/foo/*'"
+  echo "    by setting '\${SCHROOT_PROFILE}' environment variable to 'foo'."
+  echo
   echo "    This normally starts persistent (source) chroot environment for the"
   echo "    DIST distribution and provides a shell prompt in the current console"
   echo "    terminal with access to the data in the current home directory."
+  echo "    This is modeled after *sbuild-shell*."
   echo
   echo "    If DIST is unset, '\${DIST}' environment variable is used instead."
   echo "    If '\${DIST}' environment variable is also unset, 'unstable' is used."
@@ -37,21 +43,18 @@ _help() {
   echo
   echo "    If '--init' or '-i' is given as an option, this initializes schroot"
   echo "    environment for this command and optionally for sbuild."
-  echo "      * '/srv/chroot/\${DIST}-amd64-sbuild' used by sbuild as a minimum system"
-  echo "      * '/srv/chroot/\${DIST}-amd64-${USAGE}' used by this program to start"
-  echo "        the terminal shell prompt as a source chroot of a loaded system"
+  echo "      * '/srv/chroot/\${DIST}-amd64-sbuild' used by sbuild as a minimum system."
+  echo "      * '/srv/chroot/\${DIST}-amd64-${SCHROOT_PROFILE}' used by this program to"
+  echo "        start the terminal shell prompt as a source chroot of a loaded system."
+  echo "    This is a wrapper around *sbuild-createchroot*."
   echo
   echo "    If '--prep' or '-p' is given as an option, this updates schroot"
   echo "    environment with basic extra packages normally needed for the console"
-  echo "    terminal operations to '/srv/chroot/\${DIST}-amd64-${USAGE}'"
+  echo "    terminal operations to '/srv/chroot/\${DIST}-amd64-${SCHROOT_PROFILE}'"
   echo
   echo "    If '--upgrade' or '-u' is given as an option, this updates schroot"
-  echo "    environment of '/srv/chroot/\${DIST}-amd64-${USAGE}'"
-  echo
-  echo "    A customized schroot profile based on '/etc/schroot/desktop/*' needs"
-  echo "    to be created.  Currently '/etc/schroot/${SCHROOT_PROFILE}/*' profile"
-  echo "    is used.  This default profile can be changed to '/etc/schroot/foo/*'"
-  echo "    by setting '\${SCHROOT_PROFILE}' environment variable to 'foo'."
+  echo "    environment of '/srv/chroot/\${DIST}-amd64-${SCHROOT_PROFILE}'"
+  echo "    This is modeled after *sbuild-update*."
   echo
 }
 
@@ -64,10 +67,10 @@ _noxhost () {
 
 _distsh () {
   $XHOST -
-  echo "I: use ${TYPE}:${DIST}-${ARCH}-${USAGE}"
+  echo "I: use ${TYPE}:${DIST}-${ARCH}-${SCHROOT_PROFILE}"
   $XHOST "+si:localuser:$USERNAME"
   echo "I: allow xhost only for the localuser"
-  schroot -c "${TYPE}:${DIST}-${ARCH}-${USAGE}"
+  schroot -c "${TYPE}:${DIST}-${ARCH}-${SCHROOT_PROFILE}"
   echo "I: normal exit from schroot"
 }
 
@@ -88,21 +91,26 @@ _init () {
     echo "W: ${DIRSCHROOT} exists so use it"
   fi
   # create additional chroot for use by terminal and X (No wayland?)
-  # $ xhost +si:localuser:osamu ; schroot -c chroot:${DIRTERM}-?? ; xhost -
-  echo "I: setting up DIST=${DIST} for term ..."
-  DIRTERM="${BASECHROOT}/${DIST}-${ARCH}-term"
+  # $ xhost +si:localuser:<username> ; schroot -c chroot:${DIRTERM}-?? ; xhost -
+  echo "I: setting up DIST=${DIST} for ${SCHROOT_PROFILE} ..."
+  DIRTERM="${BASECHROOT}/${DIST}-${ARCH}-${SCHROOT_PROFILE}"
   if [ ! -e "${DIRTERM}" ]; then
     cp -a --reflink=always  "${DIRSCHROOT}"  "${DIRTERM}"
   else
     echo "W: ${DIRTERM} exists so use it"
   fi
-  # create schroot data entry /etc/schroot/chroot.d/${DIST}-${ARCH}-term
+  # create schroot data entry /etc/schroot/chroot.d/${DIST}-${ARCH}-${SCHROOT_PROFILE}
   # while using schroot $SCHROOT_PROFILE with uniq filename
   # shellcheck disable=SC2086
-  SCHROOTCONF="$(ls -1 /etc/schroot/chroot.d/${DIST}-${ARCH}-term-* 2>/dev/null)"
+  SCHROOTCONF="$(ls -1 /etc/schroot/chroot.d/${DIST}-${ARCH}-${SCHROOT_PROFILE}-* 2>/dev/null)"
   if [ -z "$SCHROOTCONF" ]; then
-    cat > "/etc/schroot/chroot.d/${DIST}-${ARCH}-term-$$" <<EOF
-[${DIST}-${ARCH}-term]
+    if [ ${DIST} = unstable ]; then
+      ALIASES_LINE="aliases=sid-${ARCH}-${SCHROOT_PROFILE},sid-${SCHROOT_PROFILE},${SCHROOT_PROFILE}"
+    else
+      ALIASES_LINE="#aliases=<please add your alias here and uncomment>"
+    fi
+    cat > "/etc/schroot/chroot.d/${DIST}-${ARCH}-${SCHROOT_PROFILE}-$$" <<EOF
+[${DIST}-${ARCH}-${SCHROOT_PROFILE}]
 description=Debian ${DIST} ${ARCH} chroot for terminal with shared data
 groups=root,sbuild
 root-groups=root,sbuild
@@ -111,9 +119,10 @@ source-root-groups=root,sbuild
 profile=${SCHROOT_PROFILE}
 type=directory
 preserve-environment=true
-directory=/srv/chroot/${DIST}-${ARCH}-term
+directory=/srv/chroot/${DIST}-${ARCH}-${SCHROOT_PROFILE}
 union-type=overlay
 command-prefix=eatmydata
+${ALIASES_LINE}
 EOF
   else
     echo "W: ${SCHROOTCONF} exists so use it"
@@ -121,7 +130,7 @@ EOF
 }
 
 _upgrade () {
-  cat <<EOF | "$DSH" "$DIST"
+  cat <<EOF | "$SCHROOT_SHELL" "$DIST"
 # -udcar
 apt-get update --yes
 apt-get dist-upgrade --yes
@@ -134,7 +143,7 @@ EOF
 # x11-xserver-util package is needed by xhost command
 # xhost command is needed by gitk operation
 _prep () {
-  cat <<EOF | $DSH "$DIST"
+  cat <<EOF | $SCHROOT_SHELL "$DIST"
 if apt-get install --yes aptitude mc vim nano- devscripts gitk git sudo \
     locales-all imediff fzf rlwrap eatmydata ccache x11-xserver-utils ; then
   echo "I: Adding pre-loaded packages"
@@ -211,20 +220,20 @@ done
 
 case "$SCHROOT_CMD" in
   in*)
-    _su "$DSH" "-i" "$DIST"
+    _su "$SCHROOT_SHELL" "-i" "$DIST"
     _init
     _upgrade
     _prep
     exit 0
     ;;
   pr*)
-    _su "$DSH" "-p" "$DIST"
+    _su "$SCHROOT_SHELL" "-p" "$DIST"
     _upgrade
     _prep
     exit 0
     ;;
   up*)
-    _su "$DSH" "-u" "$DIST"
+    _su "$SCHROOT_SHELL" "-u" "$DIST"
     _upgrade
     exit 0
     ;;
