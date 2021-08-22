@@ -1,6 +1,8 @@
 #!/bin/sh -e
 # vim:se sw=2 ts=2 sts=2 et ai tw=78:
-# convenience script to use schroot
+# A convenience script to use schroot desktop profile
+# You can run 'gitk' with this.
+
 if [ "$(id -u)" != 0 ] && type xhost >/dev/null; then
   XHOST="xhost"
 else
@@ -27,10 +29,10 @@ _help() {
   echo "    environment and is modeled after *sbuild-shell* and *sbuild-update*"
   echo "    but uses an independent chroot which is not used by sbuild."
   echo
-  echo "    You must customize your schroot profile of '/etc/schroot/${SCHROOT_PROFILE}/fstab'"
-  echo "    to reflect the actual device mount situation in your home directory."
-  echo "    The actual profile used can be changed from '${SCHROOT_PROFILE}' to 'foo'"
-  echo "    by setting the '\${SCHROOT_PROFILE}' environment variable to 'foo'."
+  echo "    This uses schroot profile '${SCHROOT_PROFILE}'.  You must customize this"
+  echo "    profile at '/etc/schroot/${SCHROOT_PROFILE}/fstab' to list all mounted"
+  echo "    devices in your home directory.  The actual profile used can be"
+  echo "    changed by setting the '\${SCHROOT_PROFILE}' environment variable."
   echo
   echo "    This normally starts persistent (source) chroot environment for the"
   echo "    DIST distribution and provides a shell prompt in the current console"
@@ -40,7 +42,7 @@ _help() {
   echo "    If DIST is unset, '\${DIST}' environment variable is used instead."
   echo "    If '\${DIST}' environment variable is also unset, 'unstable' is used."
   echo
-  echo "    DIST can be 'unstable', 'testing', 'stable', 'oldstable', or "
+  echo "    DIST can be 'unstable', 'testing', 'stable', 'oldstable', or"
   echo "    'oldoldstable'; and can be shortened as 'u', 't', 's', 'o', or 'oo'."
   echo
   echo "    If '--init' or '-i' is given as an option, this initializes schroot"
@@ -244,4 +246,3 @@ case "$SCHROOT_CMD" in
     _distsh
     ;;
 esac
-
