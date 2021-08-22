@@ -10,10 +10,10 @@ fi
 SCHROOT_SHELL="$0"
 USERNAME="$(id -u -n)"
 TYPE="${TYPE:-source}"
-SCHROOT_PROFILE="${SCHROOT_PROFILE:-term}"
+SCHROOT_PROFILE="${SCHROOT_PROFILE:-desktop}"
 ARCH="${ARCH:-amd64}"
 BASECHROOT="/srv/chroot" # enough disk space here
-SCHROOT_PROFILE="${SCHROOT_PROFILE:-term}" # name for local customized /etc/schroot/chroot.d/desktop
+SCHROOT_PROFILE="${SCHROOT_PROFILE:-desktop}" # customize /etc/schroot/chroot.d/desktop
 URL="http://127.0.0.1:3142/deb.debian.org/debian"
 _help() {
   echo "NAME"
@@ -23,23 +23,25 @@ _help() {
   echo "    ${0##*/} [|--init|--prep|--upgrade] [DIST]"
   echo
   echo "DESCRIPTION"
-  echo "    This is modeled after *sbuild-shell* and *sbuild-update* commands."
+  echo "    This helps you to work with persistent pre-loaded (source) chroot"
+  echo "    environment and is modeled after *sbuild-shell* and *sbuild-update*"
+  echo "    but uses an independent chroot which is not used by sbuild."
   echo
-  echo "    A customized schroot profile based on '/etc/schroot/desktop/*' needs"
-  echo "    to be created.  Currently '/etc/schroot/${SCHROOT_PROFILE}/*' profile"
-  echo "    is used.  This default profile can be changed to '/etc/schroot/foo/*'"
-  echo "    by setting '\${SCHROOT_PROFILE}' environment variable to 'foo'."
+  echo "    You must customize your schroot profile of '/etc/schroot/${SCHROOT_PROFILE}/fstab'"
+  echo "    to reflect the actual device mount situation in your home directory."
+  echo "    The actual profile used can be changed from '${SCHROOT_PROFILE}' to 'foo'"
+  echo "    by setting the '\${SCHROOT_PROFILE}' environment variable to 'foo'."
   echo
   echo "    This normally starts persistent (source) chroot environment for the"
   echo "    DIST distribution and provides a shell prompt in the current console"
-  echo "    terminal with access to the data in the current home directory."
+  echo "    terminal with access to the data in your home directory."
   echo "    This is modeled after *sbuild-shell*."
   echo
   echo "    If DIST is unset, '\${DIST}' environment variable is used instead."
   echo "    If '\${DIST}' environment variable is also unset, 'unstable' is used."
   echo
-  echo "    DIST can be 'unstable', 'testing', 'stable', 'oldstable', or 'oldoldstable'."
-  echo "    DIST can be their shortforms, i.e., 'u', 't', 's', 'o', or 'oo'."
+  echo "    DIST can be 'unstable', 'testing', 'stable', 'oldstable', or "
+  echo "    'oldoldstable'; and can be shortened as 'u', 't', 's', 'o', or 'oo'."
   echo
   echo "    If '--init' or '-i' is given as an option, this initializes schroot"
   echo "    environment for this command and optionally for sbuild."
