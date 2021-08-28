@@ -30,7 +30,7 @@ shopt -s checkwinsize
 #shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
-if type -p lesspipe >/dev/null; then
+if command -v lesspipe >/dev/null; then
   eval "$(SHELL=/bin/sh lesspipe)"
 fi
 
@@ -62,7 +62,7 @@ elif [ "$UID" != "0" ]; then
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]∋\[\033[00m\] '
 else
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]⟫⟫\[\033[00m\] '
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]❖🔒❖\[\033[00m\] '
+    PS1='⇶⇶⇶⇶ ${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ ⇶⇶⇶⇶\n❖🔒❖\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
@@ -162,7 +162,7 @@ FZF_IGNORE_PATH=.bss.d
 #######################################################################
 
 # fzf -- follow its README.md
-if type -p fzf >/dev/null; then
+if command -v fzf >/dev/null; then
     ## customized to limit 10 levels and print pwd
     ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
     FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
@@ -197,6 +197,6 @@ fi
 
 
 # direnv
-if type -p direnv >/dev/null; then
+if command -v direnv >/dev/null; then
     eval "$(direnv hook bash)"
 fi

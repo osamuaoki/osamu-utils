@@ -35,9 +35,17 @@ f_diff () {
   # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
-    if [ -f "$p" ]; then
+    if [ -f "$p" ] && [ "$f" != ".config" ]; then
       echo " $ diff -u ~/bin/dot/$f  $f"
       diff -u "$p" "${HOME}/$f" || true
+    fi
+  done
+  # shellcheck disable=2231
+  for p in ${HOME}/bin/dot/.config/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ diff -u ~/bin/dot/.config/$f  ~/.config/$f"
+      diff -u "$p" "${HOME}/.config/$f" || true
     fi
   done
 }
@@ -58,9 +66,37 @@ f_install () {
   # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
-    if [ -f "$p" ]; then
+    if [ -f "$p" ] && [ "$f" != ".config" ]; then
       echo " $ cp -f ~/bin/dot/$f  ~/$f"
       cp -f "$p" "${HOME}/$f"
+    fi
+  done
+  # shellcheck disable=2231
+  for p in ${HOME}/bin/dot/.config/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/bin/dot/.config/$f  ~/.config/$f"
+      cp -f "$p" "${HOME}/.config/$f"
+    fi
+  done
+}
+
+f_update () {
+# update the configuration files by the latest installed dot files
+  # shellcheck disable=2231
+  for p in ${HOME}/bin/dot/.* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ] && [ "$f" != ".config" ]; then
+      echo " $ cp -f ~/$f $p"
+      cp -f "${HOME}/$f" "$p"
+    fi
+  done
+  # shellcheck disable=2231
+  for p in ${HOME}/bin/dot/.config/* ; do
+    f=$(basename "$p")
+    if [ -f "$p" ]; then
+      echo " $ cp -f ~/.config/$f $p"
+      cp -f "${HOME}/.config/$f" "$p"
     fi
   done
 }
@@ -84,6 +120,8 @@ f_backup () {
       "${HOME}/.config"   "${HOME}/$BUSR/"
   rsync -av \
       --exclude=".local/share/Trash" \
+      --exclude=".local/share/lxc" \
+      --exclude=".local/share/flatpak" \
       "${HOME}/.local"    "${HOME}/$BUSR/"
   #rsync -av "${HOME}//"          "${HOME}/$BUSR/"
   for p in /etc/skel/.* ; do
@@ -143,18 +181,6 @@ f_backup () {
   echo "For exim:       'dpkg-reconfigure -plow exim4-config' change"
   echo "For cowbuilder: 'sudo cowbuilder create' (new)"
   echo "===================================================================="
-}
-
-f_update () {
-# update the configuration files by the latest installed dot files
-  # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.* ; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ cp -f ~/$f $p"
-      cp -f "${HOME}/$f" "$p"
-    fi
-  done
 }
 
 case "$1" in

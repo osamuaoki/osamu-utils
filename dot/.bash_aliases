@@ -19,9 +19,21 @@ alias m="mc . ."
 # python3
 alias py="python3"
 
-alias up="set -x; date --iso=sec;sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y; set +x"
-alias ups="set -x; date --iso=sec;sudo sbuild-update -udcar u && set +x; sync"
-alias upd="set -x; date --iso=sec;sudo -E DIST dirsh update && set +x; sync"
+sysupdate_main () {
+  set -x; date --iso=sec
+  sudo apt-get update && sudo apt-get dist-upgrade -y && \
+      sudo apt-get autoremove -y
+  set +x
+  sync
+}
+
+sysupdate_sbuild () {
+  set -x; date --iso=sec
+  sudo sbuild-update -udcar u
+  set +x
+  sync
+}
+alias up="sysupdate_main; sysupdate_sbuild"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 # For LXC
