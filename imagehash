@@ -30,49 +30,59 @@ from PIL import Image
 gi.require_version("GExiv2", "0.10")
 from gi.repository import GExiv2
 
+
 class OMetadata(GExiv2.Metadata):
     def __getitem__(self, key):
         if self.has_tag(key):
             return self.get_tag_string(key)
-        else:
-            return "___NONE___"
+        return "___NONE___"
+
 
 # Read first <length> bytes from <path> and return byte stream in HEX format
 def firstbytes(path, length):
-    with open(path, "rb") as f:
-        header = binascii.hexlify(f.read()[:length]).decode("UTF-8")
+    with open(path, "rb") as fd:
+        header = binascii.hexlify(fd.read()[:length]).decode("UTF-8")
     return header
+
 
 # JPEG/EXIF files header 3 bytes
 def isjpeg(path):
     if firstbytes(path, 3) == "ffd8ff":
         return True
-    else:
-        return False
+    return False
 
-print ("# Image_Hash_sha256\tExif.Photo.DateTimeOriginal\tExif.Photo.DateTimeDigitized\tExif.Image.DateTime\tExif.Image.Model\trealpath")
-date_error = "{}\t{}\t{}\t{}".format("___IOError___", "___IOError___", "___IOError___", "___IOError___")
+
+print(
+    "# Image_Hash_sha256\tExif.Photo.DateTimeOriginal\tExif.Photo.DateTimeDigitized\tExif.Image.DateTime\tExif.Image.Model\trealpath"
+)
+date_error = "{}\t{}\t{}\t{}".format(
+    "___IOError___", "___IOError___", "___IOError___", "___IOError___"
+)
 for ln in sys.stdin:
-    fn=ln.rstrip("\n")
+    fn = ln.rstrip("\n")
     if not os.path.isfile(fn):
         # skip non-file
         continue
-    #if os.path.splitext(os.path.basename(fn))[1].lower() == ".json":
-        # skip json files
+    # if os.path.splitext(os.path.basename(fn))[1].lower() == ".json":
+    # skip json files
     #    continue
     if not isjpeg(fn):
         print("# ***** NON-JPEG FILE ***** : {}".format(fn))
         # non-JPEG file
         continue
-    #print(fn)
+    # print(fn)
     try:
         hashv = hashlib.sha256(Image.open(fn, mode="r").tobytes()).hexdigest()
     except IOError:
         hashv = "___IOError___"
     try:
         md = OMetadata(fn)
-        date = "{}\t{}\t{}\t{}".format(md["Exif.Photo.DateTimeOriginal"], md["Exif.Photo.DateTimeDigitized"], md["Exif.Image.DateTime"], md["Exif.Image.Model"])
+        img_date = "{}\t{}\t{}\t{}".format(
+            md["Exif.Photo.DateTimeOriginal"],
+            md["Exif.Photo.DateTimeDigitized"],
+            md["Exif.Image.DateTime"],
+            md["Exif.Image.Model"],
+        )
     except:
-        date = date_error
-    print ("{}\t{}\t{}".format( hashv, date, os.path.realpath(fn)))
-
+        img_date = date_error
+    print("{}\t{}\t{}".format(hashv, img_date, os.path.realpath(fn)))
