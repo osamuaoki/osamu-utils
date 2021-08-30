@@ -14,8 +14,8 @@ alias o=libreoffice
 alias p=evince
 # pwd+ ... for prompt like
 alias a='echo "⇶⇶⇶⇶ $(id -un)@$(hostname):$(pwd | sed "s,/home/$(id -un),~,")"'
-# mc  . .
-alias m="mc . ."
+#. /usr/lib/mc/mc.sh equivalent
+alias m='. /home/osamu/bin/mc-wrapper.sh'
 # python3
 alias py="python3"
 
