@@ -108,7 +108,7 @@ _init () {
   # shellcheck disable=SC2086
   SCHROOTCONF="$(ls -1 /etc/schroot/chroot.d/${DIST}-${ARCH}-${SCHROOT_PROFILE}-* 2>/dev/null)"
   if [ -z "$SCHROOTCONF" ]; then
-    if [ ${DIST} = unstable ]; then
+    if [ "${DIST}" = unstable ]; then
       ALIASES_LINE="aliases=sid-${ARCH}-${SCHROOT_PROFILE},sid-${SCHROOT_PROFILE},${SCHROOT_PROFILE}"
     else
       ALIASES_LINE="#aliases=<please add your alias here and uncomment>"
