@@ -1,0 +1,81 @@
+#!/bin/sh -e
+
+if [ -e /CHROOT ]; then
+  echo "W: You are already in chroot" >&2
+  exit 1
+fi
+
+bind_mount () {
+  # @ $1  original system path (top)    -- seen after bind mount
+  # @ $2  chroot system path (bottom)   -- hidden below (chroot FS)
+  echo "bind_mount: $1 on $2"
+  if [ ! -d "$1" ]; then
+    echo "E: directory in original system missing: '$1'" >&2
+    exit 1
+  fi
+  LUID="$(stat -c %u "$1")"
+  LGID="$(stat -c %g "$1")"
+  LMOD="$(stat -c %a "$1")"
+  sudo mkdir -p "$2"
+  sudo chown "$LUID:$LGID" "$2"
+  sudo chmod "$LMOD" "$2"
+  sudo mount --bind "$1" "$2"
+}
+
+##############################################################################
+# alternative work environment
+ALT="${1:-alt}"
+XROOT="/srv/chroot/$ALT"
+##############################################################################
+if [ ! -e "$XROOT" ] || [ ! -e "$XROOT/usr/sbin/init" ] ; then
+
+  # root of chroot
+  echo "I: creating chroot at: $XROOT"
+  sudo mkdir -p "$XROOT"
+  sudo touch "$XROOT/CHROOT"
+
+  ## SYSTEM FILES/DIRS
+  echo "I: mounting all mounted file system under /"
+  echo "I: -- exclude large dirs /srv /var/cache/apt-cacher-ng"
+  BASE_DIRS="/bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media \
+      /mnt /opt /proc /root /run /sbin  /sys /tmp /usr /usr/bin /var \
+      $HOME /var/tmp /var/www"
+
+  for d in $BASE_DIRS ; do
+    bind_mount "$d" "$XROOT/$d"
+  done
+
+  ##### USER FILES/DIRS
+
+  echo "I: mounting all mounted file system under $HOME"
+  echo "I: -- exclude large dirs  Music Pictures"
+  # Without these exclude, startup time will be slow
+  EXTRA_DIRS=".cache Documents Downloads src src/private \
+      src/public src/wip tmp"
+
+  for d in $EXTRA_DIRS ; do
+    bind_mount "$HOME/$d" "$XROOT/$HOME/$d"
+  done
+
+  echo "I: override some user configuration files from alternative path"
+  ALT_DIRS=".config/nvim .local/share/nvim .cache/nvim"
+  for d in $ALT_DIRS ; do
+    mkdir -p "$HOME/$d-$ALT"
+    bind_mount "$HOME/$d-$ALT" "$XROOT/$HOME/$d"
+  done
+  echo "I: re-override some user configuration files from same path"
+  SAME_DIRS=".local/share/nvim/shada"
+  for d in $SAME_DIRS ; do
+    mkdir -p "$HOME/$d"
+    bind_mount "$HOME/$d" "$XROOT/$HOME/$d"
+  done
+  echo "I: finish mounting"
+fi
+##############################################################################
+echo "I: Set up shell prompt for chroot: '$ALT'" >&2
+debian_chroot="$ALT"
+export debian_chroot
+echo "I: start shell with $ALT twist"
+sudo --preserve-env=debian_chroot chroot "$XROOT" /usr/bin/sudo --preserve-env=debian_chroot -u osamu -i
+
+# vim:set ai et sw=2 ts=2 sts=2 tw=80:
