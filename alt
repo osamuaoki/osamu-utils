@@ -1,10 +1,5 @@
 #!/bin/sh -e
 
-if [ -e /CHROOT ]; then
-  echo "W: You are already in chroot" >&2
-  exit 1
-fi
-
 bind_mount () {
   # @ $1  original system path (top)    -- seen after bind mount
   # @ $2  chroot system path (bottom)   -- hidden below (chroot FS)
@@ -22,60 +17,70 @@ bind_mount () {
   sudo mount --bind "$1" "$2"
 }
 
+bind_umount () {
+  # @ $1  original system path (top)    -- seen after bind mount
+  echo "bind_umount: $1"
+  if [ -d "$1" ]; then
+    sudo umount --lazy "$1"
+  else
+    echo "W: directory in original system missing: '$1'" >&2
+  fi
+}
+
 ##############################################################################
 # alternative work environment
 ALT="${1:-alt}"
-XROOT="/srv/chroot/$ALT"
+MARKER=$HOME/.alternative
+ALT_DIRS=".alternative/base .config/nvim .local/share/nvim .cache/nvim"
+mkdir -p "$MARKER/base"
+case $ALT in
+  base|b)
+    if [ -e "$MARKER/base/normal_path_hidden" ] ; then
+      echo "I: in alt env = $(cat "$MARKER/base/normal_path_hidden")"
+    else
+      echo "I: *** NOT *** in alt env"
+    fi
+    exit 0
+    ;;
+  reset|r|unmount|un|u)
+    if [ -e "$MARKER/base/normal_path_hidden" ] ; then
+      echo "I: UN-mounting alt env = $(cat "$MARKER/base/normal_path_hidden")"
+      ALT="$(cat "$MARKER/base/normal_path_hidden")"
+      for d in $ALT_DIRS ; do
+        bind_umount "$HOME/$d"
+      done
+      echo "I: finish UN-mounting"
+    else
+      echo "I: NOT in alt env"
+    fi
+    exit 0
+    ;;
+  status|''|?|??)
+    if [ -e "$MARKER/base/normal_path_hidden" ] ; then
+      echo "I: In alt env = $(cat "$MARKER/base/normal_path_hidden") -- status"
+    else
+      echo "I: NOT in alt env"
+    fi
+    exit 0
+    ;;
+esac
+# $ALT is at least 3 chars
 ##############################################################################
-if [ ! -e "$XROOT" ] || [ ! -e "$XROOT/usr/sbin/init" ] ; then
-
-  # root of chroot
-  echo "I: creating chroot at: $XROOT"
-  sudo mkdir -p "$XROOT"
-  sudo touch "$XROOT/CHROOT"
-
-  ## SYSTEM FILES/DIRS
-  echo "I: mounting all mounted file system under /"
-  echo "I: -- exclude large dirs /srv /var/cache/apt-cacher-ng"
-  BASE_DIRS="/bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media \
-      /mnt /opt /proc /root /run /sbin  /sys /tmp /usr /usr/bin /var \
-      $HOME /var/tmp /var/www"
-
-  for d in $BASE_DIRS ; do
-    bind_mount "$d" "$XROOT/$d"
-  done
-
-  ##### USER FILES/DIRS
-
-  echo "I: mounting all mounted file system under $HOME"
-  echo "I: -- exclude large dirs  Music Pictures"
-  # Without these exclude, startup time will be slow
-  EXTRA_DIRS=".cache Documents Downloads src src/private \
-      src/public src/wip tmp"
-
-  for d in $EXTRA_DIRS ; do
-    bind_mount "$HOME/$d" "$XROOT/$HOME/$d"
-  done
+echo "I: start set up alt env"
+if [ -e "$MARKER/base/normal_path_hidden" ] ; then
+  echo "I: Already alt env = $(cat "$MARKER/base/normal_path_hidden") running"
+  echo "Run 'alt reset' to unmount first."
+  exit 1
+else
+  mkdir -p "$MARKER/base-$ALT"
+  echo "$ALT" > "$MARKER/base-$ALT/normal_path_hidden"
 
   echo "I: override some user configuration files from alternative path"
-  ALT_DIRS=".config/nvim .local/share/nvim .cache/nvim"
   for d in $ALT_DIRS ; do
     mkdir -p "$HOME/$d-$ALT"
-    bind_mount "$HOME/$d-$ALT" "$XROOT/$HOME/$d"
-  done
-  echo "I: re-override some user configuration files from same path"
-  SAME_DIRS=".local/share/nvim/shada"
-  for d in $SAME_DIRS ; do
-    mkdir -p "$HOME/$d"
-    bind_mount "$HOME/$d" "$XROOT/$HOME/$d"
+    bind_mount "$HOME/$d-$ALT" "$HOME/$d"
   done
   echo "I: finish mounting"
 fi
-##############################################################################
-echo "I: Set up shell prompt for chroot: '$ALT'" >&2
-debian_chroot="$ALT"
-export debian_chroot
-echo "I: start shell with $ALT twist"
-sudo --preserve-env=debian_chroot chroot "$XROOT" /usr/bin/sudo --preserve-env=debian_chroot -u osamu -i
 
 # vim:set ai et sw=2 ts=2 sts=2 tw=80:

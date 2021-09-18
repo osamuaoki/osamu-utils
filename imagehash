@@ -1,5 +1,5 @@
-#!/usr/bin/python3
-# vim:se tw=0 sts=4 ts=4 et ai:
+#/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 sw=4 et ai:
 """
 Copyright © 2020 Osamu Aoki
 
@@ -29,8 +29,6 @@ from PIL import Image
 
 gi.require_version("GExiv2", "0.10")
 from gi.repository import GExiv2
-
-
 class OMetadata(GExiv2.Metadata):
     def __getitem__(self, key):
         if self.has_tag(key):
