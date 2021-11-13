@@ -1,4 +1,5 @@
 #!/bin/sh -e
+# set up an alternative work environment
 
 bind_mount () {
   # @ $1  original system path (top)    -- seen after bind mount

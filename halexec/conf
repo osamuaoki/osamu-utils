@@ -102,46 +102,51 @@ f_update () {
 }
 
 f_backup () {
-  BTIME="$(date -u +'%Y%m%d%H%M')"
-  BUSR="backup/USR$BTIME"
-  BSYS="backup/SYS$BTIME"
-  mkdir -p "${HOME}/$BUSR" >/dev/null
+  SECRET_DIR="/home/osamu/secret"
+  if [ ! -d "$SECRET_DIR" ]; then
+    echo "E: Secure $SECRET_DIR missing" >&2
+    exit 1
+  fi
+  BUSR="backup/USR"
+  BSYS="backup/SYS"
+  # Note on rsync options -a == -rlptgoD
+  # x: one filesystem
+  # S: sparse
+  # v: verbose
+  #RSYNC="rsync -axSv"
+  RSYNC="rsync -axS"
+  mkdir -p "${SECRET_DIR}/$BUSR" >/dev/null
   echo "======================================================================"
-  echo "I: Back up user config to ${HOME}/$BUSR"
+  echo "I: Back up user config to ${SECRET_DIR}/$BUSR"
   # tailing / of rsync source is important
-  rsync -av "${HOME}/bin"       "${HOME}/$BUSR/"
-  rsync -av "${HOME}/.gnupg"    "${HOME}/$BUSR/"
-  rsync -av "${HOME}/.ssh"      "${HOME}/$BUSR/"
+  $RSYNC "${HOME}/bin"       "${SECRET_DIR}/$BUSR/"
+  $RSYNC "${HOME}/.gnupg"    "${SECRET_DIR}/$BUSR/"
+  $RSYNC "${HOME}/.ssh"      "${SECRET_DIR}/$BUSR/"
+  $RSYNC "${HOME}/.local/share/keyrings"      "${SECRET_DIR}/$BUSR/"
   # evolution needs to be backuped for filter
-  rsync -av \
+  $RSYNC \
       --exclude=".config/chromium" \
       --exclude=".config/libreoffice" \
       --exclude=".config/GIMP" \
-      "${HOME}/.config"   "${HOME}/$BUSR/"
-  rsync -av \
-      --exclude=".local/share/Trash" \
-      --exclude=".local/share/lxc" \
-      --exclude=".local/share/flatpak" \
-      "${HOME}/.local"    "${HOME}/$BUSR/"
-  #rsync -av "${HOME}//"          "${HOME}/$BUSR/"
+      "${HOME}/.config"   "${SECRET_DIR}/$BUSR/"
   for p in /etc/skel/.* ; do
     f=$(basename "$p")
     if [ -f "${HOME}/$f" ]; then
-      rsync -av "${HOME}/$f" "${HOME}/$BUSR"
+      $RSYNC "${HOME}/$f" "${SECRET_DIR}/$BUSR"
     fi
   done
   # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.* ; do
     f=$(basename "$p")
     if [ -f "${HOME}/$f" ]; then
-      rsync -av "${HOME}/$f" "${HOME}/$BUSR"
+      $RSYNC "${HOME}/$f" "${SECRET_DIR}/$BUSR"
     fi
   done
   echo "======================================================================"
-  mkdir -p "${HOME}/$BSYS/etc" >/dev/null
-  echo "I: Back up system config to ${HOME}/$BSYS"
+  mkdir -p "${SECRET_DIR}/$BSYS/etc" >/dev/null
+  echo "I: Back up system config to ${SECRET_DIR}/$BSYS"
   # backup the key /etc contents
-  sudo rsync -av \
+  sudo $RSYNC \
     /etc/aliases \
     /etc/alternatives \
     /etc/apt \
@@ -151,6 +156,14 @@ f_backup () {
     /etc/default \
     /etc/email-addresses \
     /etc/exim4 \
+    /etc/crontab \
+    /etc/cron.d \
+    /etc/cron.daily \
+    /etc/cron.hourly \
+    /etc/cron.monthly \
+    /etc/crontab \
+    /etc/cron.weekly \
+    /etc/crypttab \
     /etc/fstab \
     /etc/group \
     /etc/gshadow \
@@ -163,23 +176,16 @@ f_backup () {
     /etc/sudoers.d \
     /etc/sysctl.conf \
     /etc/sysctl.d \
-    "${HOME}/$BSYS/etc"
+    "${SECRET_DIR}/$BSYS/etc"
   # backup the latest package states
-  mkdir -p "${HOME}/$BSYS/apt" >/dev/null
-  sudo rsync -av /var/lib/apt/extended_states "${HOME}/$BSYS/apt"
-  mkdir -p "${HOME}/$BSYS/dpkg" >/dev/null
-  sudo rsync -av \
+  mkdir -p "${SECRET_DIR}/$BSYS/apt" >/dev/null
+  $RSYNC /var/lib/apt/extended_states "${SECRET_DIR}/$BSYS/apt"
+  mkdir -p "${SECRET_DIR}/$BSYS/dpkg" >/dev/null
+  $RSYNC \
     /var/lib/dpkg/diversions \
     /var/lib/dpkg/statoverride \
     /var/lib/dpkg/status \
-    "${HOME}/$BSYS/dpkg"
-  # backup the latest pbuilder hooks
-  mkdir -p "${HOME}/$BSYS/pbuilder/hooks" >/dev/null
-  sudo rsync -av /var/cache/pbuilder/hooks "${HOME}/$BSYS/pbuilder"
-  sudo chown -R 1000:1000 "${HOME}/$BSYS"
-  echo "===================================================================="
-  echo "For exim:       'dpkg-reconfigure -plow exim4-config' change"
-  echo "For cowbuilder: 'sudo cowbuilder create' (new)"
+    "${SECRET_DIR}/$BSYS/dpkg"
   echo "===================================================================="
 }
 

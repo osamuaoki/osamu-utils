@@ -1,0 +1,12 @@
+#!/bin/sh -e
+echo "PATH='$PATH'"
+LOG="/home/osamu/log.txt"
+{
+echo "===================================================="
+echo "PATH='$PATH'"
+echo "\$\$='$$'"
+pstree -s $$
+echo "===================================================="
+env
+} > "$LOG"
+xeyes
