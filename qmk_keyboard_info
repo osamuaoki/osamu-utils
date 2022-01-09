@@ -1,0 +1,363 @@
+#!/bin/sh -e
+#set -x
+# This script finds all config.h files in keyboards/ subdirectories,
+# and make a table of key features.
+#
+# $ /generate_keyboard_info.sh |sort >../../generate_keyboard_info.log
+
+##############################################################################
+# utility functions
+print_data() {
+	if [ "$verbose" -gt 1 ]; then
+		printf "%10s\t%03i\t%03i\t%03i\t%s\t%s\t%s\t%s\t%s\t%s *** \tL='%s'\tM='%s'\tB='%s'\tG='%s'\tQ='%s'\n" \
+			"$category" "$matrix" "$rows" "$cols" "${layout%% *}" "${mcu%% *}" "$keyboard" "$ble" "$diode" "${board%% *}"\
+			"$layout" "$mcu" "$board" "$group" "$quantum"
+	else
+		printf "%-10s %03i %03i %03i %-24s %-16s %-48s %-16s %-16s %-16s\n" \
+			"$category" "$matrix" "$rows" "$cols" "${layout%% *}" "${mcu%% *}" "$keyboard" "$ble" "$diode" "${board%% *}"
+	fi
+}
+
+get_conf() {
+	sed -n -e "/^#define ${1}\s/s/#define ${1}\s\s*//p" "${2}" |\
+		sed -e "s/\s*\/\/.*$//" -e "s/\s*$//"
+}
+
+get_confn() {
+	x=$(get_conf "${1}" "${2}")
+	echo "${x:-0}" | bc
+}
+
+get_rule() {
+	sed -n -e "/^\s*${1}\s*[+=]/s/^\s*${1}\s*[+=]=\?\s*//p" "${2}" | sed -e "s/\s*#.*$//"
+}
+
+uniqstr() {
+	echo "$1" | xargs -n 1 echo | sort | uniq | xargs echo
+}
+
+check_board () {
+	readme="$1/readme.md"
+	keyboardsdir="$1/keyboards"
+	if [ ! -d "$keyboardsdir" ] && [ -e "$readme" ]; then
+		if grep -q -E -i "blue.?pill" "$readme"; then
+			echo "BLUE_PILL "
+		fi
+		if grep -q -E -i "black.?pill" "$readme"; then
+			echo "BLACK_PILL "
+		fi
+		if grep -q -E -i "Sipeed.?Longan.?Nano" "$readme"; then
+			echo "SIPEED_LONGAN_NANO "
+		fi
+		if grep -q -E -i "STM32.{0,16}Discovery" "$readme"; then
+			echo "STM32_DISCOVERY "
+		fi
+		if grep -q -E -i "proton.?c" "$readme"; then
+			echo "PROTON_C "
+		fi
+		if grep -q -E -i "Adafruit.?Feather" "$readme"; then
+			echo "ADAFRUIT_FEATHER "
+		fi
+		if grep -q -E -i "teensy" "$readme"; then
+			echo "TEENSY "
+		fi
+		if grep -q -E -i "pro.?micro" "$readme"; then
+			echo "PRO_MICRO "
+		fi
+		if grep -q -E -i "arduino.?micro" "$readme"; then
+			echo "PRO_MICRO "
+		fi
+		if grep -q -E -i "a-star" "$readme"; then
+			echo "A-STAR "
+		fi
+		if grep -q -E -i "Elite.?C" "$readme"; then
+			echo "ELITE-C "
+		fi
+		if grep -q -E -i "leonardo" "$readme"; then
+			echo "LEONARDO "
+		fi
+		if grep -q -E -i "postageboard" "$readme"; then
+			echo "POSTAGEBOARD "
+		fi
+	fi
+}
+
+update_conf() {
+	conffile="$1/config.h"
+	if [ -e "$conffile" ] && [ ! -d "$1/keyboards" ]; then
+		[ "$rows" != "0" ] || rows=$(get_confn "MATRIX_ROWS" "$conffile")
+		[ "$cols" != "0" ] || cols=$(get_confn "MATRIX_COLS" "$conffile")
+		[ -n "$direct" ] || direct=$(get_conf "DIRECT_PINS" "$conffile")
+		[ -n "$diode" ] || diode=$(get_conf "DIODE_DIRECTION" "$conffile")
+		[ -n "$splitrow" ] || splitrow=$(get_conf "MATRIX_ROWS_PER_SIDE" "$conffile")
+		[ -n "$splitcol" ] || splitcol=$(get_conf "MATRIX_COLS_PER_SIDE" "$conffile")
+		[ -n "$serials" ] || serials=$(get_conf "SERIAL_SLAVE_BUFFER_LENGTH" "$conffile")
+		[ -n "$serialu" ] || serialu=$(get_conf "SERIAL_USART_DRIVER" "$conffile")
+		#[ -n "$softserial" ] || softserial=$(get_conf "SOFT_SERIAL_PIN" "$conffile")
+	fi
+}
+
+update_rule() {
+	rulefile="$1/rules.mk"
+	if [ -e "$rulefile" ] && [ ! -d "$1/keyboards" ]; then
+		[ -n "$mcu" ] || mcu=$(uniqstr "$(get_rule "MCU" "$rulefile")")
+		[ -n "$layout" ] || layout=$(uniqstr "$(get_rule "LAYOUTS" "$rulefile")")
+		[ -n "$bluetooth" ] || bluetooth=$(uniqstr "$(get_rule "BLUETOOTH_ENABLE" "$rulefile")")
+		[ -n "$split" ] || split=$(uniqstr "$(get_rule "SPLIT_KEYBOARD" "$rulefile")")
+		[ -n "$quantum" ] || quantum=$(uniqstr "$(get_rule "QUANTUM_LIB_SRC" "$rulefile")")
+	fi
+}
+
+help () {
+	echo "Usage: ${0##*/} [OPTION...]"
+	echo
+	echo "This script makes a table of key features for all qmk keyboards for the"
+	echo "current directory tree (if not found, one pointed by \$QMK_HOME)."
+	echo
+	echo "    -f <keyboard_name>    Search only for <keyboard_name>"
+	echo "    -x                    Trace execution"
+	echo "    -n                    Don't skip .noci directory"
+	echo "    -v                    Verbose output"
+	echo
+	echo "Output is tab separated.  You execute this in util/ directory as:"
+	echo "    $ ./generate_keyboard_info.sh | sort >../../generate_keyboard_info.log"
+	echo "Then sort it by field:"
+	echo "    $ sort -k 5 ./../generate_keyboard_info.log ./../generate_keyboard_info.5.log"
+}
+
+# Print an error message with the word "ERROR" in red.
+echo_error() {
+    printf "%s" "[\033[0;91mERROR\033[m]: $1" >&2
+}
+
+##############################################################################
+# The root qmk_firmware/ directory have a subdirectory called quantum/
+while [ ! -d "quantum" ]; do
+	# search from current directory
+	cd .. >/dev/null
+	pwd=$(pwd)
+	if [ "$pwd" = "$HOME" ] || [ "$pwd" = "/home" ] || [ "$pwd" = "/" ]; then
+		if [ -n "$QMK_HOME" ] && [ -d "$(eval echo "$QMK_HOME")" ]; then
+			# check $QMK_HOME directory
+			cd "$(eval echo "$QMK_HOME")"
+			if [ -d "quantum" ]; then
+				break
+			else
+				echo_error "The directory pointed by \$QMK_HOME variable is not"
+				echo_error "the proper QMK firmware directory."
+				exit 1
+			fi
+		else
+			echo_error "You must be somewhere in the QMK firmware directory or export"
+			echo_error "\$QMK_HOME variable pointing the QMK firmware directory."
+			exit 1
+		fi
+	fi
+done
+
+##############################################################################
+# set up configuration values
+noci=".noci"
+keyboards="keyboards"
+verbose=1
+# update configuration values by command line
+while [ -n "$1" ]; do
+	case "$1" in
+		-x)	# trace script
+			set -x
+			shift
+			;;
+		-n)	# don't skip .noci directory using fake match
+			noci=".noci-bogus"
+			shift
+			;;
+		-v)	# more verbose
+			verbose=$((verbose+1))
+			shift
+			;;
+		-f)	# search partial path under keyboards/<specified>
+			shift
+			if [ -d "${1}" ]; then
+				keyboards="${1}"
+			elif [ -d "keyboards/${1}" ]; then
+				keyboards="keyboards/${1}"
+			elif [ -d "keyboards/handwired/${1}" ]; then
+				keyboards="keyboards/handwired/${1}"
+			else
+				echo "invalid path: ${1}"
+				exit 1
+			fi
+			shift
+			;;
+		-h)	# help
+			help
+			exit 0
+			;;
+		*)	# mode option for print out
+			mode="$1"
+			break
+			;;
+	esac
+done
+
+##############################################################################
+# Exclude keyamps/ directories
+rules="$(find "$keyboards" -type f -name 'rules.mk' -not \( -path '*/keymaps*' -prune \))"
+for rule in $rules; do
+	path="${rule%/*}"
+	keyboard="${path#*/}"
+	config="${path}/config.h"
+	folder=$(get_rule "DEFAULT_FOLDER" "$path/rules.mk")
+	rows="0"
+	cols="0"
+	direct=""
+	diode=""
+	splitrow=""
+	splitcol=""
+	serials=""
+	serialu=""
+	#softserial=""
+	mcu=""
+	layout=""
+	bluetooth=""
+	split=""
+	quantum=""
+	group=""
+	board="$(uniqstr $(check_board "$path"))"
+	[ -n "$board" ] || board="$(uniqstr $(check_board "$path/.."))"
+	[ -n "$board" ] || board="$(uniqstr $(check_board "$path/../.."))"
+	#[ -n "$board" ] || board="$(uniqstr $(check_board "$path/../../.."))"
+	if [ -e "$config" ] && [ ! -e "$path/$noci" ] &&  [ -z "$folder" ]; then
+		update_conf "$path"
+		update_conf "$path/.."
+		update_conf "$path/../.."
+		matrix=$(echo "$rows*$cols"|bc)
+		update_rule "$path"
+		update_rule "$path/.."
+		update_rule "$path/../.."
+		if [ "$split" = "yes" ]; then
+			group="split_yes"
+		elif [ "$split" = "no" ]; then
+			group="split__no"
+		else
+			group="split____"
+		fi
+		if [ -n "$splitrow" ]; then
+			group="${group}r1"
+		else
+			group="${group}r0"
+		fi
+		if [ -n "$splitcol" ]; then
+			group="${group}c1"
+		else
+			group="${group}c0"
+		fi
+		if [ -n "$serials" ]; then
+			group="${group}s1"
+		else
+			group="${group}s0"
+		fi
+		if [ -n "$serialu" ]; then
+			group="${group}u1"
+		else
+			group="${group}u0"
+		fi
+#	XXX SKIP XXX THIS is bogus indicator [ -n "$softserial" ]
+#		if [ -n "$softserial" ]; then
+#			group="${group}s1"
+#		else
+#			group="${group}s0"
+#		fi
+		if [ -n "$quantum" ]; then
+			group="${group}q1"
+		else
+			group="${group}q0"
+		fi
+		case "$bluetooth" in
+			yes) ble="BLUETOOTH"
+				;;
+			no|'') ble="WIRED"
+				;;
+			'no yes') ble="BLUETOOTH+WIRED"
+				;;
+			*) ble="???_${bluetooth}_???"
+				;;
+		esac
+		if [ -z "$diode" ]; then
+			if [ -n "$direct" ]; then
+				diode="DIRECT"
+			elif [ "$rows" = "1" ] || [ "$cols" = "1" ]; then
+				diode="ONE"
+			else
+				diode="NO_DIODE_INFO"
+			fi
+		fi
+		if [ -z "$layout" ]; then
+			layout="NO_LAYOUT"
+		fi
+		if [ -z "$mcu" ]; then
+			mcu="NO_MCU"
+		fi
+		mcu1=${mcu%% *}
+		if [ -z "$board" ]; then
+			if [ "${mcu1}" != "${mcu1##atmega}" ] || \
+				[ "${mcu1}" != "${mcu1##at90}" ] || \
+				[ "${mcu1}" != "${mcu1##attiny}" ]; then
+				board="AVR_board"
+			elif [ "${mcu1}" != "${mcu1##STM32}" ] || \
+			        [ "${mcu1}" != "${mcu1##cortex}" ] || \
+				[ "${mcu1}" != "${mcu1##MK20}" ]; then
+				board="ARM_board"
+			else
+				board="ODD_board"
+			fi
+		fi
+#	XXX SKIP XXX THIS is bogus indicator [ -n "$softserial" ]
+		if [ "$split" = "yes" ] || [ -n "$splitrow" ] || \
+			[ -n "$splitcol" ] || [ -n "$serials" ] || \
+			[ -n "$serialu" ] || \
+			(echo "$quantum" | grep -q uart.c) || \
+			(echo "$quantum" | grep -q i2c_master.c) || \
+			(echo "$quantum" | grep -q tm_sync.c) ; then
+			category="SPLIT_KB"
+		elif [ "$matrix" -lt 10 ]; then
+			category="MACRO_10"
+		elif [ "$matrix" -lt 20 ]; then
+			category="MACRO_20"
+		elif [ "$matrix" -lt 30 ]; then
+			category="MACRO_30"
+		elif [ "$matrix" -lt 60 ]; then
+			category="MONO_060"
+		elif [ "$matrix" -lt 120 ]; then
+			category="MONO_120"
+		elif [ "$matrix" -lt 240 ]; then
+			category="MONO_240"
+		else
+			category="MONO_480"
+		fi
+		# print
+		if [ "$mode" = "diode" ]; then
+			if [ "$diode" = "UNDEFINED" ]; then
+				print_data
+			fi
+		elif [ "$mode" = "quantum" ]; then
+			if [ -n "$quantum" ]; then
+				print_data
+			fi
+		elif [ "$mode" = "mcu" ]; then
+			if [ -z "$mcu" ]; then
+				print_data
+			fi
+		elif [ "$mode" = "matrix" ]; then
+			if [ "$matrix" = "0" ]; then
+				print_data
+			fi
+		elif [ "$mode" = "all" ]; then
+			print_data
+		else
+			if [ "$matrix" != "0" ]; then
+				print_data
+			fi
+		fi
+	fi
+done
