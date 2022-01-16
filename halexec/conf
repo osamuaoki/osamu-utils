@@ -12,7 +12,6 @@ f_help () {
   echo "  hal ${0##*/} i[nstall] # install configuration files from git repo"
   echo "  hal ${0##*/} d[iff]    # diff configuration files against ones in git repo"
   echo "  hal ${0##*/} u[pdate]  # update git repo with installed configuration files"
-  echo "  hal ${0##*/} b[ackup]  # backup private configuration files to ~/backup"
   exit
 }
 
@@ -101,98 +100,7 @@ f_update () {
   done
 }
 
-f_backup () {
-  SECRET_DIR="/home/osamu/secret"
-  if [ ! -d "$SECRET_DIR" ]; then
-    echo "E: Secure $SECRET_DIR missing" >&2
-    exit 1
-  fi
-  BUSR="backup/USR"
-  BSYS="backup/SYS"
-  # Note on rsync options -a == -rlptgoD
-  # x: one filesystem
-  # S: sparse
-  # v: verbose
-  #RSYNC="rsync -axSv"
-  RSYNC="rsync -axS"
-  mkdir -p "${SECRET_DIR}/$BUSR" >/dev/null
-  echo "======================================================================"
-  echo "I: Back up user config to ${SECRET_DIR}/$BUSR"
-  # tailing / of rsync source is important
-  $RSYNC "${HOME}/bin"       "${SECRET_DIR}/$BUSR/"
-  $RSYNC "${HOME}/.gnupg"    "${SECRET_DIR}/$BUSR/"
-  $RSYNC "${HOME}/.ssh"      "${SECRET_DIR}/$BUSR/"
-  $RSYNC "${HOME}/.local/share/keyrings"      "${SECRET_DIR}/$BUSR/"
-  # evolution needs to be backuped for filter
-  $RSYNC \
-      --exclude=".config/chromium" \
-      --exclude=".config/libreoffice" \
-      --exclude=".config/GIMP" \
-      "${HOME}/.config"   "${SECRET_DIR}/$BUSR/"
-  for p in /etc/skel/.* ; do
-    f=$(basename "$p")
-    if [ -f "${HOME}/$f" ]; then
-      $RSYNC "${HOME}/$f" "${SECRET_DIR}/$BUSR"
-    fi
-  done
-  # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.* ; do
-    f=$(basename "$p")
-    if [ -f "${HOME}/$f" ]; then
-      $RSYNC "${HOME}/$f" "${SECRET_DIR}/$BUSR"
-    fi
-  done
-  echo "======================================================================"
-  mkdir -p "${SECRET_DIR}/$BSYS/etc" >/dev/null
-  echo "I: Back up system config to ${SECRET_DIR}/$BSYS"
-  # backup the key /etc contents
-  sudo $RSYNC \
-    /etc/aliases \
-    /etc/alternatives \
-    /etc/apt \
-    /etc/chromium \
-    /etc/chromium.d \
-    /etc/debian_version \
-    /etc/default \
-    /etc/email-addresses \
-    /etc/exim4 \
-    /etc/crontab \
-    /etc/cron.d \
-    /etc/cron.daily \
-    /etc/cron.hourly \
-    /etc/cron.monthly \
-    /etc/crontab \
-    /etc/cron.weekly \
-    /etc/crypttab \
-    /etc/fstab \
-    /etc/group \
-    /etc/gshadow \
-    /etc/hostname \
-    /etc/hosts \
-    /etc/passwd \
-    /etc/shadow \
-    /etc/ssh \
-    /etc/sudoers \
-    /etc/sudoers.d \
-    /etc/sysctl.conf \
-    /etc/sysctl.d \
-    "${SECRET_DIR}/$BSYS/etc"
-  # backup the latest package states
-  mkdir -p "${SECRET_DIR}/$BSYS/apt" >/dev/null
-  $RSYNC /var/lib/apt/extended_states "${SECRET_DIR}/$BSYS/apt"
-  mkdir -p "${SECRET_DIR}/$BSYS/dpkg" >/dev/null
-  $RSYNC \
-    /var/lib/dpkg/diversions \
-    /var/lib/dpkg/statoverride \
-    /var/lib/dpkg/status \
-    "${SECRET_DIR}/$BSYS/dpkg"
-  echo "===================================================================="
-}
-
 case "$1" in
-  b*)
-    f_backup
-        ;;
   i*)
     f_install
         ;;
