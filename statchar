@@ -1,0 +1,52 @@
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 sw=4 et ai:
+"""
+Copyright © 2022 Osamu Aoki
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
+"""
+from sys import stdin
+from collections import Counter
+from math import log10
+
+from pprint import pprint
+
+def filterline(line):
+    """
+    filter all non-ascii as '\x7f'
+    strip leading and trailing white spaces
+    """
+    ascii = [ch if ch <= '~' else '\x7f' for ch in line.strip()]
+    return ascii
+
+
+cnt = Counter([])
+for ln in stdin.readlines():
+    cnt += Counter(filterline(ln))
+# remove
+for i in range(0, 0x20):
+    del cnt[chr(i)]
+del cnt['\x7f']
+total = sum(cnt.values())  # total() requires python 3.10
+maxf = cnt.most_common(1)[0][1]
+for i in range(0x20, 0x7f):
+    if cnt[chr(i)] > 0:
+        freq = cnt[chr(i)]/maxf
+        if freq >= 0.0001:
+            lfreq =  max(int(10+4*log10(freq)), 1)
+        else:
+            lfreq = 1
+    print('"{}"  = {:4.1f} {}'.format(chr(i), freq*100, '*'*lfreq))

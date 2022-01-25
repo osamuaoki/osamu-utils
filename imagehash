@@ -1,4 +1,4 @@
-#/usr/bin/python3
+#!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 sw=4 et ai:
 """
 Copyright © 2020 Osamu Aoki
