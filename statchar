@@ -35,7 +35,7 @@ def filterline(line):
 
 cnt = Counter([])
 for ln in stdin.readlines():
-    cnt += Counter(filterline(ln))
+    cnt += Counter(filterline(ln.lower()))
 # remove
 for i in range(0, 0x20):
     del cnt[chr(i)]

@@ -39,16 +39,26 @@ case $GITROOT in
         if [ "$(pwd)" != "${GITROOT}" ]; then
             read -p "Are you sure? Type RETURN to clean everything:" x
         fi
+        # there maybe autocrlf related diff in cached data
+        git rm --cached -r .
+        # normal reset
         git reset --hard HEAD
         git clean -d -f -x
+        # there maybe submodule
+        git submodule update --init --recursive
         ;;
     /media/*|/mnt/*) # almost_whitelist
         read -p "Are you sure? Type RETURN to clean everything:" x
         if [ "$(pwd)" != "${GITROOT}" ]; then
             read -p "Are you really sure? Type RETURN to clean everything:" x
         fi
+        # there maybe autocrlf related diff in cached data
+        git rm --cached -r .
+        # normal reset
         git reset --hard HEAD
         git clean -d -f -x
+        # there maybe submodule
+        git submodule update --init --recursive
         ;;
     *)
         echo "Skip \"git zap\" since you are in a wrong directory."
