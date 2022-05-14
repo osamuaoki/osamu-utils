@@ -20,7 +20,9 @@ the persistent pre-loaded (source) chroot system environment while sharing the
 user data from the user's home directory of the host system.
 
 Here, if 'CONFIG' and 'DIST' are missing in the command line, 'desktop' for
-'CONFIG' and 'unstable' for 'DIST' are used as the default values.
+'CONFIG' and 'unstable' for 'DIST' are used as the default values.  Normally,
+you skip specifying 'CONFIG' to use its default value.  This command
+automatically becomes root when needed.
 
 The *${0##*/}* command is normally invoked as:
 
@@ -75,9 +77,8 @@ should be avoided unless you know what exactly happens since these setup
 scripts are already used by *sbuild* and *schroot*.
 
 The *${0##*/}* command offers a generarized and similar functionality of
-*sbuild-createchroot*, *sbuild-update*, and *sbuild-shell* for the persistent
-chroot shell environment.  The *${0##*/}* command automatically becomes root
-when needed.
+combined *sbuild-createchroot*, *sbuild-update*, and *sbuild-shell* for the
+persistent chroot shell environment instead of the session one.
 
 Parametrs:
   TYPE    = '$TYPE'
@@ -271,7 +272,7 @@ _prep () {
 THIS_COMMAND="$0"
 echo
 echo "I: executing as USER='$(id -u -n)'"
-echo " % $*"
+echo " % $THIS_COMMAND $*"
 if [ "$(id -u)" != 0 ] && type xhost >/dev/null; then
   XHOST="xhost"
 else
@@ -303,17 +304,16 @@ case "$1" in
     shift
     ;;
   -h|--help)
-    _help
-    exit 0
+    COMMAND_MODE="help"
+    shift
     ;;
   -*)
-    echo "WOW -h not found"
+    echo "W: unknown '${1}'"
+    echo
     _help
-    exit 0
-    ;;
-  '#')
-    echo "WOW # found"
-    exit 0
+    echo
+    echo "W: unknown '${1}'"
+    exit 1
     ;;
 esac
 
@@ -351,8 +351,11 @@ case "$1" in
     ;;
   *)
     echo "W: unknown distribution ${1}"
+    echo
     _help
-    exit 0
+    echo
+    echo "W: unknown distribution ${1}"
+    exit 1
     ;;
 esac
 
@@ -366,29 +369,28 @@ case "$COMMAND_MODE" in
   co*) # config
     _su "$THIS_COMMAND" "-c" "$CONFIG"
     _config
-    exit 0
     ;;
   in*) # init
     _su "$THIS_COMMAND" "-i" "$DIST" "$CONFIG"
     _init
     _upgrade
     _prep
-    exit 0
     ;;
   pr*) # prep
     _su "$THIS_COMMAND" "-p" "$DIST" "$CONFIG"
     _upgrade
     _prep
-    exit 0
     ;;
   up*) # upgrade
     _su "$THIS_COMMAND" "-u" "$DIST" "$CONFIG"
     _upgrade
-    exit 0
     ;;
   sh*) # shell
     trap _noxhost 0
     _distsh
     ;;
+  he*) # help
+    _help
+    exit 0
 esac
 
