@@ -1,0 +1,666 @@
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 et ai:
+"""
+manglekbd -- mangle kbd event data tool
+
+Copyright © 2022 Osamu Aoki
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
+"""
+# For main
+import argparse
+import logging
+
+# import locale
+import os
+import sys
+import shutil
+
+# import collections
+# from operator import itemgetter
+import time
+import struct
+
+# import datetime
+# For test
+from pprint import pprint
+
+#######################################################################
+# ascii text data format (line separated with 2 spaces as indent)
+# - DELTIME: time from the last key event
+#     - TYPE: MSC
+#       CODE: SCAN
+#       VALUE: <value>
+#     - TYPE: KEY
+#       CODE: A
+#       VALUE: [UP|DOWN|REPEAT] -- alias [U|D|R]
+#     - TYPE: SYN
+#       CODE: REPORT
+#       VALUE: <value>
+#######################################################################
+
+MIN_PYTHON = (3, 9)
+
+if sys.version_info < MIN_PYTHON:
+    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+
+# t0 in ms
+t0 = int(time.time_ns()/1000) + 100  # 100 ms padding to avoid minus
+#######################################################################
+# common kbd event data constants and functions
+#######################################################################
+# Key type constants (with fake type X06-X0F etc.)
+EV_TYPE = (
+    "SYN",
+    "KEY",
+    "REL",
+    "ABS",
+    "MSC",
+    "SW",
+    "X06",
+    "X07",
+    "X08",
+    "X09",
+    "X0A",
+    "X0B",
+    "X0C",
+    "X0D",
+    "X0E",
+    "X0F",
+    "X10",
+    "LED",
+    "SND",
+    "REP",
+    "FF",
+    "PWR",
+    "FF_STATUS",
+    "X18",
+    "X19",
+    "X1A",
+    "X1B",
+    "X1C",
+    "X1D",
+    "X1E",
+)
+
+EV_TYPE_DICT = {}
+for ev_type, ev_type_string in enumerate(EV_TYPE):
+    EV_TYPE_DICT[ev_type_string] = ev_type
+
+
+def get_ev_type_string(ev_type):
+    if ev_type < 0x1F:
+        ev_type_string = EV_TYPE[ev_type]
+    else:
+        ev_type_string = "{:#x}".format(ev_type)
+    return ev_type_string
+
+
+def get_ev_type(ev_type_string):
+    if ev_type_string in EV_TYPE_DICT:
+        ev_type = EV_TYPE_DICT[ev_type_string]
+    elif ev_type_string[:2].upper == "0X":
+        ev_type = int(ev_type_string, 0)
+    else:
+        ev_type = 0xF00  # invalid type
+    return ev_type
+
+
+#######################################################################
+SYN_CODE = ("REPORT", "CONFIG", "MT_REPORT", "DROPPED")
+
+SYN_CODE_DICT = {}
+for syn_code, syn_code_string in enumerate(SYN_CODE):
+    SYN_CODE_DICT[syn_code_string] = syn_code
+
+
+def get_syn_code_string(syn_code):
+    if syn_code < 4:
+        syn_code_string = SYN_CODE[syn_code]
+    else:
+        syn_code_string = "{}".format(syn_code)
+    return syn_code_string
+
+
+def get_syn_code(syn_code_string):
+    if syn_code_string in SYN_CODE_DICT:
+        syn_code = SYN_CODE_DICT[syn_code_string]
+    else:
+        syn_code = int(syn_code_string, 0)  # invalid type
+    return syn_code
+
+
+def get_syn_value(syn_value_string):
+    return int(syn_value_string, 0)
+
+
+def get_syn_value_string(syn_value):
+    return "{}".format(syn_value)
+
+
+#######################################################################
+# Key code (unique) with fake KC_84
+KEY_CODE = (
+    "RESERVED",
+    "ESC",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "MINUS",
+    "EQUAL",
+    "BACKSPACE",
+    "TAB",
+    "Q",
+    "W",
+    "E",
+    "R",
+    "T",
+    "Y",
+    "U",
+    "I",
+    "O",
+    "P",
+    "LEFTBRACE",
+    "RIGHTBRACE",
+    "ENTER",
+    "LEFTCTRL",
+    "A",
+    "S",
+    "D",
+    "F",
+    "G",
+    "H",
+    "J",
+    "K",
+    "L",
+    "SEMICOLON",
+    "APOSTROPHE",
+    "GRAVE",
+    "LEFTSHIFT",
+    "BACKSLASH",
+    "Z",
+    "X",
+    "C",
+    "V",
+    "B",
+    "N",
+    "M",
+    "COMMA",
+    "DOT",
+    "SLASH",
+    "RIGHTSHIFT",
+    "KPASTERISK",
+    "LEFTALT",
+    "SPACE",
+    "CAPSLOCK",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "NUMLOCK",
+    "SCROLLLOCK",
+    "KP7",
+    "KP8",
+    "KP9",
+    "KPMINUS",
+    "KP4",
+    "KP5",
+    "KP6",
+    "KPPLUS",
+    "KP1",
+    "KP2",
+    "KP3",
+    "KP0",
+    "KPDOT",
+    "KC_84",
+    "ZENKAKUHANKAKU",
+    "102ND",
+    "F11",
+    "F12",
+    "RO",
+    "KATAKANA",
+    "HIRAGANA",
+    "HENKAN",
+    "KATAKANAHIRAGANA",
+    "MUHENKAN",
+    "KPJPCOMMA",
+    "KPENTER",
+    "RIGHTCTRL",
+    "KPSLASH",
+    "SYSRQ",
+    "RIGHTALT",
+    "LINEFEED",
+    "HOME",
+    "UP",
+    "PAGEUP",
+    "LEFT",
+    "RIGHT",
+    "END",
+    "DOWN",
+    "PAGEDOWN",
+    "INSERT",
+    "DELETE",
+    "MACRO",
+    "MUTE",
+    "VOLUMEDOWN",
+    "VOLUMEUP",
+    "POWER",
+    "KPEQUAL",
+    "KPPLUSMINUS",
+    "PAUSE",
+    "SCALE",
+    "KPCOMMA",
+    "HANGEUL",
+    "HANJA",
+    "YEN",
+    "LEFTMETA",
+    "RIGHTMETA",
+    "COMPOSE",
+)
+
+
+KEY_CODE_DICT = {}
+for key_code, key_code_string in enumerate(KEY_CODE):
+    KEY_CODE_DICT[key_code_string] = key_code
+
+
+def get_key_code_string(key_code):
+    if key_code < 128:
+        key_code_string = KEY_CODE[key_code]
+    elif key_code < 256:
+        key_code_string = "KC_{}".format(key_code)
+    else:
+        key_code_string = "KC_{:#x}".format(key_code)
+    return key_code_string
+
+
+def get_key_code(key_code_string):
+    if key_code_string in KEY_CODE_DICT:
+        key_code = KEY_CODE_DICT[key_code_string]
+    elif key_code_string[:3] == "KC_":
+        key_code = int(key_code_string[:3], 0)
+    else:
+        key_code = 0xF00  # invalid type
+    return key_code
+
+
+# KEY_VALUE_TYPE: 0 -- official name, 1 -- 1 char name, 2  ascii name, 3 ... --aliases
+KEY_VALUE = (
+    ["RELEASE", "↑", "U", "UP"],
+    ["PRESS", "↓", "D", "DOWN", "DN"],
+    ["REPEAT", "→", "R", "RP"],
+)  # RELEASE, PRESS, REPEAT
+KEY_VALUE_DICT = {}
+
+for key_value, key_value_list in enumerate(KEY_VALUE):
+    for key_value_string in key_value_list:
+        KEY_VALUE_DICT[key_value_string] = key_value
+
+
+def get_key_value_string(key_value, key_value_string_type=0):
+    if key_value_string_type == 0:
+        if key_value < 3 and key_value >= 0:
+            key_value_string = KEY_VALUE[key_value][0]
+        else:
+            key_value_string = "VALUE_{:#x}".format(key_value)
+    elif key_value_string_type == 1:
+        if key_value < 3 and key_value >= 0:
+            key_value_string = KEY_VALUE[key_value][1]
+        else:
+            key_value_string = "X"
+    else:
+        if key_value < 3 and key_value >= 0:
+            key_value_string = KEY_VALUE[key_value][2]
+        else:
+            key_value_string = "X"
+    return key_value_string
+
+
+def get_key_value(key_value_string):
+    key_value = None
+    for index, key_valuelist in enumerate(KEY_VALUE):
+        if key_value_string in key_valuelist:
+            key_value = index
+            break
+    if key_value is None:
+        # error
+        print("E: error {}".format(key_value_string))
+        exit(1)
+    return key_value
+
+#######################################################################
+# MSC
+MSC_CODE = ("SERIAL", "PULSELED", "GESTURE", "RAW", "SCAN", "TIMESTAMP")
+
+MSC_CODE_DICT = {}
+for msc_code, msc_code_string in enumerate(MSC_CODE):
+    MSC_CODE_DICT[msc_code_string] = msc_code
+
+
+def get_msc_code_string(msc_code):
+    if msc_code < 6:
+        msc_code_string = MSC_CODE[msc_code]
+    else:
+        msc_code_string = "{}".format(msc_code)
+    return msc_code_string
+
+
+def get_msc_code(msc_code_string):
+    if msc_code_string in MSC_CODE_DICT:
+        msc_code = MSC_CODE_DICT[msc_code_string]
+    else:
+        msc_code = int(msc_code_string, 0)  # invalid type
+    return msc_code
+
+
+def get_msc_value(msc_value_string):
+    return int(msc_value_string, 0)
+
+
+def get_msc_value_string(msc_value):
+    return "{:#0x}".format(msc_value)
+
+
+#######################################################################
+# utility functions
+#######################################################################
+#      input_event struct format:
+#     struct input_event {
+#             __kernel_ulong_t __sec;
+#             __kernel_ulong_t __usec;
+#             __u16 type;
+#             __u16 code;
+#             __s32 value;
+#     };
+
+# This line is taken from print_events.py by wsha
+INPUT_EVENT = struct.Struct("llHHI")
+
+
+def get_us(t_s, t_us):
+    return t_s * 1000000 + t_us
+
+
+def get_time_pair(t):
+    # t in us
+    t_s = int(t  / 1000000)
+    t_us = int(t % 1000000)
+    return (t_s, t_us)
+
+
+#######################################################################
+# sub-commands
+#######################################################################
+
+# Convert event data from stdin and output to stdout
+def convert_to_text(args):
+
+    t_key_prev = t0
+
+    # Trim print out by customizing loop
+    while True:
+        data = sys.stdin.buffer.read(INPUT_EVENT.size)
+        (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        t_key = get_us(t_s, t_us)
+        ev_type_s = get_ev_type_string(ev_type)
+        if ev_type == 4:
+            if args.no_misc:
+                continue
+        if ev_type != 1:
+            if args.key_only:
+                continue
+        if ev_type == 0:  # EV_SYN
+            ev_code_s = get_syn_code_string(ev_code)
+            ev_value_s = get_syn_value_string(ev_value)
+        elif ev_type == 1:  # EV_KEY
+            ev_code_s = get_key_code_string(ev_code)
+            ev_value_s = get_key_value_string(ev_value, args.key_value_string_type)
+        elif ev_type == 4:  # EV_MSC
+            ev_code_s = get_msc_code_string(ev_code)
+            ev_value_s = get_msc_value_string(ev_value)
+        else:
+            ev_code_s = "{}".format(ev_code)
+            ev_value_s = "{}".format(ev_value)
+        if t_key != t_key_prev:
+            if args.output.upper()[0] == "T":
+                if t0 != t_key_prev:
+                    print("\n", end="")
+                if args.time_format.upper()[0] == "A":
+                    print("{}.{:06d}".format(*get_time_pair(t_key)), end="\t")
+                elif args.time_format.upper()[0] == "T":
+                    print("{}.{:06d}".format(*get_time_pair(t_key - t0)), end="\t")
+                else:
+                    print(
+                        "{}.{:06d}".format(*get_time_pair(t_key - t_key_prev)), end="\t"
+                    )
+                if args.key_only:
+                    print(
+                        '{},{}'.format(ev_code_s, ev_value_s),
+                        flush=True,
+                        end="\t",
+                    )
+                else:
+                    print(
+                        '{},{},{}'.format(ev_type_s, ev_code_s, ev_value_s),
+                        flush=True,
+                        end="\t",
+                    )
+            elif args.output.upper()[0] == "Y":
+                print("- SET")
+                if args.time_format.upper()[0] == "A":
+                    print("  - ABSTIME: {}.{:06d}".format(*get_time_pair(t_key)))
+                elif args.time_format.upper()[0] == "T":
+                    print("  - THISTIME: {}.{:06d}".format(*get_time_pair(t_key - t0)))
+                else:
+                    print(
+                        "  - DELTIME: {}.{:06d}".format(
+                            *get_time_pair(t_key - t_key_prev)
+                        )
+                    )
+                print(
+                    '  - EVENT: ["{}", "{}", "{}"]'.format(
+                        ev_type_s, ev_code_s, ev_value_s
+                    ),
+                    flush=True,
+                )
+            else:
+                pass
+            t_key_prev = t_key
+        else:
+            if args.output.upper()[0] == "T":
+                if args.key_only:
+                    print(
+                        '{},{}'.format(ev_code_s, ev_value_s),
+                        flush=True,
+                        end="\t",
+                    )
+                else:
+                    print(
+                        '{},{},{}'.format(ev_type_s, ev_code_s, ev_value_s),
+                        flush=True,
+                        end="\t",
+                    )
+            elif args.output.upper()[0] == "Y":
+                print(
+                    '    EVENT: ["{}", "{}", "{}"]'.format(
+                        ev_type_s, ev_code_s, ev_value_s
+                    ),
+                    flush=True,
+                )
+            else:
+                pass
+    return
+
+
+def event_out(t_key, ev_type, ev_code, ev_value, args):
+    (t_s, t_us) = get_time_pair(t_key)
+    event = INPUT_EVENT.pack(t_s, t_us, ev_type, ev_code, ev_value)
+    sys.stdout.buffer.write(event)
+    sys.stdout.buffer.flush()
+    return
+
+
+def event_syn_out(t_now, args):
+    event_out(t_now, get_ev_type("SYN"), get_syn_code("REPORT"), 0, args)
+    return
+
+
+def pass_through(args):
+
+    while True:
+        data = sys.stdin.buffer.read(INPUT_EVENT.size)
+        (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        t_key = get_us(t_s, t_us)
+        event_out(t_key, ev_type, ev_code, ev_value, args)
+    return
+
+def mangle(args):
+    while True:
+        data = sys.stdin.buffer.read(INPUT_EVENT.size)
+        (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        t_key = get_us(t_s, t_us)
+        #if ev_type != 1:
+        #    continue
+        #print("\n?: {} {} {}".format(ev_type, ev_code, ev_value), file=sys.stderr, flush=True)
+        #print("\n*: {} {} {}".format(get_ev_type("KEY"), get_key_code("Q"), get_key_value("DOWN")), file=sys.stderr, flush=True)
+        if ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("DOWN"):
+            event_out(t_key, ev_type, get_key_code("LEFTSHIFT"), get_key_value("DOWN"), args)
+            event_syn_out(t_key, args)
+            event_out(t_key+2, ev_type, get_key_code("Z"), get_key_value("DOWN"), args)
+            event_syn_out(t_key+2, args)
+        elif ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("UP"):
+            event_out(t_key, ev_type, get_key_code("Z"), get_key_value("UP"), args)
+            event_syn_out(t_key, args)
+            event_out(t_key+3, ev_type, get_key_code("LEFTSHIFT"), get_key_value("UP"), args)
+            event_syn_out(t_key+3, args)
+        else:
+            event_out(t_key, ev_type, ev_code, ev_value, args)
+    return
+
+#######################################################################
+# main: parse commandline parser
+#######################################################################
+def main():
+    parser = argparse.ArgumentParser(
+        description="""\
+A collection of python scripts to play with evdev events.
+
+version: {}
+
+copyright 2022 Osamu Aoki <osamu@debian.org>
+
+license: GPL 2.0+
+
+See See https://github.com/osamuaoki/{}
+""".format(
+            "0.1", "osamu-utils"
+        ),
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Set output to be more verbose",
+    )
+    parser.add_argument(
+        "-q", "--quiet", action="count", default=0, help="Set output to be more quieter"
+    )
+    parser.add_argument(
+        "-c",
+        "--command",
+        action="store",
+        default="T",
+        help="Command mode (TextDump, Passthrough, Mangle)",
+    )
+    parser.add_argument(
+        "-m",
+        "--no-misc",
+        action="store_true",
+        default=False,
+        help="No mis. events",
+    )
+    parser.add_argument(
+        "-k",
+        "--key-only",
+        action="store_true",
+        default=False,
+        help="Only key events",
+    )
+    parser.add_argument(
+        "-t",
+        "--time-format",
+        action="store",
+        default="D",
+        help="Time format (abs, this, del)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        action="store",
+        default="T",
+        help="Output format (tsv-csv, yaml)",
+    )
+    parser.add_argument(
+        "-s",
+        "--state",
+        action="store",
+        default="official",
+        help="state press/release/repeat indicators (official, utf-8, ascii)",
+    )
+    args = parser.parse_args()
+    if args.state.upper()[0] == "U":  # UTF-8
+        args.key_value_string_type = 1
+    elif args.state.upper()[0] == "O":  # Official names
+        args.key_value_string_type = 0
+    else:
+        args.key_value_string_type = 2
+    #######################################################################
+    # Update variables with sanitization
+    #######################################################################
+    #    CRITICAL 50
+    #    ERROR 40
+    #    WARNING 30
+    #    INFO 20
+    #    DEBUG 10
+    logging.root.level = 10 * (args.quiet - args.verbose) + 40
+    if args.command.upper()[0] == "T":  # Text
+        convert_to_text(args)
+    elif args.command.upper()[0] == "P":
+        pass_through(args)
+    else:
+        mangle(args)
+    return
+
+
+#######################################################################
+# Test code
+#######################################################################
+if __name__ == "__main__":
+    main()
