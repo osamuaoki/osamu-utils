@@ -414,6 +414,14 @@ def get_time_pair(t):
     return (t_s, t_us)
 
 
+def event_out(t_key, ev_type, ev_code, ev_value, args):
+    (t_s, t_us) = get_time_pair(t_key)
+    event = INPUT_EVENT.pack(t_s, t_us, ev_type, ev_code, ev_value)
+    sys.stdout.buffer.write(event)
+    sys.stdout.buffer.flush()
+    return
+
+
 #######################################################################
 # sub-commands
 #######################################################################
@@ -518,19 +526,6 @@ def convert_to_text(args):
     return
 
 
-def event_out(t_key, ev_type, ev_code, ev_value, args):
-    (t_s, t_us) = get_time_pair(t_key)
-    event = INPUT_EVENT.pack(t_s, t_us, ev_type, ev_code, ev_value)
-    sys.stdout.buffer.write(event)
-    sys.stdout.buffer.flush()
-    return
-
-
-def event_syn_out(t_now, args):
-    event_out(t_now, get_ev_type("SYN"), get_syn_code("REPORT"), 0, args)
-    return
-
-
 def pass_through(args):
 
     while True:
@@ -541,26 +536,28 @@ def pass_through(args):
     return
 
 def mangle(args):
+    event_queue = []
     while True:
         data = sys.stdin.buffer.read(INPUT_EVENT.size)
         (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        if ev_type == get_ev_type("MSC") and ev_code == get_msc_code("SCAN"):
+            continue
         t_key = get_us(t_s, t_us)
-        #if ev_type != 1:
-        #    continue
-        #print("\n?: {} {} {}".format(ev_type, ev_code, ev_value), file=sys.stderr, flush=True)
-        #print("\n*: {} {} {}".format(get_ev_type("KEY"), get_key_code("Q"), get_key_value("DOWN")), file=sys.stderr, flush=True)
         if ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("DOWN"):
-            event_out(t_key, ev_type, get_key_code("LEFTSHIFT"), get_key_value("DOWN"), args)
-            event_syn_out(t_key, args)
-            event_out(t_key+2, ev_type, get_key_code("Z"), get_key_value("DOWN"), args)
-            event_syn_out(t_key+2, args)
+            event_queue.append((t_key-1, ev_type, get_key_code("LEFTSHIFT"), get_key_value("DOWN")))
+            event_queue.append((t_key-1, get_ev_type("SYN"), get_syn_code("REPORT"), 0))
+            event_queue.append((t_key, ev_type, get_key_code("Z"), get_key_value("DOWN")))
         elif ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("UP"):
-            event_out(t_key, ev_type, get_key_code("Z"), get_key_value("UP"), args)
-            event_syn_out(t_key, args)
-            event_out(t_key+3, ev_type, get_key_code("LEFTSHIFT"), get_key_value("UP"), args)
-            event_syn_out(t_key+3, args)
+            event_queue.append((t_key-1, ev_type, get_key_code("Z"), get_key_value("DOWN")))
+            event_queue.append((t_key-1, get_ev_type("SYN"), get_syn_code("REPORT"), 0))
+            event_queue.append((t_key, ev_type, get_key_code("LEFTSHIFT"), get_key_value("UP")))
         else:
-            event_out(t_key, ev_type, ev_code, ev_value, args)
+            event_queue.append((t_key,ev_type, ev_code, ev_value))
+        if ev_type == get_ev_type("SYN") and ev_code == get_syn_code("REPORT") and ev_value == 0:
+            for event in event_queue:
+                t_key, ev_type, ev_code, ev_value = event
+                event_out(t_key, ev_type, ev_code, ev_value, args)
+            event_queue = []
     return
 
 #######################################################################
