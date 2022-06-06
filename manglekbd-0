@@ -1,0 +1,79 @@
+#!/bin/sh -ex
+# vim:se tw=0 sts=2 ts=2 et ai si:
+#
+#    $ pwd;ls -l
+#    /dev/input/by-id
+#    total 0
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 usb-17ef_ThinkPad_USB_Laser_Mouse-event-mouse -> ../event20
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 usb-17ef_ThinkPad_USB_Laser_Mouse-mouse -> ../mouse3
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 usb-Generic_ThinkPad_Dock_USB_Audio-event-if03 -> ../event18
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 usb-osamuaoki_cgc56-event-if01 -> ../event23
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 usb-osamuaoki_cgc56-event-kbd -> ../event21
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 usb-osamuaoki_cgc56-if01-event-kbd -> ../event25
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 usb-osamuaoki_cgc56-if01-event-mouse -> ../event22
+#    lrwxrwxrwx 1 root root  9 Jun  6 14:51 usb-osamuaoki_cgc56-if01-mouse -> ../mouse4
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 usb-Raydium_Corporation_Raydium_Touch_System-event-if00 -> ../event10
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 usb-SunplusIT_Inc_Integrated_Camera-event-if00 -> ../event14
+#    $ pwd;ls -l
+#    /dev/input/by-path
+#    total 0
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 pci-0000:07:00.0-usb-0:2:1.0-event -> ../event14
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 pci-0000:08:00.3-usb-0:2:1.0-event-mouse -> ../event20
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 pci-0000:08:00.3-usb-0:2:1.0-mouse -> ../mouse3
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 pci-0000:08:00.3-usb-0:4:1.0-event -> ../event10
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 pci-0000:08:00.4-usb-0:1.2:1.0-event-kbd -> ../event21
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 pci-0000:08:00.4-usb-0:1.2:1.1-event -> ../event24
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 pci-0000:08:00.4-usb-0:1.2:1.1-event-kbd -> ../event25
+#    lrwxrwxrwx 1 root root 10 Jun  6 14:51 pci-0000:08:00.4-usb-0:1.2:1.1-event-mouse -> ../event22
+#    lrwxrwxrwx 1 root root  9 Jun  6 14:51 pci-0000:08:00.4-usb-0:1.2:1.1-mouse -> ../mouse4
+#    lrwxrwxrwx 1 root root 10 Jun  6 10:44 pci-0000:08:00.4-usb-0:1.4.4:1.3-event -> ../event18
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-i8042-serio-0-event-kbd -> ../event0
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-i8042-serio-1-event-mouse -> ../event3
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-i8042-serio-1-mouse -> ../mouse1
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-i8042-serio-2-event-mouse -> ../event8
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-i8042-serio-2-mouse -> ../mouse2
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-pcspkr-event-spkr -> ../event2
+#    lrwxrwxrwx 1 root root  9 Jun  6 10:44 platform-thinkpad_acpi-event -> ../event9
+#    
+#    $ sudo python3
+#    Python 3.10.4 (main, Mar 24 2022, 13:07:27) [GCC 11.2.0] on linux
+#    Type "help", "copyright", "credits" or "license" for more information.
+#    >>> import evdev
+#    >>> devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+#    >>> for device in devices:
+#    ...     print(device.path, device.name, device.phys)
+#    ... 
+#    /dev/input/event25 osamuaoki cgc56 Keyboard usb-0000:08:00.4-1.2/input1
+#    /dev/input/event24 osamuaoki cgc56 Consumer Control usb-0000:08:00.4-1.2/input1
+#    /dev/input/event23 osamuaoki cgc56 System Control usb-0000:08:00.4-1.2/input1
+#    /dev/input/event22 osamuaoki cgc56 Mouse usb-0000:08:00.4-1.2/input1
+#    /dev/input/event21 osamuaoki cgc56 usb-0000:08:00.4-1.2/input0
+#    /dev/input/event20 ThinkPad USB Laser Mouse usb-0000:08:00.3-2/input0
+#    /dev/input/event19 Generic ThinkPad Dock USB Audio usb-0000:08:00.4-1.4.4/input3
+#    /dev/input/event18 Generic ThinkPad Dock USB Audio Consumer Control usb-0000:08:00.4-1.4.4/input3
+#    /dev/input/event17 HD-Audio Generic Headphone ALSA
+#    /dev/input/event16 HD-Audio Generic Mic ALSA
+#    /dev/input/event15 HDA Digital PCBeep card1/codec#0/beep0
+#    /dev/input/event14 Integrated Camera: Integrated C usb-0000:07:00.0-2/button
+#    /dev/input/event13 HD-Audio Generic HDMI/DP,pcm=8 ALSA
+#    /dev/input/event12 HD-Audio Generic HDMI/DP,pcm=7 ALSA
+#    /dev/input/event11 HD-Audio Generic HDMI/DP,pcm=3 ALSA
+#    /dev/input/event10 Raydium Corporation Raydium Touch System usb-0000:08:00.3-4/input0
+#    /dev/input/event2 PC Speaker isa0061/input0
+#    /dev/input/event9 ThinkPad Extra Buttons thinkpad_acpi/input0
+#    /dev/input/event8 TPPS/2 Elan TrackPoint synaptics-pt/serio0/input0
+#    /dev/input/event7 Power Button LNXPWRBN/button/input0
+#    /dev/input/event6 Sleep Button PNP0C0E/button/input0
+#    /dev/input/event5 Lid Switch PNP0C0D/button/input0
+#    /dev/input/event4 Power Button PNP0C0C/button/input0
+#    /dev/input/event3 SynPS/2 Synaptics TouchPad isa0060/serio1/input0
+#    /dev/input/event1 Video Bus LNXVIDEO/video/input0
+#    /dev/input/event0 AT Translated Set 2 keyboard isa0060/serio0/input0
+############################################################################################################
+# Main KBD　（読める）
+#sudo intercept /dev/input/by-path/platform-i8042-serio-0-event-kbd | python3 ~/bin/manglekbd -s u
+# USB KBD (応答無し)
+#sudo intercept /dev/input/by-id/usb-osamuaoki_cgc56-event-kbd   | python3 ~/bin/manglekbd -s u
+# USB KBD (読める)
+sudo intercept /dev/input/by-id/usb-osamuaoki_cgc56-if01-event-kbd   | python3 ~/bin/manglekbd -s u
+
