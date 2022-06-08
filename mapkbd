@@ -1,0 +1,409 @@
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 et ai:
+"""
+manglekbd -- mangle kbd event data tool
+
+Copyright © 2022 Osamu Aoki
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
+"""
+# For main
+import argparse
+import logging
+
+# import locale
+import os
+import sys
+import shutil
+
+# import collections
+# from operator import itemgetter
+import time
+import struct
+
+# import datetime
+# For test
+from pprint import pprint
+
+MIN_PYTHON = (3, 9)
+
+if sys.version_info < MIN_PYTHON:
+    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+
+#######################################################################
+# Key code (unique) with fake KC_84
+KEY_CODE = (
+    "RESERVED",
+    "ESC",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "MINUS",
+    "EQUAL",
+    "BACKSPACE",
+    "TAB",
+    "Q",
+    "W",
+    "E",
+    "R",
+    "T",
+    "Y",
+    "U",
+    "I",
+    "O",
+    "P",
+    "LEFTBRACE",
+    "RIGHTBRACE",
+    "ENTER",
+    "LEFTCTRL",
+    "A",
+    "S",
+    "D",
+    "F",
+    "G",
+    "H",
+    "J",
+    "K",
+    "L",
+    "SEMICOLON",
+    "APOSTROPHE",
+    "GRAVE",
+    "LEFTSHIFT",
+    "BACKSLASH",
+    "Z",
+    "X",
+    "C",
+    "V",
+    "B",
+    "N",
+    "M",
+    "COMMA",
+    "DOT",
+    "SLASH",
+    "RIGHTSHIFT",
+    "KPASTERISK",
+    "LEFTALT",
+    "SPACE",
+    "CAPSLOCK",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "NUMLOCK",
+    "SCROLLLOCK",
+    "KP7",
+    "KP8",
+    "KP9",
+    "KPMINUS",
+    "KP4",
+    "KP5",
+    "KP6",
+    "KPPLUS",
+    "KP1",
+    "KP2",
+    "KP3",
+    "KP0",
+    "KPDOT",
+    "KC_84",
+    "ZENKAKUHANKAKU",
+    "102ND",
+    "F11",
+    "F12",
+    "RO",
+    "KATAKANA",
+    "HIRAGANA",
+    "HENKAN",
+    "KATAKANAHIRAGANA",
+    "MUHENKAN",
+    "KPJPCOMMA",
+    "KPENTER",
+    "RIGHTCTRL",
+    "KPSLASH",
+    "SYSRQ",
+    "RIGHTALT",
+    "LINEFEED",
+    "HOME",
+    "UP",
+    "PAGEUP",
+    "LEFT",
+    "RIGHT",
+    "END",
+    "DOWN",
+    "PAGEDOWN",
+    "INSERT",
+    "DELETE",
+    "MACRO",
+    "MUTE",
+    "VOLUMEDOWN",
+    "VOLUMEUP",
+    "POWER",
+    "KPEQUAL",
+    "KPPLUSMINUS",
+    "PAUSE",
+    "SCALE",
+    "KPCOMMA",
+    "HANGEUL",
+    "HANJA",
+    "YEN",
+    "LEFTMETA",
+    "RIGHTMETA",
+    "COMPOSE",
+)
+
+
+KEY_CODE_DICT = {}
+for key_code, key_code_string in enumerate(KEY_CODE):
+    KEY_CODE_DICT[key_code_string] = key_code
+
+
+def get_key_code_string(key_code):
+    if key_code < 128:
+        key_code_string = KEY_CODE[key_code]
+    elif key_code < 256:
+        key_code_string = "KC_{}".format(key_code)
+    else:
+        key_code_string = "KC_{:#x}".format(key_code)
+    return key_code_string
+
+
+def get_key_code(key_code_string):
+    if key_code_string in KEY_CODE_DICT:
+        key_code = KEY_CODE_DICT[key_code_string]
+    elif key_code_string[:3] == "KC_":
+        key_code = int(key_code_string[:3], 0)
+    else:
+        key_code = 0xF00  # invalid type
+    return key_code
+############################################################################
+# Real key code is up to 0x2ff (10 bit wide)
+# No need to have table for all key code.  1-127 (7 bit) is suffice
+# action code = (action_type, action_value)
+# If action_type == 0: action_value = keycode release
+# If action_type == 1: action_value = keycode press
+# If action_type == 2: action_value = keycode repeat
+# If action_type == 4: mod_shift and action_value = keycode press
+# 
+
+# so 0x1000 - 0x1fff (12 bits) are free
+# Layer: 0, 1, 2, ... 7/15           = 3 or 4 bits
+# Mod state: (L+R)(SFT+CTL+ALT+META) = 5 or 8 bits
+# 0x400-0x4FF: 256 codes for internal use:
+# Transparent: 0x400
+# Opaque:      0x401
+
+
+
+# Blank key map
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",                                  "",
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",                                             "",
+####    "",         "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+####                                                                                                                                                    "",         "",         ""
+# define key positions
+
+POS2KEY0= (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
+        "TAB",      "Q",        "W",        "E",        "R",        "T",        "Y",        "U",        "I",        "O",        "P",        "LEFTBRACE","RIGHTBRACE",           "BACKSLASH",
+        "CAPSLOCK", "A",        "S",        "D",        "F",        "G",        "H",        "J",        "K",        "L",        "SEMICOLON","APOSTROPHE",                       "ENTER",
+        "LEFTSHIFT","Z",        "X",        "C",        "V",        "B",        "N",        "M",        "COMMA",    "DOT",      "SLASH",                                        "RIGHTSHIFT",
+        "LEFTCTRL", "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",       "PAGEDOWN",
+                                                                                                                                                        "LEFT",     "DOWN",     "RIGHT"
+        )
+
+LEN_POS2KEY0=len(POS2KEY0)
+
+# This is for tap (and w hold="")
+TAPLAYER= (
+        (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
+        "TAB",      "Q",        "W",        "E",        "R",        "T",        "Y",        "U",        "I",        "O",        "P",        "LEFTBRACE","RIGHTBRACE",           "BACKSLASH",
+        "ESC",      "A",        "S",        "D",        "F",        "G",        "H",        "J",        "K",        "L",        "SEMICOLON","APOSTROPHE",                       "ENTER",
+        "MUTE",     "Z",        "X",        "C",        "V",        "B",        "N",        "M",        "COMMA",    "DOT",      "SLASH",                                        "RIGHTSHIFT",
+        "LEFTCTRL", "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",       "PAGEDOWN",
+                                                                                                                                                        "LEFT",     "DOWN",     "RIGHT"
+        ),
+        (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
+        "F11",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F12",      "BACKSPACE",            "BACKSLASH",
+        "ESC",      "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "ENTER",                            "ENTER",
+        "APP",      "GRAVE",    "",         "",         "MINUS",    "EQUAL",    "LEFTBRACE","RIGHTBRACE","BACKSLASH","",        "APOSTROPHE",                                   "SYSRQ",
+        "LEFTCTRL", "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",       "PAGEDOWN",
+                                                                                                                                                        "LEFT",     "DOWN",     "RIGHT"
+        ),
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "",         "",         "",         "",         "",         "INSERT",   "PAGEUP",   "UP",       "PAGEDOWN", "DELETE",  "",          "",                     "",
+        "",         "LEFTSHIFT","LEFTCTRL", "LEFTALT",  "LEFTMETA", "",         "HOME",     "LEFT",     "DOWN",     "RIGHT",    "END",     "",                                  "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "TAB",      "",         "",                                             "",
+        "",         "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+                                                                                                                                                        "",         "",         ""
+        ),
+        )
+
+# This is for hold
+HOLDLAYER= (
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "MT_LCTL",  "MT_LSFT",  "MT_LCTL",  "MT_LALT",  "MT_LMETA", "MT_RALT",  "MT_RALT",  "MT_LMETA", "MT_LALT",  "MT_RCTL",  "MT_RSFT", "",                                  "",
+        "MT_LSFT",  "",         "",         "",         "LT_2",     "",         "",         "",         "",         "",         "",                                             "",
+        "",         "",         "",                              "LT_1",                                "",         "",         "",                     "",         "",         "",
+                                                                                                                                                        "",         "",         ""
+        ),
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "MT_LSFT",  "MT_LCTL",  "MT_LALT",  "MT_LMETA", "MT_RALT",  "MT_RALT",  "MT_LMETA", "MT_LALT",  "MT_RCTL",  "MT_RSFT", "",                                  "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",                                             "",
+        "",         "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+                                                                                                                                                        "",         "",         ""
+        ),
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",                                  "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",                                             "",
+        "",         "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+                                                                                                                                                        "",         "",         ""
+        ),
+        )
+
+
+for i, kcs in enumerate(POS2KEY):
+    print("MAP[{}]={},  # {}".format(get_key_code(kcs),i, kcs))
+print("============================")
+for kc, i in sorted([(get_key_code(kcs), i) for i, kcs in enumerate(POS2KEYCODE)]):
+    print("REVMAP[{}]={},  # {}".format(kc,i, get_key_code_string(kc)))
+
+exit(0)
+
+#######################################################################
+# main: parse commandline parser
+#######################################################################
+def main():
+    parser = argparse.ArgumentParser(
+        description="""\
+A collection of python scripts to play with evdev events.
+
+version: {}
+
+copyright 2022 Osamu Aoki <osamu@debian.org>
+
+license: GPL 2.0+
+
+See See https://github.com/osamuaoki/{}
+""".format(
+            "0.1", "osamu-utils"
+        ),
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Set output to be more verbose",
+    )
+    parser.add_argument(
+        "-q", "--quiet", action="count", default=0, help="Set output to be more quieter"
+    )
+    parser.add_argument(
+        "-c",
+        "--command",
+        action="store",
+        default="T",
+        help="Command mode (TextDump, Passthrough, Mangle)",
+    )
+    parser.add_argument(
+        "-m",
+        "--no-misc",
+        action="store_true",
+        default=False,
+        help="No mis. events",
+    )
+    parser.add_argument(
+        "-k",
+        "--key-only",
+        action="store_true",
+        default=False,
+        help="Only key events",
+    )
+    parser.add_argument(
+        "-t",
+        "--time-format",
+        action="store",
+        default="D",
+        help="Time format (abs, this, del)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        action="store",
+        default="T",
+        help="Output format (tsv-csv, yaml)",
+    )
+    parser.add_argument(
+        "-s",
+        "--state",
+        action="store",
+        default="official",
+        help="state press/release/repeat indicators (official, utf-8, ascii)",
+    )
+    args = parser.parse_args()
+    if args.state.upper()[0] == "U":  # UTF-8
+        args.key_value_string_type = 1
+    elif args.state.upper()[0] == "O":  # Official names
+        args.key_value_string_type = 0
+    else:
+        args.key_value_string_type = 2
+    #######################################################################
+    # Update variables with sanitization
+    #######################################################################
+    #    CRITICAL 50
+    #    ERROR 40
+    #    WARNING 30
+    #    INFO 20
+    #    DEBUG 10
+    logging.root.level = 10 * (args.quiet - args.verbose) + 40
+    return
+
+
+#######################################################################
+# Test code
+#######################################################################
+if __name__ == "__main__":
+    main()
