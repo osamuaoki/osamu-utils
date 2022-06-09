@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 et ai:
 """
-manglekbd -- mangle kbd event data tool
+mapkbd -- map kbd event data tool
 
 Copyright © 2022 Osamu Aoki
 
@@ -39,6 +39,8 @@ import struct
 from pprint import pprint
 
 MIN_PYTHON = (3, 9)
+
+INPUT_EVENT = struct.Struct("llHHI")
 
 if sys.version_info < MIN_PYTHON:
     sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
@@ -200,6 +202,8 @@ def get_key_code(key_code_string):
     else:
         key_code = 0xF00  # invalid type
     return key_code
+
+
 ############################################################################
 # Real key code is up to 0x2ff (10 bit wide)
 # No need to have table for all key code.  1-127 (7 bit) is suffice
@@ -208,7 +212,7 @@ def get_key_code(key_code_string):
 # If action_type == 1: action_value = keycode press
 # If action_type == 2: action_value = keycode repeat
 # If action_type == 4: mod_shift and action_value = keycode press
-# 
+#
 
 # so 0x1000 - 0x1fff (12 bits) are free
 # Layer: 0, 1, 2, ... 7/15           = 3 or 4 bits
@@ -217,8 +221,7 @@ def get_key_code(key_code_string):
 # Transparent: 0x400
 # Opaque:      0x401
 
-
-
+# fmt: off
 # Blank key map
 ####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
 ####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
@@ -229,7 +232,7 @@ def get_key_code(key_code_string):
 ####                                                                                                                                                    "",         "",         ""
 # define key positions
 
-POS2KEY0= (
+POS2ORIGINAL= (
         "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
         "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
         "TAB",      "Q",        "W",        "E",        "R",        "T",        "Y",        "U",        "I",        "O",        "P",        "LEFTBRACE","RIGHTBRACE",           "BACKSLASH",
@@ -239,10 +242,34 @@ POS2KEY0= (
                                                                                                                                                         "LEFT",     "DOWN",     "RIGHT"
         )
 
-LEN_POS2KEY0=len(POS2KEY0)
+# fmt: on
+LEN_POS2ORIGINAL=len(POS2ORIGINAL)
 
-# This is for tap (and w hold="")
-TAPLAYER= (
+# print("=== SORT BY POS ===")
+# for pos, kcs in enumerate(POS2ORIGINAL):
+#     print("ORIGINAL[KC={}]=POS_{},  # {}".format(get_key_code(kcs), pos, kcs))
+
+# print("=== SORT BY KC ===")
+# for kc, pos in sorted([(get_key_code(kcs), pos) for pos, kcs in enumerate(POS2ORIGINAL)]):
+#     print("ORIGINAL[KC={}]=POS_{},  # {}".format(kc, pos, get_key_code_string(kc)))
+# exit(0)
+ORIG2POS={}
+for kc, pos in sorted([(get_key_code(kcs), pos) for pos, kcs in enumerate(POS2ORIGINAL)]):
+    ORIG2POS[kc] = pos
+
+for kc in ORIG2POS:
+    print("MAP[KC={}]=POS_{},  # {}".format(kc, ORIG2POS[kc], get_key_code_string(kc)))
+
+def get_pos(kc):
+    if kc in ORIG2POS:
+        pos = ORIG2POS[kc]
+    else:
+        pos = LEN_POS2ORIGINAL
+    return
+
+# fmt: off
+# Mapped keys for tap (and w hold="")
+MAP_TAP= (
         (
         "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
         "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
@@ -262,10 +289,10 @@ TAPLAYER= (
                                                                                                                                                         "LEFT",     "DOWN",     "RIGHT"
         ),
         (
-        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "ESC",      "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
-        "",         "",         "",         "",         "",         "",         "INSERT",   "PAGEUP",   "UP",       "PAGEDOWN", "DELETE",  "",          "",                     "",
-        "",         "LEFTSHIFT","LEFTCTRL", "LEFTALT",  "LEFTMETA", "",         "HOME",     "LEFT",     "DOWN",     "RIGHT",    "END",     "",                                  "",
+        "ESC",      "",         "",         "",         "",         "",         "INSERT",   "PAGEUP",   "UP",       "PAGEDOWN", "DELETE",  "",          "",                     "",
+        "",         "LEFTSHIFT","LEFTCTRL", "LEFTALT",  "LEFTMETA", "",         "HOME",     "LEFT",     "DOWN",     "RIGHT",    "END",     "ENTER",                             "ENTER",
         "",         "",         "",         "",         "",         "",         "",         "",         "TAB",      "",         "",                                             "",
         "",         "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
                                                                                                                                                         "",         "",         ""
@@ -273,7 +300,7 @@ TAPLAYER= (
         )
 
 # This is for hold
-HOLDLAYER= (
+MAP_HOLD= (
         (
         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
@@ -302,16 +329,134 @@ HOLDLAYER= (
                                                                                                                                                         "",         "",         ""
         ),
         )
+# fmt: on
+
+# Sanity check
+NLAYERST = len(MAP_TAP)
+NLAYERSH = len(MAP_HOLD)
+if NLAYERST !=  NLAYERSH:
+    print("E: wrong layers: (TAP={}) != (HOLD={})".format(NLAYERST,  NLAYERSH))
+    exit (1)
+else:
+    print("I: good layers: (TAP={}) == (HOLD={})".format(NLAYERST,  NLAYERSH))
+NLAYERS = NLAYERST
+for l in range(NLAYERS):
+    if len(MAP_TAP[l]) != LEN_POS2ORIGINAL:
+        print("E: wrong layers: (TAP={}) != (ORIGINAL={})".format(len(MAP_TAP[l]), LEN_POS2ORIGINAL))
+        exit (1)
+    if len(MAP_HOLD[l]) != LEN_POS2ORIGINAL:
+        print("E: wrong layers: (HOLD={}) != (ORIGINAL={})".format(len(MAP_HOLD[l]), LEN_POS2ORIGINAL))
+        exit (1)
+
+print("I: sane layers")
+
+def get_action(kc, later):
+    pos = get_pos(kc)
+    if pos < LEN_POS2ORIGINAL:
+        tap = MAP_TAP[layer][pos]
+        hold = MAP_HOLD[layer][pos]
+    else:
+        tap = None
+        hold = None
+    return (tap, hold)
+
+class key_event_set():
+    # Keyboard event class
+    def __init__(self):
+        self.time = None
+        self.utime = None
+        self.scan = None
+        self.code = None
+        self.value = None
+        self.syn = None
+        return
+    def newtime(self, time, utime):
+        if self.time is not None or self.utime is not None:
+            print("E: duplicated time {}.{:03d}".format(time, utime))
+        self.time = time
+        self.utime = utime
+    def checktime(self, time, utime):
+        if self.time is None or self.utime is None:
+            print("E: Missing time {}.{:03d}".format(time, utime))
+        if self.time != time or self.utime != utime:
+            print("E: Different time {}.{:03d} != {}.{:03d}".format(self.time, self.utime, time, utime))
+    def newscan(self, scan):
+        if self.scan is not None:
+            print("E: duplicated scan code")
+        self.scan = scan
+    def newcode(self, code, value):
+        if self.code is not None or self.value is not None:
+            print("E: duplicated key code and value set")
+        self.code = code
+        self.value = value
+    def newsyn(self, syn):
+        if self.syn is not None:
+            print("E: duplicated syn report value")
+        if syn == 0 and self.scan is not None:
+            pass
+        else:
+            print("E: Unexpected syn report value {} for with scan code {}".format(syn, self.scan))
+        if syn == 1 and self.scan is None:
+            pass
+        else:
+            print("E: Unexpected syn report value {} for no scan code".format(syn))
+        self.syn = syn
+    def process(self):
+        (tap, hold) = get_action()
+
+        # process key and return action sequence
+        pass 
 
 
-for i, kcs in enumerate(POS2KEY):
-    print("MAP[{}]={},  # {}".format(get_key_code(kcs),i, kcs))
-print("============================")
-for kc, i in sorted([(get_key_code(kcs), i) for i, kcs in enumerate(POS2KEYCODE)]):
-    print("REVMAP[{}]={},  # {}".format(kc,i, get_key_code_string(kc)))
 
-exit(0)
+def map(args):
+    nevents = 0  # 0, 1, [2]
+    layer = 0  # 0, 1
+    state = 0  # 0:D 1:U, 2:R 3:H (DU of other during D)
+    event_queue = []
+    while True:
+        data = sys.stdin.buffer.read(INPUT_EVENT.size)
+        (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        if nevents == 0:
+            key = key_event_set()
+            key.newtime(t_s, t_us)
+        else:
+            key.checktime(t_s, t_us)
+        #
+        if ev_type == get_ev_type("MSC") and ev_code == get_msc_code("SCAN"):
+            key.newscan(ev_value)
+            nevents =+ 1
+        elif ev_type == get_ev_type("KEY") and ev_code < 128:
+            key.newcode(ev_code, ev_value)
+            nevents =+ 1
+        elif ev_type == get_ev_type("SYN") and ev_code == get_syn_code("REPORT"):
+            key.newsyn(ev_value)
+            # if down
+            #  push event_queue.append(key.process())
+            # if rep
+            # check event_queue.append(key.process())
+            # if up
+            # pop event_queue.append(key.process())
+            nevents = 0
+        else:
+            pass # ignore strange
+    return
 
+
+#         if ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("DOWN"):
+#             event_queue.append((t_key-1, ev_type, get_key_code("LEFTSHIFT"), get_key_value("DOWN")))
+#             event_queue.append((t_key-1, get_ev_type("SYN"), get_syn_code("REPORT"), 0))
+#             event_queue.append((t_key, ev_type, get_key_code("Z"), get_key_value("DOWN")))
+#         elif ev_type == get_ev_type("KEY") and ev_code == get_key_code("Q") and ev_value == get_key_value("UP"):
+#             event_queue.append((t_key-1, ev_type, get_key_code("Z"), get_key_value("DOWN")))
+#             event_queue.append((t_key-1, get_ev_type("SYN"), get_syn_code("REPORT"), 0))
+#             event_queue.append((t_key, ev_type, get_key_code("LEFTSHIFT"), get_key_value("UP")))
+#         else:
+#             event_queue.append((t_key,ev_type, ev_code, ev_value))
+#             for event in event_queue:
+#                 t_key, ev_type, ev_code, ev_value = event
+#                 event_out(t_key, ev_type, ev_code, ev_value, args)
+#             event_queue = []
 #######################################################################
 # main: parse commandline parser
 #######################################################################
@@ -399,6 +544,7 @@ See See https://github.com/osamuaoki/{}
     #    INFO 20
     #    DEBUG 10
     logging.root.level = 10 * (args.quiet - args.verbose) + 40
+    map(args)
     return
 
 
