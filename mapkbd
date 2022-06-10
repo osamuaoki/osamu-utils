@@ -39,14 +39,77 @@ import struct
 from pprint import pprint
 
 MIN_PYTHON = (3, 9)
-
-INPUT_EVENT = struct.Struct("llHHI")
-
 if sys.version_info < MIN_PYTHON:
     sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
+# Action code 32bits
+# 0x00000000 - 0x000003FF normal key code (actually up to 0x2ff)
+#               use 0x3FF as none.
+# 0x00000400 - 0x00003FFF 8 bits Mod-tap specifier bit field
+# 0x00004000 - 0x0000FFFF 2 bit (0,1,2,3 layer specifier)
+
 #######################################################################
-# Key code (unique) with fake KC_84
+# common kbd event data constants and functions
+#######################################################################
+# Key type constants (with fake type X06-X0F etc.)
+EV_TYPE = (
+    "SYN",
+    "KEY",
+    "REL",
+    "ABS",
+    "MSC",
+    "SW",
+    "X06",
+    "X07",
+    "X08",
+    "X09",
+    "X0A",
+    "X0B",
+    "X0C",
+    "X0D",
+    "X0E",
+    "X0F",
+    "X10",
+    "LED",
+    "SND",
+    "REP",
+    "FF",
+    "PWR",
+    "FF_STATUS",
+    "X18",
+    "X19",
+    "X1A",
+    "X1B",
+    "X1C",
+    "X1D",
+    "X1E",
+)
+
+EV_TYPE_DICT = {}
+for ev_type, ev_type_string in enumerate(EV_TYPE):
+    EV_TYPE_DICT[ev_type_string] = ev_type
+
+
+def get_ev_type_string(ev_type):
+    if ev_type < 0x1F:
+        ev_type_string = EV_TYPE[ev_type]
+    else:
+        ev_type_string = "{:#x}".format(ev_type)
+    return ev_type_string
+
+
+def get_ev_type(ev_type_string):
+    if ev_type_string in EV_TYPE_DICT:
+        ev_type = EV_TYPE_DICT[ev_type_string]
+    elif ev_type_string[:2].upper == "0X":
+        ev_type = int(ev_type_string, 0)
+    else:
+        ev_type = 0xF00  # invalid type
+    return ev_type
+
+
+#######################################################################
+# Key code (0-127) with fake KC_84
 KEY_CODE = (
     "RESERVED",
     "ESC",
@@ -175,7 +238,7 @@ KEY_CODE = (
     "YEN",
     "LEFTMETA",
     "RIGHTMETA",
-    "COMPOSE",
+    "COMPOSE",  # KC_127
 )
 
 
@@ -202,6 +265,37 @@ def get_key_code(key_code_string):
     else:
         key_code = 0xF00  # invalid type
     return key_code
+
+#######################################################################
+SYN_CODE = ("REPORT", "CONFIG", "MT_REPORT", "DROPPED")
+
+SYN_CODE_DICT = {}
+for syn_code, syn_code_string in enumerate(SYN_CODE):
+    SYN_CODE_DICT[syn_code_string] = syn_code
+
+
+def get_syn_code_string(syn_code):
+    if syn_code < 4:
+        syn_code_string = SYN_CODE[syn_code]
+    else:
+        syn_code_string = "{}".format(syn_code)
+    return syn_code_string
+
+
+def get_syn_code(syn_code_string):
+    if syn_code_string in SYN_CODE_DICT:
+        syn_code = SYN_CODE_DICT[syn_code_string]
+    else:
+        syn_code = int(syn_code_string, 0)  # invalid type
+    return syn_code
+
+
+def get_syn_value(syn_value_string):
+    return int(syn_value_string, 0)
+
+
+def get_syn_value_string(syn_value):
+    return "{}".format(syn_value)
 
 
 ############################################################################
@@ -243,7 +337,7 @@ POS2ORIGINAL= (
         )
 
 # fmt: on
-LEN_POS2ORIGINAL=len(POS2ORIGINAL)
+LEN_POS2ORIGINAL = len(POS2ORIGINAL)
 
 # print("=== SORT BY POS ===")
 # for pos, kcs in enumerate(POS2ORIGINAL):
@@ -253,12 +347,15 @@ LEN_POS2ORIGINAL=len(POS2ORIGINAL)
 # for kc, pos in sorted([(get_key_code(kcs), pos) for pos, kcs in enumerate(POS2ORIGINAL)]):
 #     print("ORIGINAL[KC={}]=POS_{},  # {}".format(kc, pos, get_key_code_string(kc)))
 # exit(0)
-ORIG2POS={}
-for kc, pos in sorted([(get_key_code(kcs), pos) for pos, kcs in enumerate(POS2ORIGINAL)]):
+ORIG2POS = {}
+for kc, pos in sorted(
+    [(get_key_code(kcs), pos) for pos, kcs in enumerate(POS2ORIGINAL)]
+):
     ORIG2POS[kc] = pos
 
-for kc in ORIG2POS:
-    print("MAP[KC={}]=POS_{},  # {}".format(kc, ORIG2POS[kc], get_key_code_string(kc)))
+# for kc in ORIG2POS:
+#     print("MAP[KC={}]=POS_{},  # {}".format(kc, ORIG2POS[kc], get_key_code_string(kc)))
+
 
 def get_pos(kc):
     if kc in ORIG2POS:
@@ -267,9 +364,10 @@ def get_pos(kc):
         pos = LEN_POS2ORIGINAL
     return
 
+
 # fmt: off
-# Mapped keys for tap (and w hold="")
-MAP_TAP= (
+# Mapped key
+MAP_KEY_STRING = (
         (
         "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
         "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",                "BACKSPACE",
@@ -299,8 +397,9 @@ MAP_TAP= (
         ),
         )
 
-# This is for hold
-MAP_HOLD= (
+
+# This is for action type
+MAP_ACTION_STRING = (
         (
         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",                     "",
@@ -329,38 +428,80 @@ MAP_HOLD= (
                                                                                                                                                         "",         "",         ""
         ),
         )
+
+
 # fmt: on
 
 # Sanity check
-NLAYERST = len(MAP_TAP)
-NLAYERSH = len(MAP_HOLD)
-if NLAYERST !=  NLAYERSH:
-    print("E: wrong layers: (TAP={}) != (HOLD={})".format(NLAYERST,  NLAYERSH))
-    exit (1)
-else:
-    print("I: good layers: (TAP={}) == (HOLD={})".format(NLAYERST,  NLAYERSH))
-NLAYERS = NLAYERST
-for l in range(NLAYERS):
-    if len(MAP_TAP[l]) != LEN_POS2ORIGINAL:
-        print("E: wrong layers: (TAP={}) != (ORIGINAL={})".format(len(MAP_TAP[l]), LEN_POS2ORIGINAL))
-        exit (1)
-    if len(MAP_HOLD[l]) != LEN_POS2ORIGINAL:
-        print("E: wrong layers: (HOLD={}) != (ORIGINAL={})".format(len(MAP_HOLD[l]), LEN_POS2ORIGINAL))
-        exit (1)
+NK = len(MAP_KEY_STRING)
+NA = len(MAP_ACTION_STRING)
+if NK != NA:
+    print("E: wrong number of layers in string based data: (key={}) != (action={})".format(NK, NA))
+    exit(1)
+N = NK
 
-print("I: sane layers")
+for l in range(N):
+    if len(MAP_KEY_STRING[l]) != LEN_POS2ORIGINAL:
+        print(
+            "E: wrong layers: (TAP={}) != (ORIGINAL={})".format(
+                len(MAP_KEY_STRING[l]), LEN_POS2ORIGINAL
+            )
+        )
+        exit(1)
+    if len(MAP_ACTION_STRING[l]) != LEN_POS2ORIGINAL:
+        print(
+            "E: wrong layers: (HOLD={}) != (ORIGINAL={})".format(
+                len(MAP_ACTION_STRING[l]), LEN_POS2ORIGINAL
+            )
+        )
+        exit(1)
 
-def get_action(kc, later):
+print("I: sane situation: {} layers {} positions".format(N, LEN_POS2ORIGINAL))
+
+MAP = []
+for l in range(N):
+    L = []
+    for pos in range(LEN_POS2ORIGINAL):
+        L.append(get_keycode(MAP_KEY_STRING[l][pos]), get_actioncode(MAP_ACTION_STRING[l][pos]))
+    MAP.append(L)
+
+def get_action(kc, layer):
     pos = get_pos(kc)
     if pos < LEN_POS2ORIGINAL:
-        tap = MAP_TAP[layer][pos]
-        hold = MAP_HOLD[layer][pos]
+        (kc_mapped, action) = MAP[layer][pos]
     else:
-        tap = None
-        hold = None
-    return (tap, hold)
+        kc_mapped = None
+        action = None
+    return (kc_mapped, action)
 
-class key_event_set():
+#######################################################################
+MSC=get_ev_type("MSC")
+SCAN=get_msc_code("SCAN")
+
+KEY=get_ev_type("KEY")
+DOWN = 0
+UP = 1
+REPEAT = 2
+
+SYN = get_ev_type("SYN")
+REPORT = get_syn_code("REPORT")
+
+YETTAP = 0
+TAP = 1
+HOLD = 2
+
+EVDEV_EVENT = struct.Struct("llHHI")
+
+def event_in():
+    data = sys.stdin.buffer.read(EVDEV_EVENT.size)
+    return EVDEV_EVENT.unpack(data)
+    # return (t_s, t_us, ev_type, ev_code, ev_value)
+
+def event_out(t_s, t_us, t_key, ev_type, ev_code, ev_value):
+    event = EVDEV_EVENT.pack(t_s, t_us, ev_type, ev_code, ev_value)
+    return sys.stdout.buffer.write(event)
+
+class key_event_set:
     # Keyboard event class
     def __init__(self):
         self.time = None
@@ -369,68 +510,125 @@ class key_event_set():
         self.code = None
         self.value = None
         self.syn = None
+        self.taphold = YETTAP
         return
+
     def newtime(self, time, utime):
         if self.time is not None or self.utime is not None:
             print("E: duplicated time {}.{:03d}".format(time, utime))
         self.time = time
         self.utime = utime
+
     def checktime(self, time, utime):
         if self.time is None or self.utime is None:
             print("E: Missing time {}.{:03d}".format(time, utime))
         if self.time != time or self.utime != utime:
-            print("E: Different time {}.{:03d} != {}.{:03d}".format(self.time, self.utime, time, utime))
+            print(
+                "E: Different time {}.{:03d} != {}.{:03d}".format(
+                    self.time, self.utime, time, utime
+                )
+            )
+
     def newscan(self, scan):
         if self.scan is not None:
             print("E: duplicated scan code")
         self.scan = scan
+
     def newcode(self, code, value):
         if self.code is not None or self.value is not None:
             print("E: duplicated key code and value set")
         self.code = code
         self.value = value
+
     def newsyn(self, syn):
         if self.syn is not None:
             print("E: duplicated syn report value")
         if syn == 0 and self.scan is not None:
             pass
         else:
-            print("E: Unexpected syn report value {} for with scan code {}".format(syn, self.scan))
+            print(
+                "E: Unexpected syn report value {} for with scan code {}".format(
+                    syn, self.scan
+                )
+            )
         if syn == 1 and self.scan is None:
             pass
         else:
             print("E: Unexpected syn report value {} for no scan code".format(syn))
         self.syn = syn
-    def process(self):
-        (tap, hold) = get_action()
 
-        # process key and return action sequence
-        pass 
-
+    def output(self):
+        # output set of 2-3 events for a key
+        if self.syn == 0:
+            event_out(key.time, key.utime, MSC, SCAN, key.scan)
+        event_out(key.time, key.utime, KEY, key.code, key.value)
+        event_out(key.time, key.utime, SYN, REPORT, key.syn)
 
 
 def map(args):
     nevents = 0  # 0, 1, [2]
     layer = 0  # 0, 1
     state = 0  # 0:D 1:U, 2:R 3:H (DU of other during D)
-    event_queue = []
+    input_queue = []
+    output_queue = []
     while True:
-        data = sys.stdin.buffer.read(INPUT_EVENT.size)
-        (t_s, t_us, ev_type, ev_code, ev_value) = INPUT_EVENT.unpack(data)
+        (t_s, t_us, ev_type, ev_code, ev_value) = get_event_in()
         if nevents == 0:
             key = key_event_set()
             key.newtime(t_s, t_us)
         else:
             key.checktime(t_s, t_us)
         #
-        if ev_type == get_ev_type("MSC") and ev_code == get_msc_code("SCAN"):
+        if ev_type == MSC and ev_code == SCAN:
             key.newscan(ev_value)
-            nevents =+ 1
-        elif ev_type == get_ev_type("KEY") and ev_code < 128:
+            nevents = +1
+        elif ev_type == KEY and ev_code < 128:
             key.newcode(ev_code, ev_value)
-            nevents =+ 1
-        elif ev_type == get_ev_type("SYN") and ev_code == get_syn_code("REPORT"):
+            nevents = +1
+        elif ev_type == SYN and ev_code == REPORT:
             key.newsyn(ev_value)
+            if key.value == DOWN:
+                # just place it in the queue as .taphold = YETTAP
+                input_queue.append(key)
+            elif key.value == REPEAT:
+                for xkey in input_queue:
+                    if key.code == xkey.code and key.value == DOWN:
+                        if xkey.taphold == YETTAP:
+                            xkey.taphold = HOLD
+                key.taphold = HOLD
+                input_queue.append(key)
+            else:  # key.value == UP:
+                for xkey in input_queue:
+                    if key.code == xkey.code:
+                        if xkey.taphold == YETTAP:
+                            xkey.taphold = TAP
+                if key.taphold == YETTAP:
+                    key.taphold = TAP
+                    found = 0
+                    for xkey in reversed(input_queue):
+                        # any key after the last key.code
+                        if key.code == xkey.code:
+                            found = 1
+                        if found == 1:
+                            if xkey.taphold == YETTAP:
+                                xkey.taphold = HOLD
+                # if layer-mod released
+                input_queue.append(key)
+                for xkey in input_queue:
+                    if xkey.taphold = YETTAP:
+                        break
+                    else:
+                        # Process
+                        pass
+                        #output_queue.extend(xkey.process(0)) # layer ???
+                        #layer = xkey.update_layer()
+                        #loop over buffer
+                # shorten queue
+                sys.stdout.buffer.flush()
+
+
+                key.state = HOLD
+
             # if down
             #  push event_queue.append(key.process())
             # if rep
@@ -439,7 +637,7 @@ def map(args):
             # pop event_queue.append(key.process())
             nevents = 0
         else:
-            pass # ignore strange
+            pass  # ignore strange
     return
 
 
