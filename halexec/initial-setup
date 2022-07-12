@@ -6,7 +6,7 @@
 #############################################################################
 # Set to run as ROOT
 if [ $(id -un) != root ]; then
-  set -x
+  #set -x
   if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
     echo "Please type the password of your user account"
     sudo --preserve-env $0 $*
@@ -14,7 +14,7 @@ if [ $(id -un) != root ]; then
     echo "Please type the password of the root account"
     su --preserve-environment -c $0 $*
   fi
-  set +x
+  #set +x
   exit
 fi
 
@@ -69,9 +69,6 @@ aptitude update
 aptitude full-upgrade
 
 #############################################################################
-aptinstall 1 "minimum console packages" btrfs-progs fzf git gitk locales-all mc neovim ripgrep sudo vim vim-scripts
-
-#############################################################################
 echo "set apt/aptitude with non-free repo access"
 # Basic apt set up after the install: Enable contrib + non-free
 if grep -q non-free /etc/apt/sources.list || \
@@ -93,7 +90,10 @@ else
 fi
 
 #############################################################################
-aptinstall 2 "firmware packages" firmware-iwlwifi firmware-linux-nonfree firmware-misc-nonfree firmware-realtek
+aptinstall 1 "firmware packages" firmware-iwlwifi firmware-linux firmware-misc-nonfree firmware-realtek
+
+#############################################################################
+aptinstall 2 "basic console packages" btrfs-progs fzf git gitk locales-all mc neovim ripgrep sudo vim vim-scripts
 
 #############################################################################
 echo "set the primary user privileges (sudo)"
@@ -123,11 +123,19 @@ END
 fi
 
 #############################################################################
-aptinstall 3 "useful GUI packages" chromium gnome-firmware gparted ibus-anthy ibus-mozc ssh-askpass-gnome
-
+aptinstall 3 "basic GUI packages" chromium gnome-firmware gparted ibus-anthy ibus-mozc ssh-askpass-gnome
 
 #############################################################################
-aptinstall 4 "useful development packages" devscripts dgit dh-exec hugo sbuild schroot
+aptinstall 4 "basic development packages" devscripts dgit dh-exec hugo sbuild schroot
+
+#############################################################################
+aptinstall 12 "extra console packages" moreutils imediff
+
+#############################################################################
+aptinstall 13 "extra GUI packages" zim
+
+#############################################################################
+aptinstall 14 "extra development packages" cmake black
 
 #############################################################################
 echo ""
