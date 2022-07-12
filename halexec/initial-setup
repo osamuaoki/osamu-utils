@@ -6,31 +6,73 @@
 #############################################################################
 # Set to run as ROOT
 if [ $(id -un) != root ]; then
+  set -x
   if [ -x /usr/bin/sudo ] && [ -r /etc/sudoers.d/custom ]; then
-    echo "Please type the password of your account"
-    sudo --preserve-env "$0"
+    echo "Please type the password of your user account"
+    sudo --preserve-env $0 $*
   else
-    echo "Please type the root password"
-    su --preserve-environment -c "$0"
+    echo "Please type the password of the root account"
+    su --preserve-environment -c $0 $*
   fi
+  set +x
   exit
 fi
 
-echo "Executing 'hal ${0##*/}' as root" >&2
+echo "Executing '$0' (sub)command as root with '$*'" >&2
+echo "dddbug '$1'" >&2
+
+# sanity check
+case "$1" in
+  '')
+    STEP_LAST=999
+    ;;
+  [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
+    STEP_LAST="$1"
+    ;;
+  *)
+    echo "E: illegal argument '$1'"
+    exit 1
+    ;;
+esac
+
+echo "I: runs all script up to step $STEP_LAST"
+
+#############################################################################
+# The following function is used to install packages
+#############################################################################
+
+aptinstall () {
+  if [ -n "$1" ] && [ $# -ge 3 ]; then
+    if [ "$1" -le "$STEP_LAST" ]; then
+      echo "I: condition: step=$1 <= step_last=$STEP_LAST"
+      echo "I: install $2"
+      shift; shift
+      echo "I: packages: $*"
+      aptitude install "$@"
+    else
+      exit 0
+    fi
+  fi
+}
 
 #############################################################################
 # The following commands are run under ROOT
 #############################################################################
-echo "add bare minimum packages"
-#############################################################################
-# initially we only have apt
-apt install aptitude nano-
-# aptitude helps to track auto/manual install status
-aptitude install mc vim sudo locales-all git wget gnupg openssh-client
 
 #############################################################################
-echo "set apt/aptitude with non-free"
+# initially we only have apt
 #############################################################################
+echo "I: step 0: install bare minimum"
+apt update
+apt install aptitude nano-
+aptitude update
+aptitude full-upgrade
+
+#############################################################################
+aptinstall 1 "minimum console packages" btrfs-progs fzf git gitk locales-all mc neovim ripgrep sudo vim vim-scripts
+
+#############################################################################
+echo "set apt/aptitude with non-free repo access"
 # Basic apt set up after the install: Enable contrib + non-free
 if grep -q non-free /etc/apt/sources.list || \
    grep -q contrib /etc/apt/sources.list ; then
@@ -50,35 +92,49 @@ else
     /etc/apt/sources.list.orig >> /etc/apt/sources.list
 fi
 
-aptitude update
-aptitude full-upgrade
 #############################################################################
-echo "set the primary user privileges"
+aptinstall 2 "firmware packages" firmware-iwlwifi firmware-linux-nonfree firmware-misc-nonfree firmware-realtek
+
 #############################################################################
+echo "set the primary user privileges (sudo)"
 # Set primary user name (even if it was started as root)
 USERNAME=$(id -un 1000)
 mkdir -p /etc/sudoers.d
 if [ ! -f /etc/sudoers.d/custom ]; then
   cat >/etc/sudoers.d/custom <<END
-# NO password for the primary user
-#$USERNAME ALL = NOPASSWD: ALL
-# Alternative setting for the user in sudo group
-%sudo ALL = (ALL) NOPASSWD : ALL
-# Alternative setting for post buster
+# No passowrd required for the user in sudo group
+# please note the last match wins configuration
+%sudo ALL = (ALL:ALL) NOPASSWD: ALL
 # No password for 8 hours
 #Defaults timestamp_timeout = 480
 #Defaults timestamp_type = global
 END
 # Set up normal group membership
-  /usr/sbin/adduser $USERNAME sudo
   /usr/sbin/adduser $USERNAME adm
+  /usr/sbin/adduser $USERNAME backup
+  /usr/sbin/adduser $USERNAME dialout
+  /usr/sbin/adduser $USERNAME dip
+  /usr/sbin/adduser $USERNAME games
+  /usr/sbin/adduser $USERNAME mail
   /usr/sbin/adduser $USERNAME src
   /usr/sbin/adduser $USERNAME staff
-  /usr/sbin/adduser $USERNAME games
+  /usr/sbin/adduser $USERNAME sudo
+  /usr/sbin/adduser $USERNAME www-data
 fi
+
+#############################################################################
+aptinstall 3 "useful GUI packages" chromium gnome-firmware gparted ibus-anthy ibus-mozc ssh-askpass-gnome
+
+
+#############################################################################
+aptinstall 4 "useful development packages" devscripts dgit dh-exec hugo sbuild schroot
+
+#############################################################################
 echo ""
-echo "Debian distribution supported:"
+echo "======================================================================="
+echo "Current Debian distribution supported:"
 sed -n -e "s/^deb\s.*\/\s/    /p" /etc/apt/sources.list
+echo "======================================================================="
 echo ""
 read -p "Type 'RETURN'-key to reboot the system (otherwise ^C to stop here)." FOO
 /usr/sbin/shutdown -r now
