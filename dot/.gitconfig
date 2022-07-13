@@ -18,8 +18,6 @@
 	co = checkout
 	a = add
 	aa = add -A .
-	sd = svn dcommit
-	sr = svn rebase
 	# creating simple alias "git zap" is problematic for some repos like /home/<user> and /root /etc.
         # ~/bin/git-zap has priority over this alias and can avoid such risky situation
 	zap = ! "echo \"\\\"git zap\\\" command disabled.\""
@@ -41,10 +39,13 @@
 	pushInsteadOf = https://github.com/
 	insteadOf = github:
 
+# https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings
 [core]
 	autocrlf = false
 
-# BLM in 2021
-#[init]
-#	defaultBranch = main
+[pull]
+	rebase = true
 [init]
+	defaultBranch = main
+  # For `dgit` operation unset `defaultBranch = main`
+

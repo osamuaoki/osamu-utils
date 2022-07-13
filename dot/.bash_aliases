@@ -24,16 +24,25 @@ sysupdate_main () {
   sudo apt-get update && sudo apt-get dist-upgrade -y && \
       sudo apt-get autoremove -y
   set +x
-  sync
+  sync; date --iso=sec
+  echo "============================================================================="
 }
-
 sysupdate_sbuild () {
   set -x; date --iso=sec
-  sudo sbuild-update -udcar u
+  sudo sbuild-update -udcar $1
   set +x
   sync
+  sync; date --iso=sec
+  echo "============================================================================="
 }
-alias up="sysupdate_main; sysupdate_sbuild"
+
+alias up="sysupdate_main && \
+  sysupdate_sbuild unstable && \
+  sysupdate_sbuild testing && \
+  sysupdate_sbuild stable && \
+  sysupdate_sbuild oldstable"
+
+alias ccd="cd \$(realpath .)"
 alias bts="bts --mutt"
 alias gk="git status && gitk --all"
 # For LXC

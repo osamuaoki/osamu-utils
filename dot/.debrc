@@ -295,7 +295,7 @@
 @PRG@		clang-format		# C++: clang-format -style=Google -i filename.c
 @PRG@		ccache
 @PRG@		eatmydata
-PRG@		cmake			# cross-platform, open-source make system
+@PRG@		cmake			# cross-platform, open-source make system
 
 # Debug
 @PRG@		gdb cgdb rlwrap # Debug and readline
@@ -305,7 +305,7 @@ PRG@		cmake			# cross-platform, open-source make system
 
 @PRG@		rpm2cpio
 @PRG@		signing-party
-PRG@		faketime		# Report faked system time to programs (command-line tool)
+@PRG@		faketime		# Report faked system time to programs (command-line tool)
 
 @GUI@ @PRG@	glade
 @GUI@ @PRG@	vim-gtk3

@@ -10,6 +10,9 @@ case $- in
       *) return;;
 esac
 
+#exec zsh -i
+#exec fish
+
 # don't put duplicate lines or lines starting with space in the history.
 # See bash(1) for more options
 HISTCONTROL=ignoreboth
@@ -44,7 +47,9 @@ if [ "$TERM" = "linux" ]; then
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
     # GUI terminal: reverse with U+E0B0 (private area powerline font)
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\] ⇶ ⇶ ⇶ ⇶ ⇶\n\[\033[01;32;48m\]\$\[\033[00m\] '
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\n\[\033[01;32;48m\]\$\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\] ⇶ ⇶ ⇶ ⇶ ⇶\n\[\033[01;32;48m\]\$\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$\n\[\033[01;32;48m\]⟫\[\033[00m\] '
     #PS1='⇶ ${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ \n\[\033[01;32;48m\]⟫\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🥷⟫\[\033[00m\] '
@@ -66,7 +71,8 @@ else
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]⟫⟫\[\033[00m\] '
     #PS1='⇶ ${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ ⇶\n❖\[\033[00m\] '
     #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$\n\[\033[00m\] '
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\] ⇶  ⇶\n\$\[\033[00m\] '
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\] \n\$\[\033[00m\] '
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))") \n\$\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
@@ -131,7 +137,8 @@ fi
 umask 002
 
 # set CDPATH
-export CDPATH=.:~:/usr/share/doc
+#export CDPATH=.:~:/usr/share/doc
+export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share/doc
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
@@ -158,7 +165,7 @@ fi
 
 ################# CUSTOMIZATION NOTE ##################################
 # fancy prompt
-FZF_DEFAULT_OPTS="--prompt='⇶ ⇶ ⇶ ⇶ ⇶ '"
+FZF_DEFAULT_OPTS="--prompt=' ⇶ '"
 #   find limits deep directory:                   -maxdepth 10
 FZF_FIND_DEPTH=10
 #   find ignores btrfs snapshot backup directory: -name .bss.d
@@ -200,7 +207,21 @@ if command -v fzf >/dev/null; then
 fi
 
 
-# direnv
-if command -v direnv >/dev/null; then
-    eval "$(direnv hook bash)"
-fi
+# # direnv
+# if command -v direnv >/dev/null; then
+#     eval "$(direnv hook bash)"
+# fi
+
+
+# QMK firmware
+export QMK_HOME="~/github/qmk/qmk_firmware"
+
+alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
+complete -F _quilt_completion -o filenames dquilt
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# disable CTRL-S (STOP) on console
+stty stop undef
