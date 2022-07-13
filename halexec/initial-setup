@@ -126,7 +126,7 @@ echo "set group membership"
 fi
 #############################################################################
 echo "set grub installer to probe other drives"
-if grep -q "^GRUB_DISABLE_OS_PROBER=false" /etc/defaults/grub; then
+if grep -q "^GRUB_DISABLE_OS_PROBER=false" /etc/default/grub; then
   echo "Already probing multiple drives"
 else
   echo "Enable to probe multiple drives"
