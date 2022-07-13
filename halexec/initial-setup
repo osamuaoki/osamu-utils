@@ -130,9 +130,9 @@ if grep -q "^GRUB_DISABLE_OS_PROBER=false" /etc/defaults/grub; then
   echo "Already probing multiple drives"
 else
   echo "Enable to probe multiple drives"
-  echo "" >> /etc/defaults/grub
-  echo "# Set up to probe other drives" >> /etc/defaults/grub
-  echo "GRUB_DISABLE_OS_PROBER=false" >> /etc/defaults/grub
+  echo "" >> /etc/default/grub
+  echo "# Set up to probe other drives" >> /etc/default/grub
+  echo "GRUB_DISABLE_OS_PROBER=false" >> /etc/default/grub
 fi
 
 #############################################################################
