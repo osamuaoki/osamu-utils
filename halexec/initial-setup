@@ -109,6 +109,9 @@ if [ ! -f /etc/sudoers.d/custom ]; then
 #Defaults timestamp_timeout = 480
 #Defaults timestamp_type = global
 END
+
+#############################################################################
+echo "set group membership"
 # Set up normal group membership
   /usr/sbin/adduser $USERNAME adm
   /usr/sbin/adduser $USERNAME backup
@@ -120,6 +123,16 @@ END
   /usr/sbin/adduser $USERNAME staff
   /usr/sbin/adduser $USERNAME sudo
   /usr/sbin/adduser $USERNAME www-data
+fi
+#############################################################################
+echo "set grub installer to probe other drives"
+if grep -q "^GRUB_DISABLE_OS_PROBER=false" /etc/defaults/grub; then
+  echo "Already probing multiple drives"
+else
+  echo "Enable to probe multiple drives"
+  echo "" >> /etc/defaults/grub
+  echo "# Set up to probe other drives" >> /etc/defaults/grub
+  echo "GRUB_DISABLE_OS_PROBER=false" >> /etc/defaults/grub
 fi
 
 #############################################################################
