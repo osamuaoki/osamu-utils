@@ -93,7 +93,11 @@ fi
 aptinstall 1 "firmware packages" firmware-iwlwifi firmware-linux firmware-misc-nonfree firmware-realtek
 
 #############################################################################
-aptinstall 2 "basic console packages" btrfs-progs fzf git gitk locales-all mc neovim ripgrep sudo vim vim-scripts
+aptinstall 2 "basic console packages" \
+  sudo mc \
+  btrfs-progs locales-all \
+  fzf git gitk \
+  vim vim-scripts
 
 #############################################################################
 echo "set the primary user privileges (sudo)"
@@ -136,13 +140,15 @@ else
 fi
 
 #############################################################################
-aptinstall 3 "basic GUI packages" chromium gnome-firmware gparted ibus-anthy ibus-mozc ssh-askpass-gnome
+aptinstall 3 "basic GUI packages" chromium gnome-firmware gparted \
+  ibus-anthy ibus-mozc ssh-askpass-gnome
 
 #############################################################################
 aptinstall 4 "basic development packages" devscripts dgit dh-exec hugo sbuild schroot
 
 #############################################################################
-aptinstall 12 "extra console packages" moreutils imediff
+aptinstall 12 "extra console packages" moreutils imediff \
+  neovim ripgrep fd-find nodejs npm
 
 #############################################################################
 aptinstall 13 "extra GUI packages" zim
