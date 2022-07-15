@@ -19,7 +19,6 @@ if [ $(id -un) != root ]; then
 fi
 
 echo "Executing '$0' (sub)command as root with '$*'" >&2
-echo "dddbug '$1'" >&2
 
 # sanity check
 case "$1" in
@@ -97,12 +96,14 @@ aptinstall 2 "basic console packages" \
   sudo mc \
   btrfs-progs locales-all \
   fzf git gitk \
+  screen \
+  rsync \
   vim vim-scripts
 
 #############################################################################
 echo "set the primary user privileges (sudo)"
 # Set primary user name (even if it was started as root)
-USERNAME=$(id -un 1000)
+#USERNAME=$(id -un 1000)
 mkdir -p /etc/sudoers.d
 if [ ! -f /etc/sudoers.d/custom ]; then
   cat >/etc/sudoers.d/custom <<END
@@ -140,21 +141,55 @@ else
 fi
 
 #############################################################################
-aptinstall 3 "basic GUI packages" chromium gnome-firmware gparted \
+aptinstall 3 "basic GUI/web packages" \
+  chromium gnome-firmware gparted \
   ibus-anthy ibus-mozc ssh-askpass-gnome
 
 #############################################################################
-aptinstall 4 "basic development packages" devscripts dgit dh-exec hugo sbuild schroot
+aptinstall 4 "basic development packages" \
+  devscripts \
+  dgit \
+  dh-exec \
+  ben \
+  quilt \
+  sbuild \
+  schroot
 
 #############################################################################
-aptinstall 12 "extra console packages" moreutils imediff \
-  neovim ripgrep fd-find nodejs npm
+aptinstall 12 "extra console packages" \
+  moreutils \
+  tmux \
+  imediff \
+  neovim \
+  ripgrep \
+  fd-find \
+  exuberant-ctags \
+  nodejs \
+  kpartx \
+  cryptsetup \
+  npm
 
 #############################################################################
-aptinstall 13 "extra GUI packages" zim
+aptinstall 13 "extra GUI/web packages" \
+  fonts-hack \
+  meld \
+  adwaita-qt \
+  zim \
+  hugo
 
 #############################################################################
-aptinstall 14 "extra development packages" cmake black
+aptinstall 14 "extra development packages" \
+  cmake \
+  black \
+  piuparts apt-cacher-ng \
+  cargo \
+  python3-pip \
+  yarnpkg
+
+#############################################################################
+aptinstall 15 "extra virtual packages" \
+  gnome-boxes \
+  virt-manager
 
 #############################################################################
 echo ""
