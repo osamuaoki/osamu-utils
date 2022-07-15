@@ -36,7 +36,11 @@ sysupdate_sbuild () {
   echo "============================================================================="
 }
 
-alias up="sysupdate_main && \
+# NORMAL SYSTEM UPDATE
+alias up="sysupdate_main && sysupdate_sbuild unstable"
+
+# FULL SYSTEM UPDATE
+alias upall="sysupdate_main && \
   sysupdate_sbuild unstable && \
   sysupdate_sbuild testing && \
   sysupdate_sbuild stable && \
