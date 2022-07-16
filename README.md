@@ -16,7 +16,7 @@ Download the Debian Install ISO image to use:
 * [debian-testing-amd64-netinst.iso](https://cdimage.debian.org/cdimage/daily-builds/daily/arch-latest/amd64/iso-cd/) typical 350 MB testing
 * [debian-10.4.0-amd64-netinst.iso](https://www.debian.org/CD/netinst/) typical 340 MB stable
 
-Get a USB memory and plug it in tp an pre-existing system.  If auto mounted by
+Get a USB memory and plug it in to an pre-existing system.  If auto mounted by
 the Desktop system, unmount it to be sure but keep it device accessible. (On
 pre-existing system):
 
@@ -87,8 +87,8 @@ Restore intended contents of `/home/osamu` which is now at `/home/@home/osamu`
 from your back-up media, if desired. (Or, use a copy of newly created template
 files at `/home/osamu` to `/home/@home/osamu`).
 
-If you want to have a GUI desktop system, istall it by one of the following
-frim the root shell (optional):
+If you want to have a GUI desktop system, install it by one of the following
+from the root shell (optional):
 
 * `aptitude`: Tasks -> End-user -> GNOME -> task-gnome-desktop
 * `apt install task-gnome-desktop`
