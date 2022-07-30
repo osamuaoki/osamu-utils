@@ -1,4 +1,5 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
+# shellcheck shell=bash
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
@@ -143,9 +144,18 @@ export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share/doc
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
 
-export EDITOR=vim
-export VISUAL=vim
-export BROWSER=firefox
+#export EDITOR=vim
+#export VISUAL=vim
+#export BROWSER=firefox
+# leave vim nvim as original ones
+# vim   vimi.basic with classic ~/.vim/
+# vi    nvim with AstroNvim (alias for nvim) -- main
+# nvim  nvim with AstroNvim
+# avim  nvim with AstroNvim (offset) -- safety
+# bvim  nvim with NvChad (offset)    -- reference/safety
+export EDITOR=vi
+export VISUAL=vi
+export BROWSER=chromium
 export MKISOFS="xorrisofs"
 
 # make core file
@@ -214,14 +224,17 @@ fi
 
 
 # QMK firmware
-export QMK_HOME="~/github/qmk/qmk_firmware"
+export QMK_HOME="$HOME/github/qmk/qmk_firmware"
 
+# shellcheck disable=SC2139
 alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
 complete -F _quilt_completion -o filenames dquilt
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Node Version Manager: https://github.com/nvm-sh/nvm not used?
+#export NVM_DIR="$HOME/.nvm"
+#[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+#[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # disable CTRL-S (STOP) on console
 stty stop undef

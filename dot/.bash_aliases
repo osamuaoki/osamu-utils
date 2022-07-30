@@ -2,6 +2,7 @@
 # Local BASH customization sourced by ~/.bashrc
 ##############################################################################
 # vim: sw=2 sts=2 et si ai tw=79:
+# shellcheck shell=bash
 ##############################################################################
 # set alias
 # html
@@ -29,7 +30,7 @@ sysupdate_main () {
 }
 sysupdate_sbuild () {
   set -x; date --iso=sec
-  sudo sbuild-update -udcar $1
+  sudo sbuild-update -udcar "$1"
   set +x
   sync
   sync; date --iso=sec
