@@ -8,18 +8,28 @@
 cd >/dev/null || true
 HOME=$(pwd)
 help () {
-  echo "syntax: ${0##*/} [NAME_ORIG] NAME_ALT REPO_NAME [CLONE_NAME]"
+  echo "syntax: ${0##*/} NAME_ALT"
+  echo "syntax: ${0##*/} NAME_ALT REPO_NAME"
+  echo "syntax: ${0##*/} NAME_ORIG NAME_ALT REPO_NAME"
+  echo "syntax: ${0##*/} NAME_ORIG NAME_ALT REPO_NAME CLONE_NAME"
   echo
   echo "Set up a NAME_ALT command executed under the XDG based alternative"
   echo "environment with its configuration from REPONAME for a NAME_ORIG"
   echo "command."
+  echo
   echo " * If NAME_ORIG is missing, 'nvim' is used."
   echo " * If CLONE_NAME is missing, NAME_ORIG is used."
   echo " * reqirement: NAME_ORIG !=  NAME_ALT"
+  echo
+  echo "'\$PATH' needs to include '~/bin'."
+  echo "REPO_NAME can use short form for GitHub."
+  echo "Default REPO_NAME is 'AstroNvim/AstroNvim'"
 }
 
-if [ $# = 1 ]; then
-  # This is undocumented
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  help
+  exit 0
+elif [ $# = 1 ]; then
   NAME_ORIG="nvim"
   NAME_ALT="$1"
   REPO_NAME="AstroNvim/AstroNvim"
@@ -49,6 +59,7 @@ elif [ $# = 4 ]; then
   CLONE_NAME="$1"
 else
   help
+  exit 0
 fi
 if [ "$NAME_ORIG" = "$NAME_ALT" ]; then
   help
