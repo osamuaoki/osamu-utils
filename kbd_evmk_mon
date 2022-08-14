@@ -4,4 +4,5 @@ DEVNODE="/dev/input/by-path/platform-i8042-serio-0-event-kbd"
 #DEVNODE="/dev/input/by-id/usb-osamuaoki_cgc56-if01-event-kbd"
 sudo intercept "$DEVNODE" | \
   #python3 ./evmk -t -d -g -s 12359 --log=INFO -m 
+  #python3 ./evmk -t -d -g -s 13459 --log=INFO -m 
   python3 ./evmk -t -d -g -s 9 --log=INFO -m 

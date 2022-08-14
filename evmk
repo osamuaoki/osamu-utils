@@ -210,6 +210,8 @@ KEY_CODE = {
     143: "WAKEUP",
 }
 
+KC_WAKEUP = 143
+
 KEY_UP = 0
 KEY_DN = 1
 KEY_RP = 2
@@ -270,13 +272,13 @@ class key_event_grp:
         self.ev_t_s = NONE  # the last data time (s)
         self.ev_t_us = NONE  # the last data time (us)
         self.ev_type = NONE  # the last data type MSC, KEY, SYN, LED, ...
-        self.ev_code = NONE  # the last key code (mapped to new value)
+        self.ev_code = KC_WAKEUP  # the last key code (mapped to new value)
         self.ev_code_orig = NONE  # the last key code (unmodified original value)
         self.ev_value = NONE  # the last key state 0, 1, 2
         self.time_ms = NONE  # the last data time (us)
         self.grp = False  # event grouped or not
         self.grp_type = NONE  # grouped data type
-        self.grp_code = NONE  # grouped key code
+        self.grp_code = KC_WAKEUP  # grouped key code
         self.grp_code_orig = NONE  # que1key.grp_code (before mapping)
         self.grp_value = NONE  # grouped key state 0, 1, 2
         self.grp_scan = NONE  # grouped scan code
@@ -284,7 +286,6 @@ class key_event_grp:
         self.grp_error = False
         self.grp_map = None
         self.grp_dfk = TBDKEY  # see above
-        self.grp_layer = NONE  # set layer used for KEY_DN
         return
 
     def update(self, ev_t_s, ev_t_us, ev_type, ev_code, ev_value, args):
@@ -633,8 +634,8 @@ def read_and_write(args):
         #####################################################################
         # monitor que1 data to be processed
         #####################################################################
-        # if "2" in args.section.upper():
-        #     report_que(que1, "P2", layer, time_ms_old_in, args)
+        if "2" in args.section.upper():
+            report_que(que1, "P2", layer, time_ms_old_in, args)
         #####################################################################
         # process que1 for key conversion with layer
         #####################################################################
@@ -717,90 +718,98 @@ def read_and_write(args):
             #################################################################
             # Pass from que1 to que2
             #################################################################
-            if que1[0].grp_dfk == BASEKEY:
-                #logger.info("BASE: len={} code={:02x} layer= {} dfk={}".format(len(que1), que1[0].grp_code, layer, que1[0].grp_dfk))
-                que1key = que1.popleft()
-                if que1key.grp:
-                    # Drop modifier data for grouped keys
-                    que1key.grp_code = que1key.grp_code & 0x3FF
-                if que1key.grp_value == KEY_DN:
-                    dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, BASEKEY)
-                elif que1key.grp_value == KEY_RP:
-                    dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, BASEKEY)
-                else:  # que1key.grp_value == KEY_UP:
-                    dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, TBDKEY)
-                que2.append(que1key)
-            elif que1[0].grp_dfk == MODKEY:  # only .grp=True
-                que1key = que1.popleft()
-                mod = que1key.grp_code >> 16
-                if que1key.grp_value == KEY_DN:
-                    dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, MODKEY)
-                elif que1key.grp_value == KEY_RP:
-                    pass
-                else:  # que1key.grp_value == KEY_UP:
-                    dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, TBDKEY)
-                # modifiers (mod low bits) are not mutually exclusive
-                if mod & (1 << 0):
-                    que1key.grp_code = 42  # LEFT_SHIFT
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 1):
-                    que1key.grp_code = 29  # LEFT_CTRL
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 2):
-                    que1key.grp_code = 56  # LEFT_ALT
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 3):
-                    que1key.grp_code = 125  # LEFT_META
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 4):
-                    que1key.grp_code = 54  # RIGHT_SHIFT
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 5):
-                    que1key.grp_code = 97  # RIGHT_CTRL
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 6):
-                    que1key.grp_code = 100  # RIGHT_ALT
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                if mod & (1 << 7):
-                    que1key.grp_code = 126  # RIGHT_META
-                    if que1key.grp_value != KEY_RP:
-                        que2.append(que1key)
-                # layers (mod low bits) are mutually exclusive
-                if mod & 0xFF00:  # layer
-                    if que1key.grp_value == KEY_UP:  # Released
-                        layer = 0  # MOD_LAYER0
-                    elif que1key.grp_value == KEY_DN:  # Pressed
-                        if mod & (1 << 8):
+            if (
+                que1[0].grp
+                and que1[0].grp_type == TYPE_KEY
+                and que1[0].grp_code_orig < M
+            ):
+                if que1[0].grp_dfk == BASEKEY:
+                    #logger.info("BASE: len={} code={:02x} layer= {} dfk={}".format(len(que1), que1[0].grp_code, layer, que1[0].grp_dfk))
+                    que1key = que1.popleft()
+                    if que1key.grp:
+                        # Drop modifier data for grouped keys
+                        que1key.grp_code = que1key.grp_code & 0x3FF
+                    if que1key.grp_value == KEY_DN:
+                        dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, BASEKEY)
+                    elif que1key.grp_value == KEY_RP:
+                        dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, BASEKEY)
+                    else:  # que1key.grp_value == KEY_UP:
+                        dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, TBDKEY)
+                    que2.append(que1key)
+                elif que1[0].grp_dfk == MODKEY:  # only .grp=True
+                    que1key = que1.popleft()
+                    mod = que1key.grp_code >> 16
+                    if que1key.grp_value == KEY_DN:
+                        dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, MODKEY)
+                    elif que1key.grp_value == KEY_RP:
+                        pass
+                    else:  # que1key.grp_value == KEY_UP:
+                        dfk_state_matrix[que1key.grp_code_orig].update(que1key.grp_code, TBDKEY)
+                    # modifiers (mod low bits) are not mutually exclusive
+                    if mod & (1 << 0):
+                        que1key.grp_code = 42  # LEFT_SHIFT
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 1):
+                        que1key.grp_code = 29  # LEFT_CTRL
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 2):
+                        que1key.grp_code = 56  # LEFT_ALT
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 3):
+                        que1key.grp_code = 125  # LEFT_META
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 4):
+                        que1key.grp_code = 54  # RIGHT_SHIFT
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 5):
+                        que1key.grp_code = 97  # RIGHT_CTRL
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 6):
+                        que1key.grp_code = 100  # RIGHT_ALT
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    if mod & (1 << 7):
+                        que1key.grp_code = 126  # RIGHT_META
+                        if que1key.grp_value != KEY_RP:
+                            que2.append(que1key)
+                    # layers (mod low bits) are mutually exclusive
+                    if mod & 0xFF00:  # layer
+                        if que1key.grp_value == KEY_UP:  # Released
                             layer = 0  # MOD_LAYER0
-                        elif mod & (1 << 9):
-                            layer = 1  # MOD_LAYER1
-                        elif mod & (1 << 10):
-                            layer = 2  # MOD_LAYER2
-                        elif mod & (1 << 11):
-                            layer = 3  # MOD_LAYER3
-                        elif mod & (1 << 12):
-                            layer = 4  # MOD_LAYER4
-                        elif mod & (1 << 13):
-                            layer = 5  # MOD_LAYER5
-                        elif mod & (1 << 14):
-                            layer = 6  # MOD_LAYER6
-                        else:  # mod & (1 << 15):
-                            layer = 7  # MOD_LAYER7
-                        if layer >= N:
-                            layer = N - 1  # force override
-                        # logger.info("M: layer changed to {}".format(layer))
-                    else:  # Repeat
-                        pass  # NOP
-            else:  # que1[0].grp_dfk == TBDPKEY
-                # no que1.popleft()
-                break  # Don't process uncertain keys -> read-in more
+                        elif que1key.grp_value == KEY_DN:  # Pressed
+                            if mod & (1 << 8):
+                                layer = 0  # MOD_LAYER0
+                            elif mod & (1 << 9):
+                                layer = 1  # MOD_LAYER1
+                            elif mod & (1 << 10):
+                                layer = 2  # MOD_LAYER2
+                            elif mod & (1 << 11):
+                                layer = 3  # MOD_LAYER3
+                            elif mod & (1 << 12):
+                                layer = 4  # MOD_LAYER4
+                            elif mod & (1 << 13):
+                                layer = 5  # MOD_LAYER5
+                            elif mod & (1 << 14):
+                                layer = 6  # MOD_LAYER6
+                            else:  # mod & (1 << 15):
+                                layer = 7  # MOD_LAYER7
+                            if layer >= N:
+                                layer = N - 1  # force override
+                            # logger.info("M: layer changed to {}".format(layer))
+                        else:  # Repeat
+                            pass  # NOP
+                else:  # que1[0].grp_dfk == TBDPKEY
+                    # no que1.popleft()
+                    break  # Don't process uncertain keys -> read-in more
+            else: # single, LED, high-bit (WAKEUP)
+                que1key = que1.popleft()
+                que2.append(que1key)
         # end of while loop for que1
         #####################################################################
         # outut que2
