@@ -1,0 +1,389 @@
+#!/usr/bin/python3
+# vim:se tw=0 sts=4 ts=4 et ai:
+"""
+evmk-genmap -- key map generator
+
+Copyright © 2022 Osamu Aoki
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
+"""
+# import locale
+import sys
+import os
+
+MIN_PYTHON = (3, 9)
+if sys.version_info < MIN_PYTHON:
+    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+
+# Action code 32bits
+# 0x00000000 - 0x000003FF normal key code (actually up to 0x2ff)
+#               use 0x3FF as none.
+# 0x00000400 - 0x00003FFF 8 bits Mod-tap specifier bit field
+# 0x00004000 - 0x0000FFFF 2 bit (0,1,2,3 layer specifier)
+
+# Keyboard       input-event name    Key code
+# Windows menu   COMPOSE             127
+# Fn             WAKEUP              143
+# PrtScr         SYSRQ                99
+
+#######################################################################
+M = 128  # No. of key code in translation map
+N = 3  # No. of layers in translation map
+# Key code (0-127 except 84 but include 143)
+KEY_CODE = {
+    "RESERVED": 0,
+    "ESC": 1,
+    "1": 2,
+    "2": 3,
+    "3": 4,
+    "4": 5,
+    "5": 6,
+    "6": 7,
+    "7": 8,
+    "8": 9,
+    "9": 10,
+    "0": 11,
+    "MINUS": 12,
+    "EQUAL": 13,
+    "BACKSPACE": 14,
+    "TAB": 15,
+    "Q": 16,
+    "W": 17,
+    "E": 18,
+    "R": 19,
+    "T": 20,
+    "Y": 21,
+    "U": 22,
+    "I": 23,
+    "O": 24,
+    "P": 25,
+    "LEFTBRACE": 26,
+    "RIGHTBRACE": 27,
+    "ENTER": 28,
+    "LEFTCTRL": 29,
+    "A": 30,
+    "S": 31,
+    "D": 32,
+    "F": 33,
+    "G": 34,
+    "H": 35,
+    "J": 36,
+    "K": 37,
+    "L": 38,
+    "SEMICOLON": 39,
+    "APOSTROPHE": 40,
+    "GRAVE": 41,
+    "LEFTSHIFT": 42,
+    "BACKSLASH": 43,
+    "Z": 44,
+    "X": 45,
+    "C": 46,
+    "V": 47,
+    "B": 48,
+    "N": 49,
+    "M": 50,
+    "COMMA": 51,
+    "DOT": 52,
+    "SLASH": 53,
+    "RIGHTSHIFT": 54,
+    "KPASTERISK": 55,
+    "LEFTALT": 56,
+    "SPACE": 57,
+    "CAPSLOCK": 58,
+    "F1": 59,
+    "F2": 60,
+    "F3": 61,
+    "F4": 62,
+    "F5": 63,
+    "F6": 64,
+    "F7": 65,
+    "F8": 66,
+    "F9": 67,
+    "F10": 68,
+    "NUMLOCK": 69,
+    "SCROLLLOCK": 70,
+    "KP7": 71,
+    "KP8": 72,
+    "KP9": 73,
+    "KPMINUS": 74,
+    "KP4": 75,
+    "KP5": 76,
+    "KP6": 77,
+    "KPPLUS": 78,
+    "KP1": 79,
+    "KP2": 80,
+    "KP3": 81,
+    "KP0": 82,
+    "KPDOT": 83,
+    # CODE 84 is missing
+    "ZENKAKUHANKAKU": 85,
+    "102ND": 86,
+    "F11": 87,
+    "F12": 88,
+    "RO": 89,
+    "KATAKANA": 90,
+    "HIRAGANA": 91,
+    "HENKAN": 92,
+    "KATAKANAHIRAGANA": 93,
+    "MUHENKAN": 94,
+    "KPJPCOMMA": 95,
+    "KPENTER": 96,
+    "RIGHTCTRL": 97,
+    "KPSLASH": 98,
+    "SYSRQ": 99,
+    "RIGHTALT": 100,
+    "LINEFEED": 101,
+    "HOME": 102,
+    "UP": 103,
+    "PAGEUP": 104,
+    "LEFT": 105,
+    "RIGHT": 106,
+    "END": 107,
+    "DOWN": 108,
+    "PAGEDOWN": 109,
+    "INSERT": 110,
+    "DELETE": 111,
+    "MACRO": 112,
+    "MUTE": 113,
+    "VOLUMEDOWN": 114,
+    "VOLUMEUP": 115,
+    "POWER": 116,
+    "KPEQUAL": 117,
+    "KPPLUSMINUS": 118,
+    "PAUSE": 119,
+    "SCALE": 120,
+    "KPCOMMA": 121,
+    "HANGEUL": 122,
+    "HANJA": 123,
+    "YEN": 124,
+    "LEFTMETA": 125,
+    "RIGHTMETA": 126,
+    "COMPOSE": 127,  # 127TH Key Code: Upper limit of the usable key code
+    "WAKEUP": 143,  # fake key code position to simplify
+}
+
+MOD_CODE = {
+    "LS": (1 << 0),  # MOD_LEFT_SHIFT
+    "LC": (1 << 1),  # MOD_LEFT_CTRL
+    "LA": (1 << 2),  # MOD_LEFT_ALT
+    "LM": (1 << 3),  # MOD_LEFT_META
+    "RS": (1 << 4),  # MOD_RIGHT_SHIFT
+    "RC": (1 << 5),  # MOD_RIGHT_CTRL
+    "RA": (1 << 6),  # MOD_RIGHT_ALT
+    "RM": (1 << 7),  # MOD_RIGHT_META
+    "L0": (1 << 8),  # MOD_LAYER0
+    "L1": (1 << 9),  # MOD_LAYER1
+    "L2": (1 << 10),  # MOD_LAYER2
+    "L3": (1 << 11),  # MOD_LAYER3
+    "L4": (1 << 12),  # MOD_LAYER4
+    "L5": (1 << 13),  # MOD_LAYER5
+    "L6": (1 << 14),  # MOD_LAYER6
+    "L7": (1 << 15),  # MOD_LAYER7
+}
+
+
+############################################################################
+# Real key code is up to 0x2ff (10 bit wide)
+
+# fmt: off
+# Blank key map
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+####    "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",
+####    "",          "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",
+####    "",           "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",                      "",
+####    "",            "",         "",         "",         "",         "",         "",         "",         "",         "",         "",                                "",
+####    "",            "",         "",                              "",                                    "",         "",         "",         "",         "",         "",      "",
+####                                                                                                                                                       "",         "",      ""
+# define key positions
+
+# Use key code label string w/o "KEY_"
+
+POS2ORIGINAL= (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",    "BACKSPACE",
+        "TAB",       "Q",        "W",        "E",        "R",        "T",        "Y",        "U",        "I",        "O",        "P",        "LEFTBRACE","RIGHTBRACE","BACKSLASH",
+        "CAPSLOCK",   "A",        "S",        "D",        "F",        "G",        "H",        "J",        "K",        "L",        "SEMICOLON","APOSTROPHE",           "ENTER",
+        "LEFTSHIFT",   "Z",        "X",        "C",        "V",        "B",        "N",        "M",        "COMMA",    "DOT",      "SLASH",                           "RIGHTSHIFT",
+        "LEFTCTRL",    "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",    "PAGEDOWN",
+                                                                                                                                                           "LEFT",     "DOWN",  "RIGHT"
+        )
+
+# fmt: on
+LEN_POS2ORIGINAL = len(POS2ORIGINAL)
+
+
+# fmt: off
+# Mapped key
+MAP_KEY_STRING = (
+        (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "BACKSPACE","BACKSPACE","",
+        "TAB",       "Q",        "W",        "E",        "R",        "T",        "Y",        "U",        "I",        "O",        "P",        "BACKSPACE","BACKSPACE","",
+        "ESC",        "A",        "S",        "D",        "F",        "G",        "H",        "J",        "K",        "L",        "SEMICOLON","ENTER",                "ENTER",
+        "MUTE",        "Z",        "X",        "C",        "V",        "B",        "N",        "M",        "COMMA",    "DOT",      "SLASH",                           "RIGHTSHIFT",
+        "LEFTCTRL",    "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",       "PAGEDOWN",
+                                                                                                                                                           "LEFT",     "DOWN",     "RIGHT"
+        ),
+        (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",    "",
+        "F11",       "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F12",      "F12",      "",
+        "ESC",        "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "ENTER",               "ENTER",
+        "COMPOSE",     "GRAVE",    "",         "",         "MINUS",    "EQUAL",    "LEFTBRACE","RIGHTBRACE","BACKSLASH","",        "APOSTROPHE",                     "SYSRQ",
+        "LEFTCTRL",    "LEFTMETA", "LEFTALT",                       "SPACE",                               "RIGHTALT", "SYSRQ",    "RIGHTCTRL",            "PAGEUP",   "UP",       "PAGEDOWN",
+                                                                                                                                                           "HOME",     "DOWN",     "END"
+        ),
+        (
+        "ESC",      "F1",       "F2",       "F3",       "F4",       "F5",       "F6",       "F7",       "F8",       "F9",       "F10",      "F11",      "F12",      "HOME",     "END",      "INSERT",   "DELETE",
+        "GRAVE",    "1",        "2",        "3",        "4",        "5",        "6",        "7",        "8",        "9",        "0",        "MINUS",    "EQUAL",    "",
+        "TAB",       "",         "",         "",         "",         "",         "INSERT",   "PAGEUP",   "UP",       "PAGEDOWN", "DELETE",  "BACKSPACE","BACKSPACE","",
+        "ESC",        "LEFTSHIFT","LEFTCTRL", "LEFTALT",  "LEFTMETA", "",         "HOME",     "LEFT",     "DOWN",     "RIGHT",    "END",     "ENTER",                "ENTER",
+        "",            "",         "",         "",         "",         "",         "",         "",         "TAB",      "",         "",                               "",
+        "",            "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+                                                                                                                                                           "",         "",         ""
+        ),
+        )
+
+
+# This is for mod type
+MAP_MOD_STRING = (
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",
+        "",          "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",        "",
+        "LC",         "LS",       "LC",       "LA",       "LM",       "RA",       "RA",       "LM",       "LA",       "RC",       "RS",      "",                    "",
+        "LS",          "",         "",         "",         "L2",       "",         "L2",       "",         "",         "",         "",                              "",
+        "",            "",         "",                              "L1",                                  "",         "",         "",                     "",         "",         "",
+                                                                                                                                                           "",         "",         ""
+        ),
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",
+        "",          "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",        "",
+        "",           "LS",       "LC",       "LA",       "LM",       "RA",       "RA",       "LM",       "LA",       "RC",       "RS",      "",                    "",
+        "",            "",         "",         "",         "",         "",         "",         "",         "",         "",         "",                              "",
+        "",            "",         "",                              "L0",                                "",         "",         "",                     "",         "",         "",
+                                                                                                                                                           "",         "",         ""
+        ),
+        (
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",         "",         "",         "",
+        "",         "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",         "",
+        "",          "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",          "",        "",
+        "",           "",         "",         "",         "",         "",         "",         "",         "",         "",         "",        "",                    "",
+        "",            "",         "",         "",         "L0",       "",         "L0",       "",         "",         "",         "",                              "",
+        "",            "",         "",                              "",                                    "",         "",         "",                     "",         "",         "",
+                                                                                                                                                           "",         "",         ""
+        ),
+        )
+
+
+# fmt: on
+
+
+def get_keycode(layer, pos):
+    keycode_id = MAP_KEY_STRING[layer][pos]
+    if keycode_id == "":
+        keycode = KEY_CODE["WAKEUP"]  # use wakeup
+    elif keycode_id in KEY_CODE:
+        keycode = KEY_CODE[keycode_id]
+    else:
+        keycode = KEY_CODE["WAKEUP"]  # use wakeup
+        print(
+            "E: wrong keycode ID: '{}' at layer={}, pos={}\n".format(
+                keycode_id, layer, pos
+            )
+        )
+    return keycode
+
+
+def get_modcode(layer, pos):
+    modcode_id = MAP_MOD_STRING[layer][pos]
+    if modcode_id == "":
+        modcode = 0
+    elif modcode_id in MOD_CODE:
+        modcode = MOD_CODE[modcode_id]
+    else:
+        modcode = 0
+        print(
+            "E: wrong modcode ID: '{}' at layer={}, pos={}\n".format(
+                modcode_id, layer, pos
+            )
+        )
+    return modcode
+
+
+# Sanity check
+SANITY = 1
+NKEY = len(MAP_KEY_STRING)
+if NKEY != N:
+    print(
+        "E: wrong number of layers in string based key data: {} != {}".format(
+            NKEY, N
+        ),
+    )
+    SANITY = 0
+NMOD = len(MAP_MOD_STRING)
+if NKEY != NMOD:
+    print(
+        "E: wrong number of layers in string based mod data: (key={}) != (mod={})".format(
+            NMOD, N
+        ),
+    )
+    SANITY = 0
+
+for l in range(N):
+    if len(MAP_KEY_STRING[l]) != LEN_POS2ORIGINAL:
+        print(
+            "E: wrong layers: (# of MAP_KEY_STRING={}) != (# of POS2ORIGINAL={})".format(
+                len(MAP_KEY_STRING[l]), LEN_POS2ORIGINAL
+            ),
+        )
+        SANITY = 0
+    if len(MAP_MOD_STRING[l]) != LEN_POS2ORIGINAL:
+        print(
+            "E: wrong layers: (# of MAP_MOD_STRING={}) != (# of POS2ORIGINAL={})".format(
+                len(MAP_MOD_STRING[l]), LEN_POS2ORIGINAL
+            ),
+        )
+        SANITY = 0
+if SANITY == 0:
+    exit(1)
+##########################################################################
+# Initialize map
+map = []
+for kc in range(M):
+    mapakey = []
+    for l in range(N):
+        mapakey.append(kc)
+    map.append(mapakey)
+for pos in range(LEN_POS2ORIGINAL):
+    kc = KEY_CODE[POS2ORIGINAL[pos]]
+    for l in range(N):
+        keycode = get_keycode(l, pos)
+        modcode = get_modcode(l, pos)
+        mapval = keycode | (modcode << 16)
+        print("kc={:02x}, l={}, mapval={:04x} {:04x}".format(kc, l, mapval >> 16, mapval & 0xffff))
+        map[kc][l] = mapval
+with open("keymap.csv", mode="w") as f:
+    print("0x{:02x}, 0x{:02x}".format(M, N), file=f)
+    for kc in range(M):
+        print("0x{:02x},".format(kc), end="", file=f)
+        for l in range(N):
+            print("  0x{:08x},".format(map[kc][l]), end="", file=f)
+        print("", file=f)
+
+
+# KEY_STR -> KEY_CODE -> POS -> MAPPED_KEY_CODE
