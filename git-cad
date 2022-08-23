@@ -1,0 +1,3 @@
+#!/bin/sh
+# commit as amend with the new author date
+git commit --amend --date="$(date -R)" "$@"
