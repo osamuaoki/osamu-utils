@@ -1,14 +1,15 @@
 ##############################################################################
-# PACKAGE BUILD RELATED (source-only-upload as default)
+# PACKAGE BUILD RELATED (initial-binary-upload as default)
+# sbuild ~/.sbuildrc-bin
 ##############################################################################
 # -d
 $distribution = 'unstable';
 # -A
 $build_arch_all = 1;
-# -s
+# -s  --- binary upload
 $build_source = 1;
 # --source-only-changes
-$source_only_changes = 1;
+$source_only_changes = 0;
 # -v
 $verbose = 1;
 # parallel build

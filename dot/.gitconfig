@@ -13,6 +13,7 @@
 [alias]
 	c = commit -s
 	ci = commit -as
+	# update author date too
 	cia = commit -as --amend
 	ca = commit -s --amend
 	co = checkout

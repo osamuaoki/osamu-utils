@@ -1,7 +1,7 @@
 #############################################################################
 #
-# Gather installed package from:
-#   $ aptitude search '~i!~prequired!~pimportant!~pstandard!~M'
+# Gather manually installed package from:
+#   $ aptitude search '~i~poptional!~M'
 #
 #############################################################################
 # Prefix		Activation scenario

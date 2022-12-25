@@ -11,6 +11,7 @@ case $- in
       *) return;;
 esac
 
+# if alternative shell is desired for interactive session, enable followings
 #exec zsh -i
 #exec fish
 
@@ -45,34 +46,12 @@ fi
 
 # force to use color prompt (in reverse)
 if [ "$TERM" = "linux" ]; then
+    # Linux virtual console: simple
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
-    # GUI terminal: reverse with U+E0B0 (private area powerline font)
+    # GUI terminal: reverse with U+E0B0 (private area powerline font) with git branch prompt (opt.)
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\n\[\033[01;32;48m\]\$\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\] ⇶ ⇶ ⇶ ⇶ ⇶\n\[\033[01;32;48m\]\$\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$\n\[\033[01;32;48m\]⟫\[\033[00m\] '
-    #PS1='⇶ ${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ \n\[\033[01;32;48m\]⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🥷⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🤖⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫⌨⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🛠⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫🐚⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⧫\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⇶\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⁈\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]❱\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⊛\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⨀\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]⟠\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32;48m\]∋\[\033[00m\] '
 else
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]⟫⟫\[\033[00m\] '
-    #PS1='⇶ ${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$ ⇶\n❖\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]\[\033[01;34m\]\w\[\033[00m\]\$\n\[\033[00m\] '
-    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\] \n\$\[\033[00m\] '
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))") \n\$\[\033[00m\] '
 fi
 
@@ -93,8 +72,8 @@ if [ -x /usr/bin/dircolors ]; then
         eval "$(dircolors -b)"
     fi
     alias ls='ls --color=auto'
-    alias dir='dir --color=auto'
-    alias vdir='vdir --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
 
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
@@ -105,9 +84,9 @@ fi
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 # some more ls aliases
-alias ll='ls -l'
-alias la='ls -A'
-alias l='ls -CF'
+#alias ll='ls -l'
+#alias la='ls -A'
+#alias l='ls -CF'
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
@@ -131,56 +110,85 @@ if ! shopt -oq posix; then
 fi
 
 ##############################################################################
-# ENVIRONMENT VARIABLES, and EXPORT
+# ENVIRONMENT VARIABLES, ITS EXPORT, ALIASES (local customization)
 ##############################################################################
 
 # User Private Groups: http://wiki.debian.org/UserPrivateGroups
 umask 002
 
+# make core file
+ulimit -c unlimited
+
+# disable CTRL-S (STOP) on console to avoid confusion
+stty stop undef
+
 # set CDPATH
-#export CDPATH=.:~:/usr/share/doc
-export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share/doc
+export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share
 
 # set PATH of normal users to include "sbin"
 PATH="${PATH}":/usr/sbin:/sbin
 
-#export EDITOR=vim
-#export VISUAL=vim
-#export BROWSER=firefox
-# leave vim nvim as original ones
-# vim   vimi.basic with classic ~/.vim/
-# vi    nvim with AstroNvim (alias for nvim) -- main
-# nvim  nvim with AstroNvim
-# avim  nvim with AstroNvim (offset) -- safety
-# bvim  nvim with NvChad (offset)    -- reference/safety
-export EDITOR=vi
-export VISUAL=vi
+#=============================================================================
+# EDITOR
+# nvim: nvim with AstroNvim -- as /usr/bin/nvim
+export EDITOR=nvim
+export VISUAL=nvim
+# neovim with normal resource file as `v` (shortcut)
+alias v='nvim'
+# neovim w/o resouce file
+alias v0='nvim -u NORC'
+# vim w/o resouce file
+alias vim0='vim -u NORC'
+# sudoedit to use nvim w/o resource file
+alias svi="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
+# Alternative editors
+#   avim:  nvim with AstroNvim (offset avim) -- as ~/bin/avim
+#   bvim:  nvim with NvChad (offset bvim)    -- as ~/bin/bvim
+
+
 export BROWSER=chromium
 export MKISOFS="xorrisofs"
 
-# make core file
-ulimit -c unlimited
-
-# devscripts related
+#=============================================================================
+# DEBIAN (devscripts related)
 DEBEMAIL=osamu@debian.org
 DEBFULLNAME="Osamu Aoki"
 export DEBEMAIL DEBFULLNAME
 DEBSIGN_KEYID="3133724D6207881579E95D621E1356881DD8D791"
 export DEBSIGN_KEYID
+# BTS report using mutt
+alias bts="bts --mutt"
+# shellcheck disable=SC2139
+alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
+complete -F _quilt_completion -o filenames dquilt
 
-# mc related
+#=============================================================================
+# NORMAL COMMAND ALIASES
+# set MC_PWD_DIR upon starting mc as alias
 if [ -f /usr/lib/mc/mc.sh ]; then
   . /usr/lib/mc/mc.sh
 fi
+# mc with both panel pointing the same directory (`. /usr/lib/mc/mc.sh` equivalent)
+alias m='. /home/osamu/bin/mc-wrapper.sh'
+# gitk related
+alias gk="git status && gitk --all"
+# sensible tools for html
+alias b=sensible-browser
+#   txt
+alias p=sensible-pager
+#   doc
+alias o=libreoffice
+#   pdf
+alias d=evince
 
-################# CUSTOMIZATION NOTE ##################################
+#=============================================================================
+# FZF fuzzy prompt
 # fancy prompt
 FZF_DEFAULT_OPTS="--prompt=' ⇶ '"
 #   find limits deep directory:                   -maxdepth 10
 FZF_FIND_DEPTH=10
 #   find ignores btrfs snapshot backup directory: -name .bss.d
 FZF_IGNORE_PATH=.bss.d
-#######################################################################
 
 # fzf -- follow its README.md
 if command -v fzf >/dev/null; then
@@ -217,24 +225,13 @@ if command -v fzf >/dev/null; then
 fi
 
 
-# # direnv
-# if command -v direnv >/dev/null; then
-#     eval "$(direnv hook bash)"
-# fi
-
-
+#=============================================================================
 # QMK firmware
 export QMK_HOME="$HOME/github/qmk/qmk_firmware"
 
-# shellcheck disable=SC2139
-alias dquilt="quilt --quiltrc=${HOME}/.quiltrc-dpkg"
-complete -F _quilt_completion -o filenames dquilt
-
-
+#=============================================================================
 # Node Version Manager: https://github.com/nvm-sh/nvm not used?
 #export NVM_DIR="$HOME/.nvm"
 #[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 #[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# disable CTRL-S (STOP) on console
-stty stop undef
