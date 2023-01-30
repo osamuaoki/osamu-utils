@@ -25,12 +25,12 @@
 V1=$1
 V2=$2
 if [ "$2" = "" ]; then
-    echo "Syntax: hal ${0##*/} ver1 ver2"
-elif dpkg --force-bad-version --compare-versions "$V1" gt "$V2" ; then
-    echo "$V1 >> $V2"
-elif dpkg --force-bad-version --compare-versions "$V1" lt "$V2" ; then
-    echo "$V1 << $V2"
+  echo "Syntax: hal ${0##*/} ver1 ver2"
+elif dpkg --force-bad-version --compare-versions "$V1" gt "$V2"; then
+  echo "$V1 >> $V2"
+elif dpkg --force-bad-version --compare-versions "$V1" lt "$V2"; then
+  echo "$V1 << $V2"
 else
-    echo "$V1 == $V2"
+  echo "$V1 == $V2"
 fi
 # vim:se tw=78 ai sts=4 et:

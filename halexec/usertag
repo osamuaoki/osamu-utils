@@ -22,28 +22,30 @@
 # SOFTWARE.
 #############################################################################
 case $1 in
-    -h)
-        echo "NAME"
-        echo "    ${0##*/} - add usertag to a package's BTS"
-        echo "SYNOPSIS"
-        echo "    ${0##*/} [[package] usertag] bug_num1 bug_num2 bug_num3 ..."
-        exit
-            ;;
+-h)
+  echo "NAME"
+  echo "    ${0##*/} - add usertag to a package's BTS"
+  echo "SYNOPSIS"
+  echo "    ${0##*/} [[package] usertag] bug_num1 bug_num2 bug_num3 ..."
+  exit
+  ;;
 esac
 
 PACKAGE="devscripts"
 USERTAG="uscan"
 if ! { echo "${1}" | grep -q -e '^[0-9]*$'; }; then
-    USERTAG=${1}; shift
+  USERTAG=${1}
+  shift
 fi
 if ! { echo "${1}" | grep -q -e '^[0-9]*$'; }; then
-    PACKAGE="${USERTAG}"
-    USERTAG="${1}"; shift
+  PACKAGE="${USERTAG}"
+  USERTAG="${1}"
+  shift
 fi
 CMDLINE="bts --mutt user ${PACKAGE}@packages.debian.org"
-while [ -n "$1" ] ; do
-    CMDLINE="$CMDLINE , usertag $1 $USERTAG"
-    shift
+while [ -n "$1" ]; do
+  CMDLINE="$CMDLINE , usertag $1 $USERTAG"
+  shift
 done
 echo "$CMDLINE"
 eval "$CMDLINE"

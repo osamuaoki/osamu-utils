@@ -3,12 +3,12 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
-# vim:set et sw=4 sts=4:
+# vim:set et sw=2 sts=2:
 
 # If not running interactively, don't do anything
 case $- in
-    *i*) ;;
-      *) return;;
+*i*) ;;
+*) return ;;
 esac
 
 # if alternative shell is desired for interactive session, enable followings
@@ -41,43 +41,43 @@ fi
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+  debian_chroot=$(cat /etc/debian_chroot)
 fi
 
 # force to use color prompt (in reverse)
 if [ "$TERM" = "linux" ]; then
-    # Linux virtual console: simple
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+  # Linux virtual console: simple
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
-    # GUI terminal: reverse with U+E0B0 (private area powerline font) with git branch prompt (opt.)
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
+  # GUI terminal: reverse with U+E0B0 (private area powerline font) with git branch prompt (opt.)
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
 else
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))") \n\$\[\033[00m\] '
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))") \n\$\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
 case "$TERM" in
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
+xterm* | rxvt*)
+  PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+  ;;
+*) ;;
+
 esac
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    if [ -r ~/.dircolors ]; then
-        eval "$(dircolors -b ~/.dircolors)"
-    else
-        eval "$(dircolors -b)"
-    fi
-    alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
+  if [ -r ~/.dircolors ]; then
+    eval "$(dircolors -b ~/.dircolors)"
+  else
+    eval "$(dircolors -b)"
+  fi
+  alias ls='ls --color=auto'
+  #alias dir='dir --color=auto'
+  #alias vdir='vdir --color=auto'
 
-    alias grep='grep --color=auto'
-    alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
+  alias grep='grep --color=auto'
+  alias fgrep='fgrep --color=auto'
+  alias egrep='egrep --color=auto'
 fi
 
 # colored GCC warnings and errors
@@ -94,8 +94,8 @@ fi
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
 if [ -f ~/.bash_aliases ]; then
-    # shellcheck disable=1090
-    . ~/.bash_aliases
+  # shellcheck disable=1090
+  . ~/.bash_aliases
 fi
 
 # enable programmable completion features (you don't need to enable
@@ -137,14 +137,17 @@ export VISUAL=nvim
 alias v='nvim'
 # neovim w/o resouce file
 alias v0='nvim -u NORC'
+alias nvim0='nvim -u NORC'
+# vim with normal resource file as `vi` (shortcut)
+#alias vi='vim'
 # vim w/o resouce file
+alias vi0='vim -u NORC'
 alias vim0='vim -u NORC'
 # sudoedit to use nvim w/o resource file
 alias svi="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
 # Alternative editors
 #   avim:  nvim with AstroNvim (offset avim) -- as ~/bin/avim
 #   bvim:  nvim with NvChad (offset bvim)    -- as ~/bin/bvim
-
 
 export BROWSER=chromium
 export MKISOFS="xorrisofs"
@@ -184,54 +187,47 @@ alias d=evince
 #=============================================================================
 # FZF fuzzy prompt
 # fancy prompt
+# shellcheck disable=SC2034
 FZF_DEFAULT_OPTS="--prompt=' ⇶ '"
 #   find limits deep directory:                   -maxdepth 10
+# shellcheck disable=SC2034
 FZF_FIND_DEPTH=10
 #   find ignores btrfs snapshot backup directory: -name .bss.d
+# shellcheck disable=SC2034
 FZF_IGNORE_PATH=.bss.d
 
 # fzf -- follow its README.md
 if command -v fzf >/dev/null; then
-    ## customized to limit 10 levels and print pwd
-    ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
-    FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
+  ## customized to limit 10 levels and print pwd
+  ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
+  FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
+  if [ -f $FZF_KEYBINDINGS_PATH ]; then
+    . $FZF_KEYBINDINGS_PATH
+  else
+    echo "I: missing $FZF_KEYBINDINGS_PATH ... try another"
+    FZF_KEYBINDINGS_PATH=/usr/share/doc/fzf/examples/key-bindings.bash
     if [ -f $FZF_KEYBINDINGS_PATH ]; then
-        # shellcheck disable=1090
-        . $FZF_KEYBINDINGS_PATH
+      . $FZF_KEYBINDINGS_PATH
     else
-        echo "I: missing $FZF_KEYBINDINGS_PATH ... try another"
-        FZF_KEYBINDINGS_PATH=/usr/share/doc/fzf/examples/key-bindings.bash
-        if [ -f $FZF_KEYBINDINGS_PATH ]; then
-            # shellcheck disable=1090
-            . $FZF_KEYBINDINGS_PATH
-        else
-            echo "E: missing $FZF_KEYBINDINGS_PATH"
-        fi
+      echo "E: missing $FZF_KEYBINDINGS_PATH"
     fi
-    FZF_COMPLETION_PATH=~/.bash_fzf_completion
+  fi
+  FZF_COMPLETION_PATH=~/.bash_fzf_completion
+  if [ -f $FZF_COMPLETION_PATH ]; then
+    . $FZF_COMPLETION_PATH
+  else
+    echo "I: missing $FZF_COMPLETION_PATH ... try another"
+    FZF_COMPLETION_PATH=/usr/share/doc/fzf/examples/completion.bash
     if [ -f $FZF_COMPLETION_PATH ]; then
-        # shellcheck disable=1090
-        . $FZF_COMPLETION_PATH
+      . $FZF_COMPLETION_PATH
     else
-      echo "I: missing $FZF_COMPLETION_PATH ... try another"
-        FZF_COMPLETION_PATH=/usr/share/doc/fzf/examples/completion.bash
-        if [ -f $FZF_COMPLETION_PATH ]; then
-            # shellcheck disable=1090
-            . $FZF_COMPLETION_PATH
-        else
-            echo "E: missing $FZF_COMPLETION_PATH"
-        fi
+      echo "E: missing $FZF_COMPLETION_PATH"
     fi
+  fi
 fi
-
 
 #=============================================================================
 # QMK firmware
 export QMK_HOME="$HOME/github/qmk/qmk_firmware"
-
 #=============================================================================
-# Node Version Manager: https://github.com/nvm-sh/nvm not used?
-#export NVM_DIR="$HOME/.nvm"
-#[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-#[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
+# Any extras

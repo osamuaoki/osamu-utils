@@ -14,7 +14,7 @@ dirty_writeback_centisecs \
 dirty_bytes \
 dirty_background_bytes"
 
-for para in $MODELIST ; do
-echo -n "$para="
-cat "/proc/sys/vm/$para"
+for para in $MODELIST; do
+  echo -n "$para="
+  cat "/proc/sys/vm/$para"
 done

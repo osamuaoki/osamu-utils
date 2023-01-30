@@ -7,7 +7,7 @@
 #HOME=$(echo ~)
 
 # functions
-f_help () {
+f_help() {
   echo "Syntax:"
   echo "  hal ${0##*/} i[nstall] # install configuration files from git repo"
   echo "  hal ${0##*/} d[iff]    # diff configuration files against ones in git repo"
@@ -15,9 +15,9 @@ f_help () {
   exit
 }
 
-f_diff () {
-# install the latest system skel files
-  for p in /etc/skel/.* ; do
+f_diff() {
+  # install the latest system skel files
+  for p in /etc/skel/.*; do
     f=$(basename "$p")
     if [ -d "$p" ]; then
       :
@@ -30,9 +30,9 @@ f_diff () {
       :
     fi
   done
-# install the latest dot files
+  # install the latest dot files
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.* ; do
+  for p in ${HOME}/bin/dot/.*; do
     f=$(basename "$p")
     if [ -f "$p" ] && [ "$f" != ".config" ]; then
       echo " $ diff -u ~/bin/dot/$f  $f"
@@ -40,7 +40,7 @@ f_diff () {
     fi
   done
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/* ; do
+  for p in ${HOME}/bin/dot/.config/*; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
       echo " $ diff -u ~/bin/dot/.config/$f  ~/.config/$f"
@@ -49,67 +49,68 @@ f_diff () {
   done
 }
 
-f_install () {
-# check diff
+f_install() {
+  # check diff
   f_diff
   echo "============================================================================"
-# install the latest system skel files
-  for p in /etc/skel/.* ; do
+  # install the latest system skel files
+  for p in /etc/skel/.*; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
       echo " $ cp -f $p ${HOME}/$f"
       cp -f "$p" "${HOME}/$f"
     fi
   done
-# install the latest dot files
+  # install the latest dot files
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.* ; do
+  for p in ${HOME}/bin/dot/.*; do
     f=$(basename "$p")
     if [ -f "$p" ] && [ "$f" != ".config" ]; then
       echo " $ cp -f ~/bin/dot/$f  ~/$f"
-      cp -f "$p" "${HOME}/$f"
+      cp -f -P "$p" "${HOME}/$f"
     fi
   done
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/* ; do
+  for p in ${HOME}/bin/dot/.config/*; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
       echo " $ cp -f ~/bin/dot/.config/$f  ~/.config/$f"
-      cp -f "$p" "${HOME}/.config/$f"
+      cp -f -P "$p" "${HOME}/.config/$f"
     fi
   done
 }
 
-f_update () {
-# update the configuration files by the latest installed dot files
+f_update() {
+  # update the configuration files by the latest installed dot files
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.* ; do
+  for p in ${HOME}/bin/dot/.*; do
     f=$(basename "$p")
     if [ -f "$p" ] && [ "$f" != ".config" ]; then
       echo " $ cp -f ~/$f $p"
-      cp -f "${HOME}/$f" "$p"
+      cp -f -P "${HOME}/$f" "$p"
     fi
   done
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/* ; do
+  for p in ${HOME}/bin/dot/.config/*; do
     f=$(basename "$p")
     if [ -f "$p" ]; then
       echo " $ cp -f ~/.config/$f $p"
-      cp -f "${HOME}/.config/$f" "$p"
+      cp -f -P "${HOME}/.config/$f" "$p"
     fi
   done
 }
 
 case "$1" in
-  i*)
-    f_install
-        ;;
-  d*)
-    f_diff
-        ;;
-  u*)
-    f_update
-        ;;
-  *)
-    f_help
+i*)
+  f_install
+  ;;
+d*)
+  f_diff
+  ;;
+u*)
+  f_update
+  ;;
+*)
+  f_help
+  ;;
 esac

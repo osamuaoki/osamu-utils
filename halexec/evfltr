@@ -2,8 +2,8 @@
 ## @brief tool for the Evolution message filter
 # vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
 conv_to_name() {
-  for f in "$EVOLUTION_CONFIG_SRC/sources/"* ; do
-    if grep -q -e "Imapx Backend" "$f" ; then
+  for f in "$EVOLUTION_CONFIG_SRC/sources/"*; do
+    if grep -q -e "Imapx Backend" "$f"; then
       g="${f%.source}"
       g="${g##*/}"
       #echo -n "-e 's/$g/"
@@ -13,8 +13,8 @@ conv_to_name() {
 }
 
 conv_to_hash() {
-  for f in "$EVOLUTION_CONFIG_DST/sources/"* ; do
-    if grep -q -e "Imapx Backend" "$f" ; then
+  for f in "$EVOLUTION_CONFIG_DST/sources/"*; do
+    if grep -q -e "Imapx Backend" "$f"; then
       g="${f%.source}"
       g="${g##*/}"
       #echo -n "-e 's/$g/"
@@ -23,7 +23,7 @@ conv_to_hash() {
   done
 }
 
-__help () {
+__help() {
   echo "Tool for the Evolution message filter
 
   Hash strings in the Evolution message filter file may be different for the
@@ -71,60 +71,68 @@ if [ -z "$1" ]; then
   exit
 fi
 
-while [ -n "$1" ] ; do
+while [ -n "$1" ]; do
   case $1 in
-    -f|--forward) MODE="forward"
-      ;;
-    -r|--reverse) MODE="reverse"
-      ;;
-    -d|--double) MODE="double"
-      ;;
-    -c) shift
-      if [ ! -e "$1" ]; then
-        echo "E: path to the Evolution configuration files missing: $1"
-        exit
-      elif [ ! -e "$1/mail" ]; then
-        echo "E: path to the Evolution configuration files missing: $1/mail"
-        exit
-      elif [ ! -e "$1/sources" ]; then
-        ls -l "$1/mail/sources"
-        echo "E: path to the Evolution configuration files missing: $1/sources"
-        exit
-      else
-        EVOLUTION_CONFIG_DST="$1"
-      fi
-      ;;
-    -o) shift
-      if [ ! -e "$1" ]; then
-        echo "E: path to the source Evolution configuration files missing: $1"
-        exit
-      elif [ ! -e "$1/mail" ]; then
-        echo "E: path to the source Evolution configuration files missing: $1/mail"
-        exit
-      elif [ ! -e "$1/sources" ]; then
-        echo "E: path to the source Evolution configuration files missing: $1/sources"
-        exit
-      else
-        EVOLUTION_CONFIG_SRC="$1"
-        MODE="double"
-      fi
-      ;;
-    -n) SED="echo"
-      SED2="cat ; echo"
-      ;;
-    -x) set -x
-      ;;
-    -h|--help) __help
+  -f | --forward)
+    MODE="forward"
+    ;;
+  -r | --reverse)
+    MODE="reverse"
+    ;;
+  -d | --double)
+    MODE="double"
+    ;;
+  -c)
+    shift
+    if [ ! -e "$1" ]; then
+      echo "E: path to the Evolution configuration files missing: $1"
       exit
-      ;;
-    *) __help
-      echo "E: !!! UNKNOWN command !!!: $*"
+    elif [ ! -e "$1/mail" ]; then
+      echo "E: path to the Evolution configuration files missing: $1/mail"
       exit
-      ;;
+    elif [ ! -e "$1/sources" ]; then
+      ls -l "$1/mail/sources"
+      echo "E: path to the Evolution configuration files missing: $1/sources"
+      exit
+    else
+      EVOLUTION_CONFIG_DST="$1"
+    fi
+    ;;
+  -o)
+    shift
+    if [ ! -e "$1" ]; then
+      echo "E: path to the source Evolution configuration files missing: $1"
+      exit
+    elif [ ! -e "$1/mail" ]; then
+      echo "E: path to the source Evolution configuration files missing: $1/mail"
+      exit
+    elif [ ! -e "$1/sources" ]; then
+      echo "E: path to the source Evolution configuration files missing: $1/sources"
+      exit
+    else
+      EVOLUTION_CONFIG_SRC="$1"
+      MODE="double"
+    fi
+    ;;
+  -n)
+    SED="echo"
+    SED2="cat ; echo"
+    ;;
+  -x)
+    set -x
+    ;;
+  -h | --help)
+    __help
+    exit
+    ;;
+  *)
+    __help
+    echo "E: !!! UNKNOWN command !!!: $*"
+    exit
+    ;;
   esac
   shift
 done
-
 
 if [ -z "$EVOLUTION_CONFIG_DST" ]; then
   EVOLUTION_CONFIG_DST="${HOME}/.config/evolution"
@@ -152,7 +160,7 @@ elif [ "$MODE" = "reverse" ]; then
     exit
   fi
   # shellcheck disable=SC2046
-  $SED $(conv_to_hash) > "$EVOLUTION_FILTERS_DST"
+  $SED $(conv_to_hash) >"$EVOLUTION_FILTERS_DST"
 elif [ "$MODE" = "double" ]; then
   if [ ! -e "$EVOLUTION_FILTERS_SRC" ]; then
     echo "E: the source Evolution message filter file missing: $EVOLUTION_FILTERS_SRC"
@@ -163,8 +171,7 @@ elif [ "$MODE" = "double" ]; then
     exit
   fi
   # shellcheck disable=SC2046
-  $SED $(conv_to_name) "$EVOLUTION_FILTERS_SRC" | $SED2 $(conv_to_hash) > "$EVOLUTION_FILTERS_DST"
+  $SED $(conv_to_name) "$EVOLUTION_FILTERS_SRC" | $SED2 $(conv_to_hash) >"$EVOLUTION_FILTERS_DST"
 else
   echo "E: !!! UNKNOWN mode !!!: $MODE"
 fi
-

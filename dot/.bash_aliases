@@ -7,29 +7,33 @@
 # update main/chroot system
 ##############################################################################
 
-preupdate_main () {
+preupdate_main() {
   ACNGDISTNAME=/var/cache/apt-cacher-ng/debrep/dists/bookworm
   sudo mkdir -p $ACNGDISTNAME
   cd $ACNGDISTNAME
-  if [ -f InRelease ]; then sudo mv -f InRelease InRelease.old ; fi
+  if [ -f InRelease ]; then sudo mv -f InRelease InRelease.old; fi
   cd -
 }
 
-sysupdate_main () {
-  set -x; date --iso=sec
+sysupdate_main() {
+  set -x
+  date --iso=sec
   #preupdate_main
-  sudo apt-get update && sudo apt-get dist-upgrade -y && \
-      sudo apt-get autoremove -y
+  sudo apt-get update && sudo apt-get dist-upgrade -y &&
+    sudo apt-get autoremove -y
   set +x
-  sync; date --iso=sec
+  sync
+  date --iso=sec
   echo "============================================================================="
 }
-sysupdate_sbuild () {
-  set -x; date --iso=sec
+sysupdate_sbuild() {
+  set -x
+  date --iso=sec
   sudo sbuild-update -udcar "$1"
   set +x
   sync
-  sync; date --iso=sec
+  sync
+  date --iso=sec
   echo "============================================================================="
 }
 
@@ -49,4 +53,3 @@ xsudo() {
   /usr/bin/sudo "$@"
   /usr/bin/pgrep /usr/bin/sudo >/dev/null || /usr/bin/xhost -si:localuser:root
 }
-

@@ -12,7 +12,7 @@ example: print Model and Temperature repeatedly
 "
   exit
 fi
-for dev in /dev/nvme? ; do
+for dev in /dev/nvme?; do
   sudo smartctl -a "$dev" | grep \
     -e '^Model Number:' \
     -e '^Firmware Version:' \
@@ -21,4 +21,3 @@ for dev in /dev/nvme? ; do
   sudo nvme smart-log "$dev"
   echo
 done
-

@@ -14,15 +14,15 @@ categories:
 tags:
   - fun2prog
 slug: fun2prog-${TIME}
----" > "${OUTFILE}"
+---" >"${OUTFILE}"
 sed -e 's,\(http[^\[]*\)\[\([^]]*\)\],\[\2\](\1),g' \
-    -e 's/^---*/\`\`\`/' \
-    -e 's/^==== /#### /' \
-    -e 's/^=== /### /' \
-    -e 's/^== /## /' \
-    -e 's/^\.//' \
-    -e 's/^\[.*\]$//' \
-    -e 's,^include::\(.*\)\[\] *$,{{< snippet "examples/\1" >}},' \
-    <${INFILE} >>${OUTFILE}
-echo  >> "${OUTFILE}"
-echo '<!-- vim: set sw=2 sts=2 ai si et tw=79 ft=markdown: -->' >> "${OUTFILE}"
+  -e 's/^---*/\`\`\`/' \
+  -e 's/^==== /#### /' \
+  -e 's/^=== /### /' \
+  -e 's/^== /## /' \
+  -e 's/^\.//' \
+  -e 's/^\[.*\]$//' \
+  -e 's,^include::\(.*\)\[\] *$,{{< snippet "examples/\1" >}},' \
+  <${INFILE} >>${OUTFILE}
+echo >>"${OUTFILE}"
+echo '<!-- vim: set sw=2 sts=2 ai si et tw=79 ft=markdown: -->' >>"${OUTFILE}"
