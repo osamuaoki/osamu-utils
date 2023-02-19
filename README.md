@@ -234,6 +234,12 @@ Basically `hal install -c` is a filtered output of following command:
 $ aptitude '~i!~prequired!~pimportant!~pstandard!~M'
 ```
 
+or simply as (ignoring `~pextra`)
+
+```
+$ aptitude '~poptional!~M'
+```
+
 All packages listed in `~/.debrc` are dropped.  Let's see:
 
 ```
@@ -428,10 +434,7 @@ See https://wiki.debian.org/EvolutionBackup for easier way.
 
 #### exim4
 
-```
- $ sudo dpkg-reconfigure -plow exim4-config
-```
-* local delivery only; not on a network (everthing in default)
+No more need to install
 
 ### vim
 
@@ -462,3 +465,6 @@ boot them up fro, installed system.
 `grml2usb` does similar for USB sticks.
 
 
+## Font
+
+I install nerd font from https://www.nerdfonts.com/ to `~/.font`.
