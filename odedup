@@ -19,13 +19,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 USA
 """
 # For main
+from gi.repository import GExiv2
 import argparse
 
 # For sub-commands
 import os
 import os.path
 import sys
-import shutil
 import hashlib
 import collections
 from operator import itemgetter
@@ -35,15 +35,14 @@ from PIL import Image
 #     https://git.gnome.org/browse/gexiv2/tree/GExiv2.py
 import gi
 
-gi.require_version("GExiv2", "0.10")
-from gi.repository import GExiv2
 import time
 import datetime
 import binascii
 
-
 # For test
 from pprint import pprint
+
+gi.require_version("GExiv2", "0.10")
 
 MIN_PYTHON = (3, 3)
 if sys.version_info < MIN_PYTHON:
@@ -67,6 +66,8 @@ DATE_FORMAT = "%Y:%m:%d %H:%M:%S"
 #######################################################################
 # Subclass of GI Exiv2 library
 #######################################################################
+
+
 class OMetadata(GExiv2.Metadata):
     def set_all_date_time(self, value):
         self["Exif.Image.DateTime"] = value.strftime(DATE_FORMAT)
@@ -205,7 +206,8 @@ def scan(dirs, args):
             msg(4, "I: scan directory with os.walk: {}".format(dir))
             for dirpath, dirnames, filenames in os.walk(dir):
                 if not args.mountpoint:
-                    dirnames[:] = [d for d in dirnames if not os.path.ismount(d)]
+                    dirnames[:] = [
+                        d for d in dirnames if not os.path.ismount(d)]
                     for d in dirnames:
                         if os.path.ismount(d):
                             if "x" in args.categories:
@@ -247,7 +249,8 @@ def scan(dirs, args):
                                 paths["j"].append(path)  # JPEG (JPEG/EXIF)
                         else:
                             if "i" in args.categories:
-                                paths["i"].append(path)  # Odd JPEG (Mac index data?)
+                                # Odd JPEG (Mac index data?)
+                                paths["i"].append(path)
                     elif filename.lower().endswith(args.office_exts):
                         if "o" in args.categories:
                             paths["o"].append(path)
@@ -267,7 +270,8 @@ def hash(file, category, jpeg):
     msg(4, "START: hash: {}".format(file))
     if category == "j":
         try:
-            hashv = hashlib.sha256(Image.open(file, mode="r").tobytes()).hexdigest()
+            hashv = hashlib.sha256(Image.open(
+                file, mode="r").tobytes()).hexdigest()
         except IOError:
             hashv = "_PIL.Image_IOError_JPEG_OR_EXIF_"
     else:
@@ -290,7 +294,8 @@ def imagedata(files, type, exact_only):
             rough = "_EXACT_MATCH_ONLY_"
         else:
             try:
-                rough = hashlib.sha256(Image.open(f, mode="r").tobytes()).hexdigest()
+                rough = hashlib.sha256(Image.open(
+                    f, mode="r").tobytes()).hexdigest()
             except IOError:
                 rough = "_PIL.Image_IOError_JPEG_OR_EXIF_"
         if rough in roughmatch2exactmatches:
@@ -384,7 +389,8 @@ def reindexdir(dir, args):
             paths.append(os.path.join(dirpath, f))
         fn = scan(paths, args)
         if len(fn["j"]) >= 10000:
-            error_exit("E: {} files (too many) in: {}".format(len(fn["j"]), dirpath))
+            error_exit("E: {} files (too many) in: {}".format(
+                len(fn["j"]), dirpath))
         msg(4, "I: # of jpeg files to be pre-checked: {}".format(len(fn["j"])))
         for f in fn["j"]:
             if os.path.isfile(f + ".orig"):
@@ -393,15 +399,18 @@ def reindexdir(dir, args):
                         f + ".keep"
                     )
                 )
-        msg(4, "I: # of jpeg files to be pre-moved to *.orig: {}".format(len(fn["j"])))
+        msg(4,
+            "I: # of jpeg files to be pre-moved to *.orig: {}".format(len(fn["j"])))
         for f in fn["j"]:
             try:
                 os.rename(f, f + ".orig")
                 msg(4, "I: rename {} --> {}".format(f, f + ".orig"))
             except:
-                error_exit("E: fail to rename: {} --> {}".format(f, f + ".keep"))
+                error_exit(
+                    "E: fail to rename: {} --> {}".format(f, f + ".keep"))
         msg(
-            4, "I: # of jpeg files to be checked for date/time: {}".format(len(fn["j"]))
+            4, "I: # of jpeg files to be checked for date/time: {}".format(
+                len(fn["j"]))
         )
         findex = dict()
         for filename in fn["j"]:
@@ -412,7 +421,8 @@ def reindexdir(dir, args):
             pmsg("I: timestamp for {}".format(filename), dtt)
         msg(
             4,
-            "I: # of jpeg files to be reindexed for date/time: {}".format(len(fn["j"])),
+            "I: # of jpeg files to be reindexed for date/time: {}".format(
+                len(fn["j"])),
         )
         i = 1
         for filename, dtt in sorted(findex.items(), key=itemgetter(1), reverse=False):
@@ -491,7 +501,8 @@ def dedup(args):
                 os.path.commonpath([dir, args.preloaddir]) == args.preloaddir
                 or os.path.commonpath([dir, args.preloaddir]) == dir
             ):
-                error_exit("preloaddir should not be on or under the target paths")
+                error_exit(
+                    "preloaddir should not be on or under the target paths")
         # preload hash pool "excludes" for files
         preloadpaths = scan([args.preloaddir], args)
         for category in file_categories:
@@ -547,7 +558,8 @@ def jmv(args):
 def jcp(args):
     paths = scan(args.dirs, args)
     os.makedirs(args.newpath, exist_ok=True)
-    (match2files, roughmatch2exactmatches) = imagedata(paths["j"], "EXIF", True)
+    (match2files, roughmatch2exactmatches) = imagedata(
+        paths["j"], "EXIF", True)
     pmsg(">>> match2files:", match2files)
     pmsg(">>> roughmatch2exactmatches:", roughmatch2exactmatches)
     for roughmatch in roughmatch2exactmatches:
@@ -617,14 +629,16 @@ def jcp(args):
                         destpath = destpath + "_" + camera
                 elif args.camera_length > 0:
                     if os.path.isfile(destpath + ".jpeg"):
-                        destpath = destpath + "_" + camera[: args.camera_length]
+                        destpath = destpath + "_" + \
+                            camera[: args.camera_length]
                 # hash
                 if args.hash_length < 0:
                     if os.path.isfile(destpath + ".jpeg"):
                         destpath = destpath + "_" + exactmatch
                 elif args.hash_length > 0:
                     if os.path.isfile(destpath + ".jpeg"):
-                        destpath = destpath + "_" + exactmatch[: args.hash_length]
+                        destpath = destpath + "_" + \
+                            exactmatch[: args.hash_length]
                 # exif or not
                 if args.camera_length != 0 and args.hash_length != 0:
                     if os.path.isfile(destpath + ".jpeg"):
@@ -639,7 +653,8 @@ def jcp(args):
                 )
             if os.path.isfile(destpath):
                 error_exit(
-                    "Destination should not exist as dir: {} for {}".format(destpath, f)
+                    "Destination should not exist as dir: {} for {}".format(
+                        destpath, f)
                 )
             if os.path.isfile(destpath):
                 error_exit(
@@ -698,7 +713,8 @@ def ts(args):
             try:
                 os.rename(f, f + ".keep")
             except:
-                error_exit("E: fail to rename: {} --> {}".format(f, f + ".keep"))
+                error_exit(
+                    "E: fail to rename: {} --> {}".format(f, f + ".keep"))
         dtt_up = dtt_orig + delta_time
         exifdata.set_all_date_time(dtt_up)
         msg(4, "{} -> {}: {}".format(dtt_orig, dtt_up, f))
@@ -706,7 +722,8 @@ def ts(args):
             try:
                 exifdata.save_file()
             except:
-                error_exit("E: Not writable with new exif date and time: {}".format(f))
+                error_exit(
+                    "E: Not writable with new exif date and time: {}".format(f))
     return
 
 

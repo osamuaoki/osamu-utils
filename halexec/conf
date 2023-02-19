@@ -1,6 +1,6 @@
 #!/bin/bash -e
 ## @brief manage configuration files (public/private)
-# vim:se tw=78 ai si ts=2 sts=2 sw=2 et:
+# vim:set tw=78 ai si ts=2 sts=2 sw=2 et:
 #
 # configuration
 #
@@ -16,7 +16,7 @@ f_help() {
 }
 
 f_diff() {
-  # install the latest system skel files
+  # diff against the latest system skel files
   for p in /etc/skel/.*; do
     f=$(basename "$p")
     if [ -d "$p" ]; then
@@ -30,7 +30,7 @@ f_diff() {
       :
     fi
   done
-  # install the latest dot files
+  # diff against the latest dot files
   # shellcheck disable=2231
   for p in ${HOME}/bin/dot/.*; do
     f=$(basename "$p")
@@ -45,6 +45,16 @@ f_diff() {
     if [ -f "$p" ]; then
       echo " $ diff -u ~/bin/dot/.config/$f  ~/.config/$f"
       diff -u "$p" "${HOME}/.config/$f" || true
+    fi
+  done
+  # diff the copy of etc files by the latest installed files
+  # shellcheck disable=2086,2044
+  for p in $(find ${HOME}/bin/etc/ -type f) ; do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^.*/bin/etc/,/etc/,")
+    if [ -f "$p" ]; then
+      echo " $ diff -u $f $p"
+      diff -u "$f" "$p"
     fi
   done
 }
@@ -96,6 +106,16 @@ f_update() {
     if [ -f "$p" ]; then
       echo " $ cp -f ~/.config/$f $p"
       cp -f -P "${HOME}/.config/$f" "$p"
+    fi
+  done
+  # update the copy of etc files by the latest installed files
+  # shellcheck disable=2086,2044
+  for p in $(find ${HOME}/bin/etc/ -type f) ; do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^.*/bin/etc/,/etc/,")
+    if [ -f "$p" ]; then
+      echo " $ cp -f $f $p"
+      cp -f "$f" "$p"
     fi
   done
 }
