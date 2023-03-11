@@ -1,0 +1,51 @@
+#!/bin/sh -e
+set -x
+GENERATOR="-G Ninja"
+VERBOSE=""
+LOGLEVEL="--log-level=STATUS"
+while [ $# -gt 0 ]; do
+  if [ "$1" = "-v" ] || [ "$1" = "--verbose" ]; then
+    # verbose build
+    VERBOSE="--verbose"
+    LOGLEVEL="--log-level=VERBOSE"
+    shift
+  elif [ "$1" = "-m" ] || [ "$1" = "--make" ]; then
+    # use make instead
+    GENERATOR=""
+    shift
+  else
+    echo "${0##*/} [-v|--verbose] [-m|--make]"
+    exit 0
+  fi
+done
+# sanity check
+if [ ! -d "src/nvim" ]; then
+  echo "E: You must execute this at the root of Neovim source tree"
+  exit 1
+fi
+# prepair for cmake
+rm -rf build
+set -x
+mkdir build
+cd build
+# execute cmake in build
+BUILD_TYPE=Release
+#BUILD_TYPE=Debug
+
+# dpkg-architecture
+DEB_HOST_MULTIARCH=x86_64-linux-gnu
+
+# Configure to build with Ninja (use luajit)
+cmake $GENERATOR \
+  -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+  -DBUSTED_OUTPUT_TYPE=nvim \
+  -DLIBLUV_LIBRARY:FILEPATH=/usr/lib/$DEB_HOST_MULTIARCH/lua/5.1/luv.so \
+  -DLIBLUV_INCLUDE_DIR:PATH=/usr/include/lua5.1 \
+  -DPREFER_LUA=OFF \
+  -DCOMPILE_LUA=OFF \
+  "$LOGLEVEL" \
+  ..
+# Build with Ninja ($VERBOSE is unquoted with reason)
+cmake --build . $VERBOSE
+# Build Debian package ($VERBOSE is unquoted with reason)
+cpack -G DEB $VERBOSE
