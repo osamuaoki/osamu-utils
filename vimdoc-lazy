@@ -6,17 +6,17 @@
 #set -x
 cd >/dev/null || true
 HOME=$(pwd)
-FORCE=false
+STRICT=false
 while [ $# -gt 0 ]; do
-  if [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
+  if [ "$1" = "-s" ] || [ "$1" = "--strict" ]; then
     # verbose build
-    FORCE=true
+    STRICT=true
     shift
   else
-    echo "${0##*/} [-h|--help] [-f|--force]"
+    echo "${0##*/} [-h|--help] [-s|--strict]"
     echo
     echo "Set up a vimdoc for all packages in ../lnvim/lazy"
-    echo "  -- Missing initial line is added if -f is used"
+    echo "  -- Missing initial line in vimdoc is added unless -s is used"
     exit 0
   fi
 done
@@ -29,6 +29,7 @@ BASE="${XDG_DATA_HOME:-$HOME/.local}/share/nvim/lazy"
 PKGNAMES=$(find "$BASE" -maxdepth 1 -type d | sed -e 's,^.*/,,')
 # echo "PKGNAMES='$PKGNAMES'"
 DESTPATH="${XDG_CONFIG_HOME:-$HOME/.config}/nvim/doc"
+rm -rf "$DESTPATH"
 mkdir -p "$DESTPATH"
 #echo "DESTPATH='$DESTPATH'"
 
@@ -94,7 +95,7 @@ for PKGNAME in $PKGNAMES; do
     vim-illuminate | \
     which-key.nvim)
     # already read
-    echo "Skip: $PKGNAME (no need)" # do nothing
+    echo "// Skip: $PKGNAME (no need to add)" # do nothing
     ;;
   *)
     #echo "Creating symlink for $PKGNAME"
@@ -103,20 +104,20 @@ for PKGNAME in $PKGNAMES; do
       TXTFILES=$(find "$BASEPATH" -type f -name '*.txt' | sed 's,^.*/,,')
       #echo " ... TXTFILES='$TXTFILES'"
       for FNAME in $TXTFILES; do
-        rm -f "$DESTPATH/$FNAME"
+        echo "@@ found $FNAME in $PKGNAME"
+        mkdir -p $(dirname $DESTPATH/$FNAME")
         if head "$BASE/$PKGNAME/doc/$FNAME" | grep -e '^\*' >/dev/null ||
-          ! $FORCE; then
-          echo "  ... $FNAME"
-          echo "Link: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
+          $STRICT; then
+          echo " -> Link: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
           ln -sf "$BASE/$PKGNAME/doc/$FNAME" "$DESTPATH/$FNAME"
         else
-          echo "Copy w/ header: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
+          echo " == Copy w/ header: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
           echo "*$FNAME*" >"$DESTPATH/$FNAME"
           cat "$BASE/$PKGNAME/doc/$FNAME" >>"$DESTPATH/$FNAME"
         fi
       done
     else
-      echo "Skip: $PKGNAME (no doc)"
+      echo ".. Skip: $PKGNAME (no doc found)"
     fi
     ;;
   esac
