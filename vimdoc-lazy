@@ -105,7 +105,7 @@ for PKGNAME in $PKGNAMES; do
       #echo " ... TXTFILES='$TXTFILES'"
       for FNAME in $TXTFILES; do
         echo "@@ found $FNAME in $PKGNAME"
-        mkdir -p $(dirname $DESTPATH/$FNAME")
+        mkdir -p "$(dirname $DESTPATH/$FNAME)"
         if head "$BASE/$PKGNAME/doc/$FNAME" | grep -e '^\*' >/dev/null ||
           $STRICT; then
           echo " -> Link: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
