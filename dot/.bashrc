@@ -40,7 +40,7 @@ if command -v lesspipe >/dev/null; then
 fi
 
 # set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+if [ "${debian_chroot:-}" = "" ] && [ -r /etc/debian_chroot ]; then
   debian_chroot=$(cat /etc/debian_chroot)
 fi
 
@@ -126,23 +126,19 @@ stty stop undef
 export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share
 
 # set PATH of normal users to include "sbin"
-PATH="${PATH}":/usr/sbin:/sbin
+PATH="$PATH":/usr/sbin:/sbin
 
 #=============================================================================
 # EDITOR
-# nvim: nvim with AstroNvim -- as /usr/bin/nvim
+# nvim: nvim with LazyVim -- as /usr/bin/nvim
 export EDITOR=nvim
 export VISUAL=nvim
-# neovim with normal resource file as `v` (shortcut)
-alias v='nvim'
-# neovim w/o resouce file
-alias v0='nvim -u NORC'
-alias nvim0='nvim -u NORC'
-# vim with normal resource file as `vi` (shortcut)
-#alias vi='vim'
-# vim w/o resouce file
-alias vi0='vim -u NORC'
-alias vim0='vim -u NORC'
+# `v` as neovim without resource file
+alias v='nvim  -u NORC'
+# `vi` as neovim with LazyVim
+alias vi='nvim'
+# `v0` as neovim with minimum resouce file
+alias v0='nvim -u ~/.nvim'
 # sudoedit to use nvim w/o resource file
 alias svi="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
 # Alternative editors
@@ -201,25 +197,25 @@ if command -v fzf >/dev/null; then
   ## customized to limit 10 levels and print pwd
   ##export FZF_DEFAULT_COMMAND='find . -maxdepth 2'
   FZF_KEYBINDINGS_PATH=~/.bash_fzf_keybindings
-  if [ -f $FZF_KEYBINDINGS_PATH ]; then
-    . $FZF_KEYBINDINGS_PATH
+  if [ -f "$FZF_KEYBINDINGS_PATH" ]; then
+    . "$FZF_KEYBINDINGS_PATH"
   else
     echo "I: missing $FZF_KEYBINDINGS_PATH ... try another"
     FZF_KEYBINDINGS_PATH=/usr/share/doc/fzf/examples/key-bindings.bash
-    if [ -f $FZF_KEYBINDINGS_PATH ]; then
-      . $FZF_KEYBINDINGS_PATH
+    if [ -f "$FZF_KEYBINDINGS_PATH" ]; then
+      . "$FZF_KEYBINDINGS_PATH"
     else
       echo "E: missing $FZF_KEYBINDINGS_PATH"
     fi
   fi
   FZF_COMPLETION_PATH=~/.bash_fzf_completion
-  if [ -f $FZF_COMPLETION_PATH ]; then
-    . $FZF_COMPLETION_PATH
+  if [ -f "$FZF_COMPLETION_PATH" ]; then
+    . "$FZF_COMPLETION_PATH"
   else
     echo "I: missing $FZF_COMPLETION_PATH ... try another"
     FZF_COMPLETION_PATH=/usr/share/doc/fzf/examples/completion.bash
-    if [ -f $FZF_COMPLETION_PATH ]; then
-      . $FZF_COMPLETION_PATH
+    if [ -f "$FZF_COMPLETION_PATH" ]; then
+      . "$FZF_COMPLETION_PATH"
     else
       echo "E: missing $FZF_COMPLETION_PATH"
     fi
