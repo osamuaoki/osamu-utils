@@ -54,7 +54,7 @@ f_diff() {
     f=$(echo "$p" | sed -e "s,^.*/bin/etc/,/etc/,")
     if [ -f "$p" ]; then
       echo " $ diff -u $f $p"
-      diff -u "$f" "$p"
+      diff -u "$f" "$p" || true
     fi
   done
 }
