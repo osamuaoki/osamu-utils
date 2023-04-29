@@ -1,8 +1,0 @@
-#!/bin/sh -e
-# set up an alternative work environment for nvim
-XDG_CONFIG_HOME="/home/osamu/.config/avim"
-XDG_DATA_HOME="/home/osamu/.local/share/avim"
-XDG_CACHE_HOME="/home/osamu/.cache/avim"
-export XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME
-# shellcheck disable=SC2093
-exec nvim "$@"
