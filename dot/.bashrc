@@ -180,6 +180,12 @@ alias o=libreoffice
 #   pdf
 alias d=evince
 
+# L10N COMMAND ALIASES
+alias "jwriter=LANG=ja_JP.UTF-8 lowriter"
+alias "jimpress=LANG=ja_JP.UTF-8 loimpress"
+alias "jcash=LANG=ja_JP.UTF-8 LANGUAGE=ja gnucash"
+
+
 #=============================================================================
 # FZF fuzzy prompt
 # fancy prompt
