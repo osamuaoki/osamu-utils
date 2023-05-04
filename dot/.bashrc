@@ -133,14 +133,20 @@ PATH="$PATH":/usr/sbin:/sbin
 # nvim: nvim with LazyVim -- as /usr/bin/nvim
 export EDITOR=nvim
 export VISUAL=nvim
-# `v` as neovim without resource file
-alias v='nvim  -u NORC'
 # `vi` as neovim with LazyVim
 alias vi='nvim'
+# `v` as neovim without resource file
+alias v='nvim  -u NORC'
 # `v0` as neovim with minimum resouce file
 alias v0='nvim -u ~/.nvim'
 # sudoedit to use nvim w/o resource file
 alias svi="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
+# vim alias
+alias vimdiff='nvim -d'
+alias view='nvim -R'
+alias ex='nvim -e'
+alias editor=nvim
+
 # Alternative editors
 #   avim:  nvim with AstroNvim (offset avim) -- as ~/bin/avim
 #   bvim:  nvim with NvChad (offset bvim)    -- as ~/bin/bvim
@@ -184,7 +190,6 @@ alias d=evince
 alias "jwriter=LANG=ja_JP.UTF-8 lowriter"
 alias "jimpress=LANG=ja_JP.UTF-8 loimpress"
 alias "jcash=LANG=ja_JP.UTF-8 LANGUAGE=ja gnucash"
-
 
 #=============================================================================
 # FZF fuzzy prompt
