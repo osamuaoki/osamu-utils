@@ -6,6 +6,7 @@
 #
 #HOME=$(echo ~)
 
+#
 # functions
 f_help() {
   echo "Syntax:"
@@ -16,45 +17,44 @@ f_help() {
 }
 
 f_diff() {
-  # diff against the latest system skel files
-  for p in /etc/skel/.*; do
-    f=$(basename "$p")
-    if [ -d "$p" ]; then
-      :
-    elif [ -e "${HOME}/bin/dot/$f" ]; then
-      echo " --- skip ---: diff -u $p  ${HOME}/$f"
-    elif [ -f "$p" ]; then
-      echo " $ diff -u $p  ${HOME}/$f"
-      diff -u "$p" "${HOME}/$f" || true
-    else
-      :
-    fi
-  done
-  # diff against the latest dot files
-  # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.*; do
-    f=$(basename "$p")
-    if [ -f "$p" ] && [ "$f" != ".config" ]; then
-      echo " $ diff -u ~/bin/dot/$f  $f"
-      diff -u "$p" "${HOME}/$f" || true
-    fi
-  done
-  # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/*; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ diff -u ~/bin/dot/.config/$f  ~/.config/$f"
-      diff -u "$p" "${HOME}/.config/$f" || true
-    fi
-  done
-  # diff the copy of etc files by the latest installed files
-  # shellcheck disable=2086,2044
-  for p in $(find ${HOME}/bin/etc/ -type f) ; do
+  echo
+  echo "===== diff ====="
+  echo
+  echo "===== diff etc-skel-dot vs. installed-dot ====="
+  for p in $(find /etc/skel -type f -o -type l); do
     # shellcheck disable=2001
-    f=$(echo "$p" | sed -e "s,^.*/bin/etc/,/etc/,")
-    if [ -f "$p" ]; then
-      echo " $ diff -u $f $p"
-      diff -u "$f" "$p" || true
+    f=$(echo "$p" | sed -e "s,/etc/skel/,,")
+    if [ -e "bin/dot/$f" ]; then
+      echo " --- skip: ~/$f --- dot file exists in repo"
+    elif [ -f "$p" ]; then
+      echo " $ diff -u $p  ~/$f"
+      diff -u "$p" "$f" || true
+    else
+      echo "***WARN***: missing dot file '~/$f'"
+    fi
+  done
+  echo "===== diff repo-dot vs. installed-dot ====="
+  # shellcheck disable=2231
+  for p in $(find bin/dot -type f -o -type l); do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^bin/dot/,,")
+    if [ -f "$f" ]; then
+      echo " $ diff -u ~/$p  ~/$f"
+      diff -u "$p" "$f" || true
+    else
+      echo "***WARN***: missing dot file '~/$f'"
+    fi
+  done
+  echo "===== diff repo-etc vs. installed-etc ====="
+  # shellcheck disable=2231
+  for p in $(find bin/etc/ -type f -o -type l); do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^bin/etc/,/etc/,")
+    if [ -f "$f" ]; then
+      echo " $ diff -u $p $f"
+      diff -u "$p" "$f" || true
+    else
+      echo "***WARN***: missing etc file '$f'"
     fi
   done
 }
@@ -62,64 +62,57 @@ f_diff() {
 f_install() {
   # check diff
   f_diff
-  echo "============================================================================"
-  # install the latest system skel files
-  for p in /etc/skel/.*; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ cp -f $p ${HOME}/$f"
-      cp -f "$p" "${HOME}/$f"
-    fi
-  done
-  # install the latest dot files
+  echo
+  echo "===== install ====="
+  echo
+  echo "===== install repo-dot files ====="
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.*; do
-    f=$(basename "$p")
-    if [ -f "$p" ] && [ "$f" != ".config" ]; then
-      echo " $ cp -f ~/bin/dot/$f  ~/$f"
-      cp -f -P "$p" "${HOME}/$f"
-    fi
+  for p in $(find bin/dot -type f -o -type l); do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^bin/dot/,,")
+    mkdir -p "${f%/*}"
+    echo " $ cp -f -P ~/$p  ~/$f"
+    cp -f -P "$p" "$f"
   done
+  echo "===== install repo-etc files ====="
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/*; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ cp -f ~/bin/dot/.config/$f  ~/.config/$f"
-      cp -f -P "$p" "${HOME}/.config/$f"
-    fi
+  for p in $(find bin/etc/ -type f -o -type l); do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^bin/etc/,/etc/,")
+    mkdir -p "${f%/*}"
+    echo " $ cp -f -P ~/$p  $f"
+    sudo cp -f -P "$p" "$f"
   done
 }
 
 f_update() {
-  # update the configuration files by the latest installed dot files
+  # check diff
+  f_diff
+  echo
+  echo "===== update ====="
+  echo
+  echo "===== update repo-dot files ====="
   # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.*; do
-    f=$(basename "$p")
-    if [ -f "$p" ] && [ "$f" != ".config" ]; then
-      echo " $ cp -f ~/$f $p"
-      cp -f -P "${HOME}/$f" "$p"
-    fi
-  done
-  # shellcheck disable=2231
-  for p in ${HOME}/bin/dot/.config/*; do
-    f=$(basename "$p")
-    if [ -f "$p" ]; then
-      echo " $ cp -f ~/.config/$f $p"
-      cp -f -P "${HOME}/.config/$f" "$p"
-    fi
-  done
-  # update the copy of etc files by the latest installed files
-  # shellcheck disable=2086,2044
-  for p in $(find ${HOME}/bin/etc/ -type f) ; do
+  for p in $(find bin/dot -type f -o -type l); do
     # shellcheck disable=2001
-    f=$(echo "$p" | sed -e "s,^.*/bin/etc/,/etc/,")
-    if [ -f "$p" ]; then
-      echo " $ cp -f $f $p"
-      cp -f "$f" "$p"
-    fi
+    f=$(echo "$p" | sed -e "s,^bin/dot/,,")
+    mkdir -p "${p%/*}"
+    echo " $ cp -f -P ~/$f  ~/$p"
+    cp -f -P "$f" "$p"
+  done
+  echo "===== update repo-etc files ====="
+  # shellcheck disable=2231
+  for p in $(find bin/etc/ -type f -o -type l); do
+    # shellcheck disable=2001
+    f=$(echo "$p" | sed -e "s,^bin/etc/,/etc/,")
+    mkdir -p "${p%/*}"
+    echo " $ cp -f -P $f  ~/$p"
+    sudo cp -f -P "$f" "$p"
   done
 }
 
+cd
+echo "===== current directory = `pwd` ====="
 case "$1" in
 i*)
   f_install
