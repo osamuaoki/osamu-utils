@@ -23,19 +23,9 @@ backup() {
   if [ -d /media/$XUSER/$1/ ]; then
     XDEVICE=$1
     XFOLDER=$2
-    if [ -z "$XFOLDER" ] || [ "$XFOLDER" = "." ]; then
-      echo "I:   Backup to USB '~/' ==> '/media/$XUSER/$XDEVICE/home_dir'"
-      bss --may backup
-      bss copy "." "/media/$XUSER/$XDEVICE/home_dir"
-      bss --may snap "/media/$XUSER/$XDEVICE/home_dir"
-    elif [ -e "$XFOLDER" ]; then
-      echo "I:   Backup to USB '$XFOLDER' ==> '/media/$XUSER/$XDEVICE/$XFOLDER'"
-      bss --may backup "$XFOLDER"
-      bss copy "$XFOLDER" "/media/$XUSER/$XDEVICE/$XFOLDER"
-      bss --may snap "/media/$XUSER/$XDEVICE/$XFOLDER"
-    else
-      echo "I:   Missing '$XFOLDER' to backup"
-    fi
+    bss --may gather "$XFOLDER"
+    bss copy "$XFOLDER" "/media/$XUSER/$XDEVICE/$XFOLDER"
+    bss --may snap "/media/$XUSER/$XDEVICE/$XFOLDER"
   fi
 }
 
