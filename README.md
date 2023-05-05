@@ -165,6 +165,7 @@ Then refine GUI desktop as needed:
 *   dpkg-S      -- smarter dpkg -S
 *   dpkg-ver    -- compare version strings              (dpkg)
 *   usertag ... -- add usertag to a package BTS
+*   bu          -- backup scrips (using bss to USB devices)
 *   hal         -- many trivial tasks via sub-commands
     * hal newssd  /dev/sd?  -- factory reset of SSD (hdparam, time)
     * hal initial-setup     -- initial setup of the new system
@@ -175,7 +176,6 @@ Then refine GUI desktop as needed:
     * hal deb               -- install predefined Debian packages (based on ~/.debrc)
     * hal deb -c           -- check extra Debian packages (based on ~/.debrc)
     * hal update            -- update this `~/bin/*` repository
-    * hal bu                -- backup scrips (btrfs/rsync)
 * ...
 
 ## public dot files

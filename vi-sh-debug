@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# edit -> test -> commit
+F="$1"
+vi "$F"
+if sh -n "$F" ; then
+  echo "SUCCESS"
+  git commit -a -m "SUCCESS"
+else
+  echo "ERROR"
+  git commit -a -m "ERROR"
+fi
+
+
