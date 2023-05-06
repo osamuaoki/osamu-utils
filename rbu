@@ -1,0 +1,13 @@
+#!/bin/sh
+########################################################################
+# rbu: Backup to the rsync.net
+########################################################################
+RSYNC_DIR="rsync"
+DEST_DIR="rsync"
+echo "I: Local backup started"
+luksimg -r ~/"$RSYNC_DIR" -s "secret" all
+echo "I: Remote backup started"
+ssh de1299@de1299.rsync.net mkdir -p "$DEST_DIR"
+rsync -azvH ~/"$RSYNC_DIR/" "de1299@de1299.rsync.net:$DESTDIR"
+ssh de1299@de1299.rsync.net "ls -lsa $DEST_DIR"
+echo "I: All backup end"
