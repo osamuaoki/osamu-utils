@@ -56,7 +56,7 @@ goofy)
   backup WD40 github
   backup WD40 salsa
   backup WD40 rsync
-  backup WD40 kbd
+  backup WD40 Keep
 
   # Backup to WD2.0TB (low frequency backup HDD device)
   backup WD20
@@ -67,7 +67,7 @@ goofy)
   backup WD20 github
   backup WD20 salsa
   backup WD20 rsync
-  backup WD20 kbd
+  backup WD20 Keep
 
   # BKUP_AV_2023 is full 64GB -- historic
   #backup BKUP_AV_2023 Pictures

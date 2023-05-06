@@ -2,12 +2,17 @@
 ########################################################################
 # rbu: Backup to the rsync.net
 ########################################################################
+# Following needs to be adjusted
+RSYNC_ACCOUNT="de1299@de1299.rsync.net"
 RSYNC_DIR="rsync"
-DEST_DIR="rsync"
+# This backup contents in ~/$RSYNC_DIR/ to remote host
 echo "I: Local backup started"
-luksimg -r ~/"$RSYNC_DIR" -s "secret" all
-echo "I: Remote backup started"
-ssh de1299@de1299.rsync.net mkdir -p "$DEST_DIR"
-rsync -azvH ~/"$RSYNC_DIR/" "de1299@de1299.rsync.net:$DESTDIR"
-ssh de1299@de1299.rsync.net "ls -lsa $DEST_DIR"
+echo "---luksimg  START -----------------------------------"
+luksimg -r "$RSYNC_DIR" -s "secret" all
+echo "---luksimg  END -----------------------------------"
+ls -lA ~/rsync/
+echo "--- bss copy START -----------------------------------"
+bss -v copy ~/"$RSYNC_DIR" "$RSYNC_ACCOUNT:$RSYNC_DIR"
+echo "--- bss copy END -----------------------------------"
+ssh "$RSYNC_ACCOUNT" ls -lA "$RSYNC_DIR"
 echo "I: All backup end"
