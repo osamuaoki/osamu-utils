@@ -1,0 +1,10 @@
+#!/bin/sh -e
+# hugo on github
+killall hugo || true
+cd ~/github/osamuaoki.github.io/osamuaoki-hugo
+systemd-cat -t hugo -p 6 hugo server -p 8080 --disableFastRender &
+open http://localhost:8080/ > /dev/null 2>&1
+# if not running interactively, no alias is parsed from ~/.bashrc: use nvim instead of vi
+# "exec" used for last "bash -l -i" is optional (either way, SHLVL=1)
+gnome-terminal -- bash -l -c "mc content . ; exec bash -l -i"
+gnome-terminal -- bash -l -i
