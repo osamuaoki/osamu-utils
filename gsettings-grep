@@ -8,8 +8,8 @@ help () {
   echo "        ${0##*/} [OPTS] [--] PATTERN"
   echo ""
   echo "OPTION"
-  echo "        -a        search PATTERN on any field"
-  echo "        -s        search PATTERN on schema only"
+  echo "        -a        search PATTERN on 'gsettings list-recursively'"
+  echo "        -s        search PATTERN on 'gsettings list-schema' (=default)"
   echo "        -E        use ERE search PATTERN instead of default BRE"
   echo "        -i        case insensitive search instead"
   echo
