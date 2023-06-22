@@ -1,0 +1,102 @@
+#!/bin/bash -e
+# vim:se sw=2 ts=2 sts=2 et ai tw=78:
+help () {
+  echo "NAME"
+  echo "        ${0##*/} -- gsettings with grep"
+  echo ""
+  echo "SYNOPSIS"
+  echo "        ${0##*/} [OPTS] [--] PATTERN"
+  echo ""
+  echo "OPTION"
+  echo "        -a        search PATTERN on any field"
+  echo "        -s        search PATTERN on schema only"
+  echo "        -E        use ERE search PATTERN instead of default BRE"
+  echo "        -i        case insensitive search instead"
+  echo
+}
+
+
+gsettings-grep-any () {
+  SCHEMA="XXX_NON_VALID_XXX"
+  gsettings list-recursively | { grep $OPTS -e "$PATTERN" || true ; } | while [ -n "$SCHEMA" ]; do
+    read SCHEMA KEY EXTRA || true
+    if [ -n "$SCHEMA" ] && [ "$SCHEMA" != "XXX_NON_VALID_XXX" ] && [ -n "$KEY" ]; then
+      echo "SCHEMA     = $SCHEMA"
+      echo "  KEY      = $KEY"
+      echo "  VALUE    = $(gsettings get "$SCHEMA" "$KEY")"
+      echo "  DESC     = $(gsettings describe "$SCHEMA" "$KEY")"
+      echo "  RANGE    = $(gsettings range "$SCHEMA" "$KEY" | { tr '\n' '\t' || true ; })"
+      echo "  WRITABLE = $(gsettings writable "$SCHEMA" "$KEY")"
+    fi
+  done
+}
+
+
+gsettings-grep-schema () {
+  SCHEMA="XXX_NON_VALID_XXX"
+  gsettings list-schemas | { grep $OPTS -e "$PATTERN" || true ; } | while [ -n "$SCHEMA" ]; do
+    read SCHEMA EXTRA || true
+    KEY="XXX_NON_VALID_XXX"
+    if [ -n "$SCHEMA" ] && [ "$SCHEMA" != "XXX_NON_VALID_XXX" ]; then
+      gsettings list-keys "$SCHEMA" | while [ -n "$KEY" ]; do
+        read KEY || true
+        if [ -n "$KEY" ]; then
+          echo "SCHEMA     = $SCHEMA"
+          echo "  KEY      = $KEY"
+          echo "  VALUE    = $(gsettings get "$SCHEMA" "$KEY")"
+          echo "  DESC     = $(gsettings describe "$SCHEMA" "$KEY")"
+          echo "  RANGE    = $(gsettings range "$SCHEMA" "$KEY" | { tr '\n' '\t' || true ; })"
+          echo "  WRITABLE = $(gsettings writable "$SCHEMA" "$KEY")"
+      fi
+      done
+    fi
+  done
+}
+
+
+OPTS=""
+TYPE="schema"
+while true; do
+  case "$1" in
+    -a)
+      TYPE="any"
+      shift
+      ;;
+    -s)
+      TYPE="schema"
+      shift
+      ;;
+    -h)
+      help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -?)
+      OPTS="OPTS $1"
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+PATTERN="$1"
+if [ -z "$PATTERN" ]; then
+  PATTERN="."
+fi
+case "$TYPE" in
+  any)
+    gsettings-grep-any
+    ;;
+  schema)
+    gsettings-grep-schema
+    ;;
+  *)
+    help
+      exit 0
+    ;;
+esac
+
