@@ -75,7 +75,7 @@ while true; do
       break
       ;;
     -?)
-      OPTS="OPTS $1"
+      OPTS="$OPTS $1"
       shift
       ;;
     *)
