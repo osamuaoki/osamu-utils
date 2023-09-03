@@ -1,0 +1,100 @@
+#!/bin/sh -e
+NEOVIM_REPO="https://github.com/neovim/neovim.git"
+# main branch is too unstable at this moment as of September/2023
+#BUILD_BRANCH="main"
+BUILD_BRANCH="release-0.9"
+
+GENERATOR="-G Ninja"
+VERBOSE=""
+LOGLEVEL="--log-level=STATUS"
+# execute cmake in build
+BUILD_TYPE=RelWithDebInfo
+#BUILD_TYPE=Release
+#BUILD_TYPE=Debug
+
+# dpkg-architecture
+DEB_HOST_MULTIARCH=x86_64-linux-gnu
+
+# build date: deb and log
+BUILD_DATE="$(date -u -Isec)"
+# file name only
+DEB_ORIG="nvim-linux64.deb"
+DEB_BUILD="nvim-linux64-${BUILD_DATE}.deb"
+BUILD_LOG="nvim-${BUILD_DATE}.log"
+######################################################################
+# Utility functions
+help () {
+  echo "${0##*/} [-v|--verbose] [-m|--make] [-b BUILD_BRANCH|--branch BUILD_BRANCH]"
+  exit 0
+}
+######################################################################
+repo_neovim () {
+  if [ ! -d "neovim" ]; then
+    echo "W: Neovim source tree missing.  Let's make its clone."
+    git clone $NEOVIM_REPO
+  else
+    if [ ! -d "neovim/.git" ]; then
+      echo "E: neovim/ is not a git repository"
+      exit 1
+    fi
+  fi
+  if [ ! -d "neovim/src/nvim" ]; then
+    echo "E: Not in the real Neovim source tree"
+    exit 1
+  fi
+}
+######################################################################
+build_neovim () {
+  set -x
+  #git checkout $BUILD_BRANCH
+  #git rm --cached -r .
+  #git reset --hard origin/$BUILD_BRANCH
+  git checkout $BUILD_BRANCH
+  git clean -d -f -x
+  git pull --all
+  git pull -f --tags
+  git submodule update --init --recursive
+  # sanity check
+  if [ ! -d "src/nvim" ]; then
+    echo "E: You must execute this at the root of Neovim source tree"
+    exit 1
+  fi
+  make CMAKE_BUILD_TYPE=$BUILD_TYPE
+
+  # Build Debian package ($VERBOSE is unquoted with reason)
+  cd build
+  cpack -G DEB $VERBOSE
+  cp $DEB_ORIG ../../$DEB_BUILD
+  set +x
+}
+######################################################################
+while [ $# -gt 0 ]; do
+  case $1 in
+    -v|--verbose)
+      # verbose build
+      VERBOSE="--verbose"
+      LOGLEVEL="--log-level=VERBOSE"
+      shift
+      ;;
+    -m|--make)
+      # use make instead
+      GENERATOR=""
+      shift
+      ;;
+    -b|--branch)
+      shift
+      # set BUILD_BRANCH to use
+      if [ -n "$1" ]; then
+        BUILD_BRANCH="$1"
+        shift
+      fi
+      ;;
+    *)
+      help
+      ;;
+  esac
+done
+repo_neovim
+cd neovim
+build_neovim 2>&1 | tee ../$BUILD_LOG
+
