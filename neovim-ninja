@@ -19,8 +19,8 @@ DEB_HOST_MULTIARCH=x86_64-linux-gnu
 BUILD_DATE="$(date -u -Isec)"
 # file name only
 DEB_ORIG="nvim-linux64.deb"
-DEB_BUILD="nvim-linux64-${BUILD_DATE}.deb"
-BUILD_LOG="nvim-${BUILD_DATE}-ninja.log"
+DEB_BUILD="nvim-linux64-${BUILD_DATE}-${BUILD_BRANCH}-ninja.deb"
+BUILD_LOG="nvim-linux64-${BUILD_DATE}-${BUILD_BRANCH}-ninja.log"
 ######################################################################
 # Utility functions
 help () {
