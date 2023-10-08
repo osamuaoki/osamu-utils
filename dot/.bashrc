@@ -50,9 +50,9 @@ if [ "$TERM" = "linux" ]; then
   PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
   # GUI terminal: reverse with U+E0B0 (private area powerline font) with git branch prompt (opt.)
-  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
 else
-  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (branch=$(git branch --show-current))") \n\$\[\033[00m\] '
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))") \n\$\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
@@ -146,6 +146,7 @@ alias vimdiff='nvim -d'
 alias view='nvim -R'
 alias ex='nvim -e'
 alias editor=nvim
+alias yarn=yarnpkg
 
 # Alternative editors
 #   avim:  nvim with AstroNvim (offset avim) -- as ~/bin/avim
@@ -178,18 +179,30 @@ alias m='. /home/osamu/bin/mc-wrapper.sh'
 # gitk related
 alias gk="git status && gitk --all"
 # sensible tools for html
-alias b=sensible-browser
+#alias b=sensible-browser
+alias b=google-chrome-stable
 #   txt
 alias p=sensible-pager
-#   doc
+#   office suite
 alias o=libreoffice
 #   pdf
 alias d=evince
 
+# quick cd / mkdir to $1/$1
+function xcd () {
+  cd "$1/$1"
+}
+
+function xmcd () {
+  mkdir -p "$1/$1"
+  cd "$1/$1"
+}
+
 # L10N COMMAND ALIASES
-alias "jwriter=LANG=ja_JP.UTF-8 lowriter"
-alias "jimpress=LANG=ja_JP.UTF-8 loimpress"
-alias "jcash=LANG=ja_JP.UTF-8 LANGUAGE=ja gnucash"
+alias jo="LANG=ja_JP.UTF-8 libreoffice"
+alias jw="LANG=ja_JP.UTF-8 lowriter"
+alias jc="LANG=ja_JP.UTF-8 LANGUAGE=ja gnucash"
+alias jb="LANGUAGE=ja google-chrome-stable"
 
 #=============================================================================
 # FZF fuzzy prompt

@@ -51,18 +51,20 @@ END
 
   #############################################################################
   echo "set group membership"
+  #                24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),106(netdev),110(bluetooth),            111(lxd)
+  # 4(adm),8(mail),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),108(netdev),112(bluetooth),128(sbuild),138(lxd)
   # Set up normal group membership
   # for admin work with sudo
   /usr/sbin/adduser "$USERNAME" sudo
-  # To read and manupulate /var/sppol/mail/<username>
-  /usr/sbin/adduser "$USERNAME" mail
   /usr/sbin/adduser "$USERNAME" adm
+  /usr/sbin/adduser "$USERNAME" src
+  /usr/sbin/adduser "$USERNAME" staff
+  # To read and manupulate /var/sppol/mail/<username>
+#  /usr/sbin/adduser "$USERNAME" mail
   /usr/sbin/adduser "$USERNAME" backup
   /usr/sbin/adduser "$USERNAME" dialout
   /usr/sbin/adduser "$USERNAME" dip
   /usr/sbin/adduser "$USERNAME" games
-  /usr/sbin/adduser "$USERNAME" src
-  /usr/sbin/adduser "$USERNAME" staff
   /usr/sbin/adduser "$USERNAME" www-data
 fi
 #############################################################################
@@ -99,7 +101,7 @@ Components: main
 Signed-By:
  -----BEGIN PGP PUBLIC KEY BLOCK-----
  Version: GnuPG v1.4.10 (GNU/Linux)
- . 
+ .
  mQINBEya74YBEADDpLTJCmyS97kZ6JvlpUEoSoVbqEkyQVfrV7C7VqlBGWO0bTKI
  z0QAOkzF47HIDTez+ISLRd84Dyh/BPpSTF2CP3HnLo21UxotvQFeVVs87EKTgrM5
  MsRgmEU4o28be0Uz0ix0U5ahaOqX6TI1+faZ8Bn2Q9MnhYoSaS0DyRrEAIU0xrSk
