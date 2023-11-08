@@ -50,9 +50,9 @@ if [ "$TERM" = "linux" ]; then
   PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 elif [ "$UID" != "0" ]; then
   # GUI terminal: reverse with U+E0B0 (private area powerline font) with git branch prompt (opt.)
-  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))")\n\[\033[01;32;48m\]\$\[\033[00m\] '
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))") $(date +%H:%M:%S)\n\[\033[01;32;48m\]\$\[\033[00m\] '
 else
-  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))") \n\$\[\033[00m\] '
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;33;48m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]  $(git branch --show-current >/dev/null 2>&1 && echo -n " (=$(git branch --show-current))") $(date +%H:%M:%S)\n\$\[\033[00m\] '
 fi
 
 # If this is an xterm set the title to user@host:dir
