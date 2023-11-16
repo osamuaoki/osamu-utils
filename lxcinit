@@ -1,0 +1,102 @@
+#!/bin/sh -e
+# shellcheck disable=SC2046,SC2086
+# vim:set ai si ts=2 sts=2 sw=2 et:
+#
+# License: GPL 2.0+
+# Copyright 2021 Osamu Aoki <osamu@debian.org>
+#
+# Reminder for here-doc-text:
+# If the delimiter is quoted, the here-doc-text is treated literally,
+# otherwise the text is subjected to expansions.
+#######################################################################
+# Internal constant
+#set -x
+LC_ALL=en_US.UTF-8
+export LC_ALL
+PROG="${0##*/}"
+TMP_DIR="$(mktemp -d)"
+BASE="deb-"
+cd "$TMP_DIR"
+lxd_help () {
+  cat >&2 << EOF
+=============================================================================
+NAME:
+  $PROG -- download lxd Debian cloud image and make local fixed image "base"
+
+SYNOPSIS:
+  $PROG [-h|-u|--] [<name>]
+
+DESCRIPTION:
+  $PROG creates a local un-previlidged LXD image "${BASE}<name>" just like
+  the following but with some fix-ups:
+
+  $ lxc init images:debian/<name>/cloud ${BASE}<name>
+  $ lxc publish ${BASE}<name> --alias=${BASE}<name>
+
+  The default <name> is "sid".  The <name> consists of the release name.
+  E.g., 13, "trixie", 12, "bookworm", 11, "buster", ...
+
+  You can't use instance name such as ${BASE}<name>.
+
+OPTIONS: (only the first character matters)
+  -help     print this help message and exit
+  -update   update the local image after removing it before download.
+
+=============================================================================
+EOF
+
+}
+
+#######################################################################
+# main
+#######################################################################
+LXD_NAME="${LXD_NAME:-sid}"
+LXD_UPDATE=false
+# parse command line
+while [ -n "$1" ]; do
+  case $1 in
+    -h*)
+      lxd_help
+      exit 0
+      ;;
+    -u*)
+      LXD_UPDATE=true
+      ;;
+    --) shift
+      LXD_NAME=$1
+      ;;
+    *) LXD_NAME=$1
+      ;;
+  esac
+  shift
+done
+if lxc image ls -fcsv|grep -q "^${BASE}${LXD_NAME}," ; then
+  if $LXD_UPDATE ; then
+    # image exists
+    lxc image delete "${BASE}${LXD_NAME}"
+    echo "I: LXD image ${BASE}${LXD_NAME} removed."
+  else
+    echo "E: LXD image ${BASE}${LXD_NAME} exists."
+    exit 1
+  fi
+else
+  echo "I: No LXD image ${BASE}${LXD_NAME} found."
+fi
+if lxc ls -fcsv|grep -q "^${BASE}${LXD_NAME}," ; then
+  echo "E: LXD instance ${BASE}${LXD_NAME} exists."
+  lxc delete "${BASE}${LXD_NAME}"
+  echo "I: LXD instance ${BASE}${LXD_NAME} removed."
+fi
+echo "I: Create LXD instance ${BASE}${LXD_NAME} ."
+lxc init "images:debian/${LXD_NAME}/cloud" "${BASE}${LXD_NAME}"
+echo "I: Update /etc/cloud/cloud.cfg in LXD instance ${BASE}${LXD_NAME}."
+lxc file pull "${BASE}${LXD_NAME}/etc/cloud/cloud.cfg" .
+sed -i -e 's/ netdev,//g' -e "s/name: debian/name: osamu/" cloud.cfg
+lxc file push cloud.cfg "${BASE}${LXD_NAME}/etc/cloud/"
+grep -e " groups: " -e " name: " cloud.cfg
+rm cloud.cfg
+echo "I: Publish LXD image with alias ${BASE}${LXD_NAME} ."
+lxc publish "${BASE}${LXD_NAME}" --alias="${BASE}${LXD_NAME}"
+#echo "I: Delete LXD instance ${BASE}${LXD_NAME} ."
+#lxc delete "${BASE}${LXD_NAME}"
+
