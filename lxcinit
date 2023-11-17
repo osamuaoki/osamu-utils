@@ -15,20 +15,20 @@ LC_ALL=en_US.UTF-8
 export LC_ALL
 PROG="${0##*/}"
 TMP_DIR="$(mktemp -d)"
-BASE="deb-"
 cd "$TMP_DIR"
 lxd_help () {
   cat >&2 << EOF
 =============================================================================
 NAME:
-  $PROG -- download lxd Debian cloud image and make local fixed image "base"
+  $PROG -- download lxd Debian cloud image and make local fixed image
+             "${BASE}<name>"
 
 SYNOPSIS:
-  $PROG [-h|-u|--] [<name>]
+  $PROG [-b|-d|-h|-p|-u|--] [<name>]
 
 DESCRIPTION:
   $PROG creates a local un-previlidged LXD image "${BASE}<name>" just like
-  the following but with some fix-ups:
+  the following but with some fix-ups on /etc/cloud/cloud.cfg:
 
   $ lxc init images:debian/<name>/cloud ${BASE}<name>
   $ lxc publish ${BASE}<name> --alias=${BASE}<name>
@@ -39,8 +39,11 @@ DESCRIPTION:
   You can't use instance name such as ${BASE}<name>.
 
 OPTIONS: (only the first character matters)
-  -help     print this help message and exit
-  -update   update the local image after removing it before download.
+  -base BASE  set base name as BASE ("${BASE}")
+  -delete     delete unmodified instance ${BASE}<name>
+  -help       print this help message and exit
+  -primary    match primary user name in container with the current user
+  -update     update the local image ${BASE}<name> after removing it first.
 
 =============================================================================
 EOF
@@ -52,6 +55,9 @@ EOF
 #######################################################################
 LXD_NAME="${LXD_NAME:-sid}"
 LXD_UPDATE=false
+LXD_USER=debian
+BASE="deb-"
+LXD_DEL_INSTANCE=false
 # parse command line
 while [ -n "$1" ]; do
   case $1 in
@@ -59,8 +65,17 @@ while [ -n "$1" ]; do
       lxd_help
       exit 0
       ;;
+    -d*)
+      LXD_DEL_INSTANCE=true
+      ;;
+    -p*)
+      LXD_USER=$(id -n -u)
+      ;;
     -u*)
       LXD_UPDATE=true
+      ;;
+    -b*) shift
+      BASE=$1
       ;;
     --) shift
       LXD_NAME=$1
@@ -91,12 +106,14 @@ echo "I: Create LXD instance ${BASE}${LXD_NAME} ."
 lxc init "images:debian/${LXD_NAME}/cloud" "${BASE}${LXD_NAME}"
 echo "I: Update /etc/cloud/cloud.cfg in LXD instance ${BASE}${LXD_NAME}."
 lxc file pull "${BASE}${LXD_NAME}/etc/cloud/cloud.cfg" .
-sed -i -e 's/ netdev,//g' -e "s/name: debian/name: osamu/" cloud.cfg
+sed -i -e 's/ netdev,//g' -e "s/name: debian/name: ${LXD_USER}/" cloud.cfg
 lxc file push cloud.cfg "${BASE}${LXD_NAME}/etc/cloud/"
 grep -e " groups: " -e " name: " cloud.cfg
 rm cloud.cfg
 echo "I: Publish LXD image with alias ${BASE}${LXD_NAME} ."
 lxc publish "${BASE}${LXD_NAME}" --alias="${BASE}${LXD_NAME}"
-#echo "I: Delete LXD instance ${BASE}${LXD_NAME} ."
-#lxc delete "${BASE}${LXD_NAME}"
+if $LXD_DEL_INSTANCE ; then
+  echo "I: Delete LXD instance ${BASE}${LXD_NAME} ."
+  lxc delete "${BASE}${LXD_NAME}"
+fi
 
