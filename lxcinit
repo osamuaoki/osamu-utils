@@ -33,10 +33,12 @@ DESCRIPTION:
   $ lxc init images:debian/<name>/cloud ${BASE}<name>
   $ lxc publish ${BASE}<name> --alias=${BASE}<name>
 
-  The default <name> is "sid".  The <name> consists of the release name.
-  E.g., 13, "trixie", 12, "bookworm", 11, "buster", ...
+  The default <name> is "sid".  The <name> consists of the codename or the
+  release version:
+    - "sid", "trixie", "bookworm", "bullseye", "buster", 12, 11, 10
 
-  You can't use instance name such as ${BASE}<name>.
+  You can't have an existing instance name such as ${BASE}<name> for this
+  command to function.
 
 OPTIONS: (only the first character matters)
   -base BASE  set base name as BASE ("${BASE}")
