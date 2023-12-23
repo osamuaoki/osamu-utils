@@ -1,0 +1,16 @@
+#!/bin/bash -e
+# Use name of $1 document to sign (no space)
+F="${1// /_}"
+echo "# DATE: $(date -u --iso=sec)" > "${F}.sha256"
+echo "" >> "${F}.sha256"
+sha256sum "$@" >> "${F}.sha256"
+echo "" >> "${F}.sha256"
+echo "# For verifying authenticity of this file:" >> "${F}.sha256"
+echo "#   - run \"gpg --verify < ${F}.sha256\"" >> "${F}.sha256"
+echo "#" >> "${F}.sha256"
+echo "# For verifying listed files:" >> "${F}.sha256"
+echo "#   - delete lines below" >> "${F}.sha256"
+echo "#   - run \"sha256sum -c ${F}.sha256\"" >> "${F}.sha256"
+echo "" >> "${F}.sha256"
+gpg --clear-sign "${F}.sha256"
+rm  "${F}.sha256"
