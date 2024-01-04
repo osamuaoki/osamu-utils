@@ -30,6 +30,12 @@ HISTFILESIZE=2000
 # update the values of LINES and COLUMNS.
 shopt -s checkwinsize
 
+# A command name that is the name of a directory is executed as if
+# it were the argument to the cd command.
+# This option is only used by interactive shells.
+# --> DISABLED bad interaction with fzf
+#shopt -s autocd
+
 # If set, the pattern "**" used in a pathname expansion context will
 # match all files and zero or more directories and subdirectories.
 #shopt -s globstar
@@ -129,23 +135,33 @@ export CDPATH=.:~:~/github:~/salsa:~/rsync:~/Documents:/usr/share
 PATH="$PATH":/usr/sbin:/sbin
 
 #=============================================================================
-# EDITOR
-# nvim: nvim with LazyVim -- as /usr/bin/nvim
-export EDITOR=nvim
-export VISUAL=nvim
-# `vi` as neovim with LazyVim
-alias vi='nvim'
-# `v` as neovim without resource file
-alias v='nvim  -u NORC'
-# `v0` as neovim with minimum resouce file
-alias v0='nvim -u ~/.nvim'
-# sudoedit to use nvim w/o resource file
-alias svi="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
-# vim alias
-alias vimdiff='nvim -d'
-alias view='nvim -R'
-alias ex='nvim -e'
-alias editor=nvim
+# GOOD OLDE VI as baseline editor (minimum resource file)
+if [ -r "~/.vimrc" ]; then
+  VIMRC="~/.vimrc"
+else
+  VIMRC="NONE"
+fi
+if type nvim >/dev/null ; then
+  alias nv='nvim'
+  alias vi='nvim -u $VIMRC'
+  alias v='nvim -u NORC'
+  alias sv="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
+elif type vim >/dev/null ; then
+  alias vi='vim -u $VIMRC'
+  alias v='vim -N -u NORC'
+  alias sv="SUDO_EDITOR='/usr/bin/vim -N -u NORC' /usr/bin/sudoedit"
+else
+  unalias vi
+  unset VIMRC
+fi
+if [ -n "$VIMRC" ]; then
+  export EDITOR='vi'
+  export VISUAL='vi'
+  alias vimdiff='vi -d'
+  alias view='vi -R'
+  alias ex='vi -e'
+fi
+
 alias yarn=yarnpkg
 
 # Alternative editors
@@ -199,6 +215,8 @@ function xmcd () {
 }
 
 # L10N COMMAND ALIASES
+LANG=C.UTF-8
+export LANG
 alias jo="LANG=ja_JP.UTF-8 libreoffice"
 alias jw="LANG=ja_JP.UTF-8 lowriter"
 alias jc="LANG=ja_JP.UTF-8 LANGUAGE=ja gnucash"

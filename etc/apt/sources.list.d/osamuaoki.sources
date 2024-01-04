@@ -1,5 +1,5 @@
 Types: deb
-URIs: http://osamuaoki.github.io/debian/
+URIs: https://osamuaoki.github.io/debian/
 Suites: sid
 Components: main
 Signed-By:
