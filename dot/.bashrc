@@ -147,7 +147,7 @@ if type nvim >/dev/null ; then
   alias v='nvim -u NORC'
   alias sv="SUDO_EDITOR='/usr/bin/nvim -u NORC' /usr/bin/sudoedit"
 elif type vim >/dev/null ; then
-  alias vi='vim -u $VIMRC'
+  alias vi='vim -N -u $VIMRC'
   alias v='vim -N -u NORC'
   alias sv="SUDO_EDITOR='/usr/bin/vim -N -u NORC' /usr/bin/sudoedit"
 else
