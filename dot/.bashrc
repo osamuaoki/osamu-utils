@@ -136,7 +136,7 @@ PATH="$PATH":/usr/sbin:/sbin
 
 #=============================================================================
 # GOOD OLDE VI as baseline editor (minimum resource file)
-if [ -r "~/.vimrc" ]; then
+if [ -r ~/.vimrc ]; then
   VIMRC="~/.vimrc"
 else
   VIMRC="NONE"
