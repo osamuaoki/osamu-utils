@@ -1,3 +1,0 @@
-  DPkg::Pre-Invoke  { "/usr/bin/bss snapshot --logger --type=pre  / || true" ; } ;
-  DPkg::Post-Invoke { "/usr/bin/bss snapshot --logger --type=post / || true" ; } ;
-

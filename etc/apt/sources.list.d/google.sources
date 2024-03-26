@@ -1,7 +1,0 @@
-# This is wrtten in DEB822-STYLE FORMAT as described in sources.list (5)
-Types: deb
-URIs: https://dl.google.com/linux/chrome/deb/
-Suites: stable
-Components: main
-Architectures: amd64
-Signed-By: /etc/apt/keyrings/google-chrome.gpg

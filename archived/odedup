@@ -447,10 +447,9 @@ def help(args):
 
 def ls(args):
     paths = scan(args.dirs, args)
-    for l in all_categories:
-        for path in paths[l]:
-            if l in args.categories:
-                print("{}: {}".format(l.upper(), path))
+    for t in all_categories:
+        for path in paths[t]:
+            print("{}: {}".format(t.upper(), path))
     return
 
 

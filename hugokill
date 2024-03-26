@@ -1,2 +1,0 @@
-#!/bin/sh -e
-killall hugo || true

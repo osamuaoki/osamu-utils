@@ -1,2 +1,0 @@
-# SC2006: Use $(...) notation instead of legacy backticked `...`.
-disable=SC2006
