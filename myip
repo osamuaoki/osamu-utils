@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # https://serverfault.com/questions/1007184/how-to-check-ipv6-address-via-command-line
 # journalctl -a -b -t myip
-IPV4=$(curl -4 https://ifconfig.co 2>/dev/null)
+IPV4=$(curl -4 https://ifconfig.co 2> /dev/null)
 systemd-cat -p 5 -t "myip" echo "External IP: IPv4=$IPV4"
-IPV6=$(curl -6 https://ifconfig.co 2>/dev/null)
+IPV6=$(curl -6 https://ifconfig.co 2> /dev/null)
 systemd-cat -p 5 -t "myip" echo "External IP: IPv6=$IPV6"

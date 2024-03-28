@@ -4,7 +4,7 @@
 # You can run 'gitk' with this.
 
 _help() {
-cat << EOF
+  cat << EOF
 NAME
     ${0##*/} - start a shell in chroot with current home data.
 
@@ -88,14 +88,14 @@ Parametrs:
 EOF
 }
 
-_noxhost () {
+_noxhost() {
   if [ "$XHOST" = "xhost" ]; then
     $XHOST -
     echo "I: closed xhost just to be sure"
   fi
 }
 
-_distsh () {
+_distsh() {
   $XHOST -
   echo
   echo "I: execute in ${TYPE}:${DIST}-${ARCH}-${CONFIG}"
@@ -107,27 +107,27 @@ _distsh () {
   echo "I: normal exit from schroot"
 }
 
-_su () {
+_su() {
   if [ "$(id -u)" != 0 ]; then
     echo "I: execute as root: $*"
     exec sudo "$@"
   fi
 }
 
-_config () {
+_config() {
   echo "I: Setting up $CONFIG"
   if [ -d "/etc/schroot/$CONFIG" ]; then
     echo "E: /etc/schroot/$CONFIG already exists."
     exit 1
   fi
   mkdir -p "/etc/schroot/$CONFIG"
-  cat > "/etc/schroot/$CONFIG/copyfiles" <<EOF
+  cat > "/etc/schroot/$CONFIG/copyfiles" << EOF
 # Files to copy into the chroot from the host system.
 #
 # <source and destination>
 /etc/resolv.conf
 EOF
-  cat > "/etc/schroot/$CONFIG/fstab" <<EOF
+  cat > "/etc/schroot/$CONFIG/fstab" << EOF
 # fstab: static file system information for chroots.
 # Note that the mount point will be prefixed by the chroot path
 # (CHROOT_PATH)
@@ -166,7 +166,7 @@ $USERHOME       $USERHOME       none    rw,bind         0       0
 #/dev/shm       /dev/shm        none    rw,bind         0       0
 #/run/shm       /run/shm        none    rw,bind         0       0
 EOF
-  cat > "/etc/schroot/$CONFIG/nssdatabases" <<EOF
+  cat > "/etc/schroot/$CONFIG/nssdatabases" << EOF
 # System databases to copy into the chroot from the host system.
 #
 # <database name>
@@ -181,7 +181,7 @@ hosts
 EOF
 }
 
-_init_sbuild () {
+_init_sbuild() {
   # create a minimum schroot for sbuild
   echo "I: setting up DIST=${DIST} for sbuild chroot."
   SBUILD_CHROOT="${BASECHROOT}/${DIST}-${ARCH}-sbuild"
@@ -189,11 +189,11 @@ _init_sbuild () {
     echo "I: ${SBUILD_CHROOT} exists, so use it as the starting point."
   else
     DEBURL="http://deb.debian.org/debian"
-    sbuild-createchroot --include=eatmydata,ccache  "${DIST}" "${SBUILD_CHROOT}" "${DEBURL}"
+    sbuild-createchroot --include=eatmydata,ccache "${DIST}" "${SBUILD_CHROOT}" "${DEBURL}"
   fi
 }
 
-_init () {
+_init() {
   echo "I: _init ${DIST}-${ARCH}-${CONFIG}"
   _init_sbuild
   # create additional chroot for use by terminal and X (Yes: xwayland, No: pure wayland)
@@ -201,7 +201,7 @@ _init () {
   echo "I: setting up DIST=${DIST} for ${CONFIG} ..."
   DESKTOP_CHROOT="${BASECHROOT}/${DIST}-${ARCH}-${CONFIG}"
   if [ ! -e "${DESKTOP_CHROOT}" ]; then
-    cp -a --reflink=always  "${SBUILD_CHROOT}"  "${DESKTOP_CHROOT}"
+    cp -a --reflink=always "${SBUILD_CHROOT}" "${DESKTOP_CHROOT}"
   else
     echo "I: chroot ${DESKTOP_CHROOT} already exists, so use it as is."
     exit 0
@@ -209,7 +209,7 @@ _init () {
   # create schroot data entry /etc/schroot/chroot.d/${DIST}-${ARCH}-${CONFIG}
   # while using schroot $CONFIG with uniq filename
   # shellcheck disable=SC2086
-  CONF_SCHROOT="$(ls -1 /etc/schroot/chroot.d/${DIST}-${ARCH}-${CONFIG}-* 2>/dev/null || true)"
+  CONF_SCHROOT="$(ls -1 /etc/schroot/chroot.d/${DIST}-${ARCH}-${CONFIG}-* 2> /dev/null || true)"
   if [ -z "$CONF_SCHROOT" ]; then
     if [ "${DIST}" = unstable ]; then
       ALIASES_LINE="aliases=sid-${ARCH}-${CONFIG},sid-${CONFIG},${CONFIG}"
@@ -217,7 +217,7 @@ _init () {
       ALIASES_LINE="#aliases=<please add your alias here and uncomment>"
     fi
     CONF_SCHROOT="/etc/schroot/chroot.d/${DIST}-${ARCH}-${CONFIG}-$$"
-    cat > "$CONF_SCHROOT" <<EOF
+    cat > "$CONF_SCHROOT" << EOF
 [${DIST}-${ARCH}-${CONFIG}]
 description=Debian ${DIST} ${ARCH} chroot with shared desktop data
 groups=root,sbuild
@@ -238,21 +238,21 @@ EOF
   fi
 }
 
-_upgrade () {
-echo "I: _upgrade ${DIST}-${ARCH}-${CONFIG}"
-# -udcar
-_distsh apt-get update --yes
-_distsh apt-get dist-upgrade --yes
-_distsh apt-get clean --yes
-_distsh apt-get autoclean --yes
-_distsh apt-get autoremove --yes
+_upgrade() {
+  echo "I: _upgrade ${DIST}-${ARCH}-${CONFIG}"
+  # -udcar
+  _distsh apt-get update --yes
+  _distsh apt-get dist-upgrade --yes
+  _distsh apt-get clean --yes
+  _distsh apt-get autoclean --yes
+  _distsh apt-get autoremove --yes
 }
 
-_aptget () {
+_aptget() {
   _distsh apt-get install --yes "$@"
 }
 
-_prep () {
+_prep() {
   echo "I: _prep ${DIST}-${ARCH}-${CONFIG}"
   # Install piece-by-piece to help understand the unstable breakage situation
   _aptget sudo x11-xserver-utils
@@ -273,7 +273,7 @@ THIS_COMMAND="$0"
 echo
 echo "I: executing as USER='$(id -u -n)'"
 echo " % $THIS_COMMAND $*"
-if [ "$(id -u)" != 0 ] && type xhost >/dev/null; then
+if [ "$(id -u)" != 0 ] && type xhost > /dev/null; then
   XHOST="xhost"
 else
   XHOST=":"
@@ -282,28 +282,28 @@ fi
 USERNAME="$(id -u -n)"
 USERHOME="/home/$USERNAME"
 BASECHROOT="/srv/chroot" # enough disk space here
-TYPE="source" # chroot namespace
-ARCH="amd64"  # adjust for system
+TYPE="source"            # chroot namespace
+ARCH="amd64"             # adjust for system
 
 COMMAND_MODE="shell"
 case "$1" in
-  -c|--co*)
+  -c | --co*)
     COMMAND_MODE="config"
     shift
     ;;
-  -i|--in*)
+  -i | --in*)
     COMMAND_MODE="init"
     shift
     ;;
-  -p|--pr*)
+  -p | --pr*)
     COMMAND_MODE="prep"
     shift
     ;;
-  -u|--up*)
+  -u | --up*)
     COMMAND_MODE="upgrade"
     shift
     ;;
-  -h|--help)
+  -h | --help)
     COMMAND_MODE="help"
     shift
     ;;
@@ -341,11 +341,11 @@ case "$1" in
     DIST="oldoldstable"
     shift
     ;;
-  unstable|testing|stable|oldstable|oldoldstable)
+  unstable | testing | stable | oldstable | oldoldstable)
     DIST="${1}"
     shift
     ;;
-  sid|bookworm|bullseye|buster|strech)
+  sid | bookworm | bullseye | buster | strech)
     DIST="${1}"
     shift
     ;;
@@ -392,5 +392,5 @@ case "$COMMAND_MODE" in
   he*) # help
     _help
     exit 0
+    ;;
 esac
-

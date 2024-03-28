@@ -53,7 +53,7 @@ else
   URL="-h"
 fi
 case "$URL" in
-  -h|--help) # need help
+  -h | --help) # need help
     __help
     exit 0
     ;;
@@ -88,11 +88,11 @@ esac
 
 if [ -e "$PROJ" ]; then
   mkdir -p "$SITE/$OWNR"
-  cd "$SITE/$OWNR" || return >/dev/null
+  cd "$SITE/$OWNR" || return > /dev/null
   git clone "$URL"
 else
   mkdir -p "$PROJ"
-  cd "$PROJ" || return >/dev/null
+  cd "$PROJ" || return > /dev/null
   git clone "$URL"
 fi
 exec

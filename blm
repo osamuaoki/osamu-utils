@@ -12,7 +12,7 @@ else
   MODE="$1"
 fi
 case "$MODE" in
-  off|--off)
+  off | --off)
     git config --global --unset init.defaultBranch
     echo "I: Turn off defaultBranch customization" >&2
     ;;
@@ -21,4 +21,3 @@ case "$MODE" in
     echo "I: Turn on defaultBranch customization: defaultBranch=main" >&2
     ;;
 esac
-

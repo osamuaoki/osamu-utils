@@ -4,9 +4,9 @@
 # @ NAMES         vim opt packagenames (list)
 # @ -d DOCDIR     vim doc install directory
 #set -x
-cd >/dev/null || true
+cd > /dev/null || true
 HOME=$(pwd)
-help () {
+help() {
   echo "syntax: ${0##*/}"
   echo
   echo "Set up a vimdoc for all packages in ..pack//packer/opt"
@@ -27,11 +27,11 @@ PKGNAMES=$(find "$BASE" -maxdepth 1 -type d | sed -e 's,^.*/,,')
 DESTPATH="${XDG_CONFIG_HOME:-$HOME/.config}/astronvim/doc"
 #echo "DESTPATH='$DESTPATH'"
 
-for PKGNAME in $PKGNAMES ; do
+for PKGNAME in $PKGNAMES; do
   case $PKGNAME in
-    aerial.nvim| nvim-treesitter| nvim-colorizer.lua| indent-blankline.nvim| \
-    mason-lspconfig.nvim| nvim-lspconfig| mason.nvim| which-key.nvim| \
-    packer.nvim)
+    aerial.nvim | nvim-treesitter | nvim-colorizer.lua | indent-blankline.nvim | \
+      mason-lspconfig.nvim | nvim-lspconfig | mason.nvim | which-key.nvim | \
+      packer.nvim)
       # nvim-treesitter.txt already read
       # already read
       echo "Skip: $PKGNAME (no need)" # do nothing
@@ -42,7 +42,7 @@ for PKGNAME in $PKGNAMES ; do
       if [ -d "$BASEPATH" ]; then
         TXTFILES=$(find "$BASEPATH" -type f -name '*.txt' | sed 's,^.*/,,')
         #echo " ... TXTFILES='$TXTFILES'"
-        for FNAME in $TXTFILES ; do
+        for FNAME in $TXTFILES; do
           #echo "  ... $FNAME"
           echo "Link: $BASE/$PKGNAME/doc/$FNAME -> $DESTPATH/$FNAME"
           ln -sf "$BASE/$PKGNAME/doc/$FNAME" "$DESTPATH/$FNAME"
@@ -50,6 +50,6 @@ for PKGNAME in $PKGNAMES ; do
       else
         echo "Skip: $PKGNAME (no doc)"
       fi
+      ;;
   esac
 done
-

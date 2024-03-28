@@ -9,7 +9,7 @@ if [ "${DEBEMAIL}" = "" ] && [ "$(id -un)" = "osamu" ]; then
   export DEBEMAIL
 elif [ "${DEBEMAIL##*@}" != "debian.org" ]; then
   echo "You must have a debian.org e-mail address and export it by setting the" >&2
-  echo "\$DEBEMAIL environment variable." >&2
+  echo '$DEBEMAIL environment variable.' >&2
   echo "NOTE: If a browser starts mutt, the shell start-up code doesn't set this." >&2
   exit 1
 fi
@@ -27,10 +27,9 @@ STRICTCK='-o "StrictHostKeyChecking no"'
 if [ -n "$DEBEMAIL" ]; then
   eval /usr/bin/ssh \
     "${VERBOSE}" \
-	  -p 22 \
-	  "${STRICTCK}" \
-	  "${DEBEMAIL%%@*}@people.debian.org" \
-	  /usr/sbin/sendmail -bm -ti \
+    -p 22 \
+    "${STRICTCK}" \
+    "${DEBEMAIL%%@*}@people.debian.org" \
+    /usr/sbin/sendmail -bm -ti \
     -f "$DEBEMAIL"
 fi
-
