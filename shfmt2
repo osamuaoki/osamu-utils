@@ -1,0 +1,7 @@
+#!/bin/bash
+# Copyright (c) 2024 Osamu Aoki <osamu@debian.org>
+# GNU GPL 2+
+
+shfmt -i 2 -sr -ci -p -s -w "$@"
+
+# vim: set sts=2 sw=2 et si ai:

@@ -1,0 +1,152 @@
+#!/bin/bash
+# Copyright (c) 2024 Osamu Aoki <osamu@debian.org>
+# GNU GPL 2+
+
+VERSION='0.0.1'
+
+help() {
+  cat - << EOF
+Usage: ${0##*/} [options]
+
+OPTION:
+  -n              no download
+  -a  [am|ar]     set extention type of downloaded data
+      amd64 (default), arm64
+  -c  [s|b|t]     set codename and release of downloaded data
+      sid (default), bookworm, trixie
+  -i  [n|g|c|a|e] set image name of downloaded data
+      nocloud (default), generic, genericcloud, azure, ec2
+  -e  [j|q|r|t]   set extention type of downloaded data
+      json (default), qcow2, raw, tar.xz
+  -h              show help message
+
+This is ${0##*/} version $VERSION .
+
+NOTE:
+
+Difference of image names
+
+* azure:        Microsoft Azure environment
+* ec2:          Amazon EC2
+* generic:      Any, with cloud-init
+* genericcloud: Any, with cloud-init, w/o hardware drivers
+* nocloud       Any, with password-less root login for build process
+
+EOF
+}
+
+REPO_URL="https://cloud.debian.org/images/cloud"
+CODEIMAGE="sid"
+REPO_PATH="daily/latest"
+DIST="debian"
+RELEASE="sid"
+IMAGE="nocloud"
+ARCH="amd64"
+SUFFIX="daily"
+EXT="json"
+ECHO=""
+
+while [ $# != 0 ]; do
+  case $1 in
+    -a) # ARCH
+      shift
+      case $1 in
+        am*)
+          shift
+          ARCH="amd64"
+          ;;
+        ar*)
+          shift
+          ARCH="arm64"
+          ;;
+        *) ;;
+      esac
+      ;;
+    -c) # CODEIMAGE/RELEASE
+      shift
+      case $1 in
+        b* | 12)
+          shift
+          CODEIMAGE="bookworm"
+          RELEASE="12"
+          ;;
+
+        t* | 13)
+          shift
+          CODEIMAGE="trixie"
+          RELEASE="13"
+          ;;
+        s*)
+          shift
+          CODEIMAGE="sid"
+          RELEASE="sid"
+          ;;
+        *) ;;
+      esac
+      ;;
+    -i) # IMAGE
+      shift
+      case $1 in
+        a*)
+          shift
+          IMAGE="azure"
+          ;;
+        e*)
+          shift
+          IMAGE="ec2"
+          ;;
+        g*)
+          shift
+          IMAGE="generic"
+          ;;
+        c*)
+          shift
+          IMAGE="genericcloud"
+          ;;
+        n*)
+          shift
+          IMAGE="nocloud"
+          ;;
+        *) ;;
+      esac
+      ;;
+    -e) # EXTENSION
+      shift
+      case $1 in
+        j*)
+          shift
+          EXT="json"
+          ;;
+        q*)
+          shift
+          EXT="qcow2"
+          ;;
+        r*)
+          shift
+          EXT="raw"
+          ;;
+        t*)
+          shift
+          EXT="tar.gz"
+          ;;
+        *) ;;
+      esac
+      ;;
+    -n)
+      shift
+      ECHO="echo"
+      ;;
+    -h)
+      help
+      shift
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+$ECHO wget ${REPO_URL}/${CODEIMAGE}/${REPO_PATH}/${DIST}-${RELEASE}-${IMAGE}-${ARCH}-${SUFFIX}.${EXT}
+
+# vim: set sts=2 sw=2 et si ai:
